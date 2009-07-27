@@ -1,0 +1,37 @@
+<html>
+	<head>
+		<title>Ewok AS</title>
+		<link rel="stylesheet" href="default.css" type="text/css"/>
+	</head>
+	<body>
+		<div id="top">
+		<img id="logo" src="/images/ewok-logo.png"/>
+		<span id="dock">
+					<% page:top() %> | <a href="/admin/home">Dashboard</a> | <a href="/">News</a> | <a href="/">About</a>
+		</span>
+		</span>
+		</div>
+		<% page:content() %>
+			<!-- 
+		<div id="page">
+			<div id="nav">
+				<p>A Web Application Server written in Erlang/OTP</p>
+			</div>
+			<div id="content">
+				<h1>Login</h1>
+				<p>Please log in using the details provided to you. If you have forgotten your 
+				username or password, or do not yet have a login, please contact your 
+				support representative to enable this account.</p>
+
+				<table class="dataentry">
+					<tr><td class="label">Username:</td><td><input name="username" type="text" size="20"/></td></tr>
+					<tr><td class="label">Password:</td><td><input name="password" type="password" size="20"/></td></tr>
+					<tr><td class="label"></td><td><input type="Submit" value="Submit"/></td></tr>
+				</table>
+			</div>
+				-->
+		<br clear="all"/>
+		<div id="footer"><hr><p><% page:bottom() %></p></div>
+		<p align="center"><% request:get_remote_ip() %></p>
+		
+</html>

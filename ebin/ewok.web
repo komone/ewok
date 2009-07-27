@@ -1,0 +1,156 @@
+% ewok.conf
+% all time values are in seconds
+% all size values are in bytes
+{ewok_server, ewok, [
+	{runmode, development},
+	{autodeploy, [ewok_admin]},
+	
+	{server, [
+		{ip, any},
+		{hostname, "localhost"} %% unused
+	]},
+		
+	{identity, [
+		{keystore, "./priv/data/.keystore"}
+	]},
+	
+	{tasks, []}, % no conf as yet
+	
+	{datasource, [ 
+		{data_path, "./priv/data"},
+		{default, mnesia}, % no other option offered for now (and maybe never)
+		{mnesia, [
+			{mod, ewok_mnesia_ds}
+		]},
+		{aws_sdb, [ %% NOTE: sample keys from Amazon - move to keystore later
+			{sdb_access_key, "022QF06E7MXBSH9DHM02"}, 
+			{sdb_secret_key, "kWcrlUX5JEDGM/LtmEENI/aVmYvHNif5zB+d9+ct"}
+		]},
+		{couchdb, []},
+		{postgresql, [
+			{mod, ewok_postgresql_ds}
+		]},
+		{mysql, []}
+		%% NOTE: consider other EIS tier datasource types 
+		%% -- can ALL datasources be abstracted to KV stores?
+	]},
+	
+	{mq, [
+		{data_path, "./priv/data"},
+		{default, rabbitmq}, % no other option offered for now (and maybe never)
+		{rabbitmq, [ %% NOTE: sample keys from Amazon - move to keystore later
+			{url, "amqp://localhost"},
+			{port, 5432},
+			{user, "admin"},
+			{password, "password"}
+		]}
+	]},
+	
+	{http, [
+		{tcp, [ 
+		%% no need to touch these unless you know *exactly* what you are doing
+			{max_connections, 2048},
+			{backlog, 30},
+			{socket, [
+				{type, binary},
+				{reuseaddr, true},
+				{packet, 0}, % don't think this is exactly the same as 'raw'
+				{active, false},
+				{recbuf, 8192},
+				{nodelay, true}
+			]}
+		]},
+		
+		{port, 8000},
+		{request_timeout, 30},
+		{app_root, "./priv/apps"},
+		
+		%% Cache is used in production mode to cache static files
+		%% and their file information for response headers
+		%% the idea is to reduce file handles used by the system
+		%% and potentially massively speed up static file serving
+		{cache, [
+			{max_file_size, 102400} % up to 100k - depends on your RAM
+		]},
+		
+		{session, [
+			{timeout, 1800}, %% http sessions timeout after 30 minutes
+			{flush_interval, 120}, %% flush stale sessions every 2 minutes when idle
+			{force_flush, 3600} %% force a cleanup of stale sessions every hour
+		]},
+		
+		%% maybe move to a seperate def file... or as a separate term below
+		{mimetype, default, "application/x-octet-stream"},
+		{mimetype, ".bmp", "image/bmp"},
+		{mimetype, ".bz2", "application/x-bzip2"},
+		{mimetype, ".css", "text/css"},
+		{mimetype, ".csv", "text/csv"},
+		{mimetype, ".doc", "application/msword"},
+		{mimetype, ".esp", "application/xhtml+xml"},
+		{mimetype, ".exe", "application/octet-stream"},
+		{mimetype, ".gif", "image/gif"},
+		{mimetype, ".gz", "application/x-gzip"},
+		{mimetype, ".html", "text/html"},
+		{mimetype, ".ico", "image/x-icon"},
+		{mimetype, ".jpg", "image/jpeg"},
+		{mimetype, ".js", "application/x-javascript"},
+		{mimetype, ".m3u", "audio/x-mpegurl"},
+		{mimetype, ".m4a", "audio/mpeg"},
+		{mimetype, ".mov", "video/quicktime"},
+		{mimetype, ".mp3", "audio/mpeg"},
+		{mimetype, ".pdf", "application/pdf"},
+		{mimetype, ".png", "image/png"},
+		{mimetype, ".rtf", "application/rtf"},
+		{mimetype, ".swf", "application/x-shockwave-flash"},
+		{mimetype, ".tar", "application/x-tar"},
+		{mimetype, ".tgz", "application/x-gzip"},
+		{mimetype, ".txt", "text/plain"},
+		{mimetype, ".xhtml", "application/xhtml+xml"},
+		{mimetype, ".xls", "application/vnd.ms-excel"},
+		{mimetype, ".xml", "application/xml"},		
+		{mimetype, ".wav", "audio/x-wav"},
+		{mimetype, ".z", "application/x-compress"},
+		{mimetype, ".zip", "application/zip"}
+	]},
+	
+	{log, [
+		{level, info},
+		{path, "./priv/log"},
+		{access, [
+			{enable, true},
+			{rollover, infinity},
+			{maxfiles, infinity}
+		]},
+		{auth, [
+			{enable, true},
+			{rollover, infinity},
+			{maxfiles, infinity}
+		]},
+		{server, [ %
+			{enable, true},
+			{rollover, infinity},
+			{maxfiles, infinity}		
+		]}
+	]}
+]}.
+
+{web_application, ewok, [
+	{http, [
+		{app_path, "/"}, % ?
+		
+		%% realm-based role... this probably shouldn't be in here at all
+		{{ewok, login}, "/login"}, 
+		
+		{www_root, "./priv/www"},
+		{template_root, "./priv/esp"},
+		{index_file, "index.html"},
+		
+		{roles, []},
+		
+		{route, default, ewok_file_handler, ewok, any},
+		{route, "/", ewok_home, ewok, any},
+		{route, "/home", ewok_home, ewok, any},
+		{route, "/login", ewok_login_handler, ewok, any},
+		{route, "/activation", ewok_activation_handler, ewok, any}
+	]}	
+]}.

@@ -1,0 +1,19 @@
+
+RECORD -> {TABLE, KEY, VALUE...).
+FIELD -> NAME | {NAME, DATATYPE}.
+PK -> {TABLE, KEY}.
+datasource_info().
+table_info(TABLE).
+
+create_table(TABLE, [FIELD, FIELD, ...]).
+drop_table(TABLE).
+
+// CRUD
+create(RECORD).
+read(PK).
+update(RECORD).
+delete(RECORD | PK).
+
+// DB Queries
+select(MATCH).
+run(NATIVE_COMMAND).

@@ -1,0 +1,258 @@
+<html>
+<head>
+<title>Ewok API</title>
+<link rel="stylesheet" type="text/css" href="api.css"/>
+</head>
+<body>
+<h1>Ewok/1.0 (Wicket) API</h1>
+<h2>Modules</h2>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<tr><td><a href="#esp">esp</a>, <a href="#esp_html">esp_html</a>, <a href="#esp_src2html">esp_src2html</a>, <a href="#ewok">ewok</a>, <a href="#ewok_cache_srv">ewok_cache_srv</a>, <a href="#ewok_config">ewok_config</a>, <a href="#ewok_content_negotiation">ewok_content_negotiation</a>, <a href="#ewok_data_srv">ewok_data_srv</a>, <a href="#ewok_db">ewok_db</a>, <a href="#ewok_file_handler">ewok_file_handler</a>, <a href="#ewok_geoip">ewok_geoip</a>, <a href="#ewok_geoip_sup">ewok_geoip_sup</a>, <a href="#ewok_http">ewok_http</a>, <a href="#ewok_http_client">ewok_http_client</a>, <a href="#ewok_http_resource">ewok_http_resource</a>, <a href="#ewok_http_srv">ewok_http_srv</a>, <a href="#ewok_identity">ewok_identity</a>, <a href="#ewok_identity_srv">ewok_identity_srv</a>, <a href="#ewok_installer">ewok_installer</a>, <a href="#ewok_log_file_h">ewok_log_file_h</a>, <a href="#ewok_log_server">ewok_log_server</a>, <a href="#ewok_login_handler">ewok_login_handler</a>, <a href="#ewok_mnesia_server">ewok_mnesia_server</a>, <a href="#ewok_redoc">ewok_redoc</a>, <a href="#ewok_request">ewok_request</a>, <a href="#ewok_response">ewok_response</a>, <a href="#ewok_scheduler_srv">ewok_scheduler_srv</a>, <a href="#ewok_service">ewok_service</a>, <a href="#ewok_session_srv">ewok_session_srv</a>, <a href="#ewok_sup">ewok_sup</a>, <a href="#ewok_tcp_srv">ewok_tcp_srv</a>, <a href="#ewok_template_srv">ewok_template_srv</a>, <a href="#ewok_users">ewok_users</a>, <a href="#ewok_util">ewok_util</a>, <a href="#task_test">task_test</a></td></tr></table><a name="esp"/>
+<h3>esp</h3>
+<p><em><a href="../src/esp.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>add_dir/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_template/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>load_template/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>parse_expr/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>parse_template/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>parse_template/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>refresh/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>render/4</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>render_element/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>render_elements/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>render_elements/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="esp_html"/>
+<h3>esp_html</h3>
+<p><em><a href="../src/esp_html.erl">src</a> ["author unknown"] version: [246882333311880995633568955441999749895]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>charref/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>entity/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>html4/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>page/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>test/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>xhtml/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="esp_src2html"/>
+<h3>esp_src2html</h3>
+<p><em><a href="../src/esp_src2html.erl">src</a> ["author unknown"] version: [232425062124408857953593235148063944513]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>file/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>render/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok"/>
+<h3>ewok</h3>
+<p><em><a href="../src/ewok.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>all_loaded/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>all_loaded/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>config/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>deploy/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>deploy/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>info/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>reload/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>routes/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>sessions/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>tasks/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>undeploy/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>undeploy/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_cache_srv"/>
+<h3>ewok_cache_srv</h3>
+<p><em><a href="../src/ewok_cache_srv.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>add/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>clear/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>lookup/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>lookup/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>reset/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>service_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_config"/>
+<h3>ewok_config</h3>
+<p><em><a href="../src/ewok_config.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>get/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>load/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>load/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>print/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>print/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>unload/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_content_negotiation"/>
+<h3>ewok_content_negotiation</h3>
+<p><em><a href="../src/ewok_content_negotiation.erl">src</a> ["author unknown"] version: [242920848109235501405571226526336278515]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>compute_rsva/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>match_media_type/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>parse_accept_field/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_data_srv"/>
+<h3>ewok_data_srv</h3>
+<p><em><a href="../src/ewok_data_srv.erl">src</a> ["author unknown"] version: [323392108699962510007325476135731066664]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>connect/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>service_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_db"/>
+<h3>ewok_db</h3>
+<p><em><a href="../src/ewok_db.erl">src</a> ["author unknown"] version: [74474694261376211858669860260730675408]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>create/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>create_table/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>create_table/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>create_tables/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>delete/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>delete/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>delete_tables/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>drop_table/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>drop_tables/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>drop_tables/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>make_match/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>read/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>select/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>select/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>update/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_file_handler"/>
+<h3>ewok_file_handler</h3>
+<p><em><a href="../src/ewok_file_handler.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td><a href="#">do</a>(atom(), request(), session())</td><td>response() | {error, Reason::string{}}</td><td>callback</td><td>Handle a request (already validated by filter/1)</td></tr><tr><td><a href="#">filter</a>(request())</td><td>ok | {error, Reason::string{}}</td><td>callback</td><td>Validate an incoming request prior to execution</td></tr><tr><td><a href="#">mimetype</a>('.'++string())</td><td>string()++'/'++string() | undefined</td><td>public</td><td>Convert a file extension to a mimetype</td></tr><tr><td><a href="#">resource_info</a>(void)</td><td>proplist()</td><td>callback</td><td>Get information about this resource</td></tr></tbody></table>
+<a name="ewok_geoip"/>
+<h3>ewok_geoip</h3>
+<p><em><a href="../src/ewok_geoip.erl">src</a> ["author unknown"] version: [214657314051109620964513315979113728432]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>address_fast/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>bench/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>bench/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>benchcall/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>check_state/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>country_code/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>country_code3/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>country_name/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>default_db/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>filename/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_record/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_record/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_record_ex/4</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>ip2long/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>load_file/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>lookup/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>lookup/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>new/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>new/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>priv_path/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>pytime/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>read_segments/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>read_structures/4</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>reload/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>reload/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>seek_country/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>seek_country/4</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>test/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>until_null/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_geoip_sup"/>
+<h3>ewok_geoip_sup</h3>
+<p><em><a href="../src/ewok_geoip_sup.erl">src</a> ["author unknown"] version: [275330140650304985317468575378154428971]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_http"/>
+<h3>ewok_http</h3>
+<p><em><a href="../src/ewok_http.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>absolute_uri/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>header/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>status_code/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>status_message/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>url_decode/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>url_encode/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_http_client"/>
+<h3>ewok_http_client</h3>
+<p><em><a href="../src/ewok_http_client.erl">src</a> ["author unknown"] version: [136702254945161568680888312823232837610]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>connect/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>connect/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_http_resource"/>
+<h3>ewok_http_resource</h3>
+<p><em><a href="../src/ewok_http_resource.erl">src</a> ["author unknown"] version: [322983425858145190311873033738984853905]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>behaviour_info/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_http_srv"/>
+<h3>ewok_http_srv</h3>
+<p><em><a href="../src/ewok_http_srv.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>service/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>service_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_identity"/>
+<h3>ewok_identity</h3>
+<p><em><a href="../src/ewok_identity.erl">src</a> ["author unknown"] version: [211848471576406178685771304132376112504]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>id/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>key/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>md5/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>random/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>seed/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>sha/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>srandom/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>timestamp/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>timestamp/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>to_string/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>uuid/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_identity_srv"/>
+<h3>ewok_identity_srv</h3>
+<p><em><a href="../src/ewok_identity_srv.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>service_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_installer"/>
+<h3>ewok_installer</h3>
+<p><em><a href="../src/ewok_installer.erl">src</a> ["author unknown"] version: [298531275410921449914650626414174857829]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>install/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>verify/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_log_file_h"/>
+<h3>ewok_log_file_h</h3>
+<p><em><a href="../src/ewok_log_file_h.erl">src</a> ["author unknown"] version: [275212765614073366172724477061163147649]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_event/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_log_server"/>
+<h3>ewok_log_server</h3>
+<p><em><a href="../src/ewok_log_server.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>accesslog/5</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>accesslog/7</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>accesslog/8</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>actl_trace/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>authlog/4</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_event/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>open_trace/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>setdir/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>trace_traffic/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_login_handler"/>
+<h3>ewok_login_handler</h3>
+<p><em><a href="../src/ewok_login_handler.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>body/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>bottom/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>do/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>filter/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>resource_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>top/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_mnesia_server"/>
+<h3>ewok_mnesia_server</h3>
+<p><em><a href="../src/ewok_mnesia_server.erl">src</a> ["author unknown"] version: [177280846842610689929038632387078131482]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_redoc"/>
+<h3>ewok_redoc</h3>
+<p><em><a href="../src/ewok_redoc.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>run/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_request"/>
+<h3>ewok_request</h3>
+<p><em><a href="../src/ewok_request.erl">src</a> ["author unknown"] version: [304415461652927768881095675875514478847]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>get_body_length/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_cookie/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_cookie/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_header/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_headers/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_method/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_path/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_query/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_range/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_remote_ip/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_socket/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_url/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_version/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>instance/5</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>new/5</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>parameter/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>recv/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>recv/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>recv_body/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>recv_body/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>reset/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_response"/>
+<h3>ewok_response</h3>
+<p><em><a href="../src/ewok_response.erl">src</a> ["author unknown"] version: [49210874152301775772712722268087220159]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>content_length/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_http_response/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>make_io/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>multipart_body/4</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>ok/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>parts_to_body/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>range_parts/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>range_skip_length/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>reply/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>send/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>send_data/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>send_file/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>should_close/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>write_chunk/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_scheduler_srv"/>
+<h3>ewok_scheduler_srv</h3>
+<p><em><a href="../src/ewok_scheduler_srv.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>add_task/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>cancel_task/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_tasks/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>service_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_service"/>
+<h3>ewok_service</h3>
+<p><em><a href="../src/ewok_service.erl">src</a> ["author unknown"] version: [278263240311177939975720559296180062448]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>behaviour_info/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_session_srv"/>
+<h3>ewok_session_srv</h3>
+<p><em><a href="../src/ewok_session_srv.erl">src</a> ['steve@simulacity.com'] version: [134895907850556208554008332697226271175]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>close_session/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>dump/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_session/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_session/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>make_cookie/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>new_session/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>new_session/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>new_session/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>service_info/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>update_session/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_sup"/>
+<h3>ewok_sup</h3>
+<p><em><a href="../src/ewok_sup.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>config_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>prep_stop/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>upgrade/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_tcp_srv"/>
+<h3>ewok_tcp_srv</h3>
+<p><em><a href="../src/ewok_tcp_srv.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>accept/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_template_srv"/>
+<h3>ewok_template_srv</h3>
+<p><em><a href="../src/ewok_template_srv.erl">src</a> ['steve@simulacity.com'] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>add_dir/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>code_change/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>dump/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_template/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_call/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_cast/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>handle_info/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>refresh/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>remove_dir/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>start_link/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>terminate/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_users"/>
+<h3>ewok_users</h3>
+<p><em><a href="../src/ewok_users.erl">src</a> ["author unknown"] version: "1.0"</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>activate/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>create_user/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_activation/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_user/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>init_db/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>login/3</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="ewok_util"/>
+<h3>ewok_util</h3>
+<p><em><a href="../src/ewok_util.erl">src</a> ["author unknown"] version: [7865102053611322113191863968957651850]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>appdir/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>exec_function/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>get_env/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>time/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>time/2</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>trim/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<a name="task_test"/>
+<h3>task_test</h3>
+<p><em><a href="../src/task_test.erl">src</a> ["author unknown"] version: [110808142616850624076478725479566693924]</em></p>
+<table width="90%" cellspacing="0" cellpadding="4" border="1">
+<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>
+<tbody>
+<tr><td>loop/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>print/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>run/0</td><td>?</td><td>unknown</td><td>undocumented</td></tr><tr><td>stop/1</td><td>?</td><td>unknown</td><td>undocumented</td></tr></tbody></table>
+<hr>
+<p><em>Generated Mon, 06 Jul 2009 12:52:11 GMT</em></p>
+</body>
+</html>

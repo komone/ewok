@@ -1,0 +1,16 @@
+*.dump
+*.beam
+*.out
+*.log
+Thumbs.db
+working/*
+.DS_Store
+.pspimage
+*.trace
+*.analysis
+priv/apps/beep/*
+priv/data/*
+test/*
+*.lnk
+Tail.exe
+

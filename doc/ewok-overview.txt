@@ -1,0 +1,42 @@
+EWOK 1.0 (Wicket)
+
+Ewok is a web application server written in Erlang/OTP.
+
+ESP is a set of modules that allow the development of resources that generate dynamic web pages, or fully "composable web applications". See Joe's post.
+
+ESP allows for web application development without writing a single element of HTML/XML.
+
+Ewok uses the ASAP principle. This is a modified form of KISS, but allows for relevant complexity since "as simple as possible" may indeed introduce some complexity. It is the role of the platform developer to ensure that the client code remains as simple and flexible as it can possibly be.
+
+Ewok supports HTTP Version 1.1 only, I have not seen a compelling business case made to continue support for HTTP/1.0 or HTTP/0.9. If there is one to be made, then that support can and will be added. 
+
+Support for UBF Web Services (UWS) with UBF Contracts.
+
+
+RAM is the new disk (except when you throw the switch)...
+Caching and production mode.
+
+SESSION AND REQUEST PSEUDO-OBJECTS
+
+DEFINITIONS
+
+Web Application: A collection of resources and supporting modules bundled with a configuration file with a .web extension. 
+
+ROLES AND PRIVILEGES
+Realm: A collection of resources that are subject to a single access control domain. A realm has an identifier.
+
+Application: A realm.
+
+SERVERS
+- TCP
+
+SERVICES
+- Cache
+- Identity
+- Data Persistence
+- Session
+- HTTP
+- Deployment
+- Scheduler
+
+- GeoIP

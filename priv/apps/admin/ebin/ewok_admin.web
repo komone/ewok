@@ -1,0 +1,12 @@
+{web_application, ewok_admin, [
+	{realm, ewok},
+	{http, [
+		{app_path, "/admin"}, %% ???
+		{doc_root, "./priv/www"},
+		{template_root, "./priv/esp"},
+		{login, "/admin/login"},
+		{roles, [{ewok,admin}]},
+		{route, "/admin/*", ewok_web_admin, ewok, [{ewok, admin}]},
+		{route, "/admin/login", ewok_login_handler, ewok, any}
+	]}
+]}.

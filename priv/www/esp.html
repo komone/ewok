@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>
+Ewok AS - Login</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<link rel="stylesheet" href="default.css" type="text/css" media="all" charset="utf-8"/>
+</head>
+<body>
+<div id="top">
+<img id="logo" src="./images/ewok-logo.png"/>
+<span id="dock">
+<span class="label">
+Guest | <a href="/admin/home">
+Dashboard</a>
+ | <a href="/">
+News</a>
+ | <a href="/">
+About</a>
+</span>
+</span>
+</div>
+<div id="page">
+<div id="nav">
+<p>
+A Web Application Server written in Erlang/OTP</p>
+</div>
+<div id="content">
+
+<form method="post" action="/">
+<input type="hidden" name="authorize"/>
+<input type="hidden" name="domain" value="ewok"/>
+<p>
+Username: <input type="text" name="username"/>
+</p>
+<p>
+Password: <input type="password" name="password"/>
+</p>
+<p>
+<input type="submit"/>
+</p>
+</form>
+</div>
+</div>
+<br clear="all"/>
+<div id="footer">
+<hr/>
+<p>
+Copyright &copy 2009 Simulacity.com. All Rights Reserved.</p>
+</div>
+</body>
+</html>

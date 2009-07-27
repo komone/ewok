@@ -1,0 +1,161 @@
+<html>
+	<title>Ewok - TO DO</title>
+<style>
+body {
+margin: 40px;
+font-family: Tahoma, sans-serif;
+}
+h1 {
+	font-size:18pt;
+	margin-bottom: 2px;
+}
+h2 {
+	font-size:14pt;
+	margin-bottom: 2px;
+}
+ul {
+margin: 4px;
+background-color: #f4f4f4;
+border: 1px solid #ccc;
+}
+li {
+padding: 4px;
+font-size: 12pt;
+}
+
+</style>
+<body>
+<h1>Ewok - Current Hit List</h1>
+
+<h2>esp</h2>
+<ul>
+<li>
+esp refactor to account for request delegation and realm/app skinning
+</li>
+<li>
+review template/page record structure throughout
+</li>
+</ul>
+
+<h2>ewok_deployment_srv</h2>
+<ul>
+<li>
+finish ewok server installation/verification/autoinstall
+</li>
+<li>
+finish app deploy/undeploy, especially verification
+</li>
+<li>
+implement deployment for ".ez" archives -- add a "packaging" call for tpas (third-party applications)
+</li>
+<li>
+allow deployment from a path - this will entail a lot of work on code paths to avoid conflicts, but allow "free-standing" app development and multiple ewok vm instances to run on one machine
+</li>
+</ul>
+
+<h2>general</h2>
+<ul>
+<li>move service APIs to own modules to clarify purpose improve the API naming and "protect" the underlying gen_servers from application developers</li>
+<li>consistently handle strings as binaries *throughout* the codebase</li>
+<li>reconsider the original property file format as opposed to the current 'term' implementation -- (remember SciTe).</li>
+</ul>
+
+<h2>ewok_log</h2>
+<ul>
+<li>
+make this api totally bulletproof -- remember that a crash in the gen_event logger installed in error_logger can cause logging to entirely stop -- it's more robust than it was but it's not 100% yet...
+</li>
+<li>
+create the handler using gen_event:add_sup_handler? if so, be careful of the dependencies...
+</li>
+<li>
+use scheduled tasks for log rollover
+</li>
+<li>
+compress old logs
+</li>
+</ul>
+
+<h2>ewok_session_srv</h2>
+<ul>
+<li>
+change session server cleanup to use scheduled tasks
+</li>
+</ul>
+<h2>ewok_tcp_srv</h2>
+<ul>
+<li>
+change tcp socket configuration to allow different configurations per protocol/service
+</li>
+<li>
+convert logging to ewok_log
+</li>
+</ul>
+
+<h2>ewok_request</h2>
+<ul>
+<li>
+chunked/multipart transfer
+</li>
+</ul>
+<h2>ewok_response</h2>
+<ul>
+<li>
+chunked/multipart transfer
+</li>
+<li>
+ranged requests
+</li>
+</ul>
+
+<h2>ewok_db</h2>
+<ul>
+<li>
+early days -- needs a total rewrite -- maybe attempt to create an unified datasource connection API (this would be great if "done right" but it's a tough, tough job with a history of prominent failures and borked implementations -- read widely and learn from the mistakes of others!!) -- make mnesia appear as "just" the 'default' ds
+</li>
+</ul>
+
+<h2>ewok_aws</h2>
+<ul>
+<li>
+implement ewok_http_client
+</li>
+<li>
+convert erlaws into an ewok datasource
+</li>
+<li>
+update erlaws to use latest sdb api and signatures (keep this as a REST API - avoid/ignore SDB WS!!)
+</li>
+</ul>
+
+<h2>ewok_identity_srv</h2>
+<ul>
+<li>
+complete gen_server for id server
+</li>
+<li>
+move realm access validation/control from ewok_http_srv into here? (or an ewok_security module?)
+</li>
+<li>
+implement a protected .keystore for datasource/eis passwords/keys (c port/driver?)
+</li>
+</ul>
+
+<h2>ewok_geoip_srv</h2>
+<ul>
+<li>
+convert egeoip into an ewok_service
+</li>
+<li>
+implement country lookup/gen_server (use mnesia?)
+</li>
+</ul>
+
+<h2>Don't forget...</h2>
+<p>...why the following are NOT on the list: HTTP/1.0 (dead), SSL and Port 80 (always use a reverse proxy such as NginX), more...</p>
+
+<h2>...and documentation</h2>
+<p>installation/deployment; overview and design (UML process, seq, deployment diags); administration guide; tutorials; examples; downstream http server configuration examples for NginX and Apache; 'redoc' api documentation/reference</p>
+
+</body>
+</html>

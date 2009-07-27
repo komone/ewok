@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<title>Install ewok</title>
+		<link rel="icon" href="favicon.png" type="image/png" />
+		<style>
+			body, td {
+				font-family: sans-serif;
+				font-size: 12px;
+			}
+			#top { 
+				height: 30px; 
+				border-bottom: 3px solid #ccc;
+			}
+			#logo {
+				margin: 0px;
+			}
+			#dock { 
+				margin-top: 8px; 
+				float: right; 
+				padding-right: 15px; 
+			}
+			#nav { 
+				border-right: 1px solid #ccc;
+				float: left; 
+				width: 150px; 
+				height: 80%; 
+			}
+			.dataentry {
+				margin-left: 50px;
+			}
+			.dataentry td {
+				padding: 5px;
+			}
+			
+			.note {
+				color: #888;
+				font-size: 8pt;
+				}
+			#content {
+				margin-left: 150px;
+				padding: 10px 30px 10px 30px;
+			}
+			#footer {
+				text-align: center;
+				font-size: 8pt;
+			}
+			h1 {
+				font-size: 14pt;
+				color: #aaa;
+			}
+			hr {
+				height: 1px;
+				width: 100%;
+			}
+			.label {
+				text-align:right;
+				font-weight: bold;
+				color: #888;
+			}
+			.para, li {
+				font-family: Verdana;
+				max-width: 40em;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="top">
+		<img id="logo" src="images/ewok-logo.png"/>
+		<span id="dock">
+			<% session:user() %> [<% session:ip()%>] |
+			<a href="admin/login">Login</a> | <a href="#">News</a> | <a href="#">About</a>
+		</span>
+		</div>
+		<div id="page">
+			<div id="nav">
+				<p class="note">A Web Application Server written in Erlang/OTP</p>
+				<%--
+				<ul>
+					<li>New User</li>
+				</ul>
+				--%>
+			</div>
+			<div id="content">
+				<h1>Installation</h1>
+				<ul>
+					<li>Download ewok from github</li>
+					<li>Compile ewok</li>
+					<li>Run ewok for the first time</li>
+				</ul>
+				<p class="para">Once ewok is running, go to <a href="http://localhost:8000">http://localhost:8000</a>.
+				</p>
+			</div>
+		</div>
+		<br clear="all"/>
+		<div id="footer">
+			<hr/>
+			<p>Copyright &copy; 2009 Simulacity.com. All rights reserved.</p>
+			<p>Session started: <% session:started() %>, Now: <% ewok_http:date() %></p>
+		</div>
+	</body>
+</html>

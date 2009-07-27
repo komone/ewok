@@ -1,0 +1,8 @@
+{web_application, wiki, [
+	{app_path, "/wiki"}, %% ???
+	{doc_root, "./priv/www"},
+	{template_root, "./priv/esp"},
+	{roles, [admin, user]},
+	{route, "/login", ewok_login_handler, wiki, any},
+	{route, "/wiki", ewok_wiki_handler, any, any}
+]}.

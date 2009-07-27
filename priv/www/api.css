@@ -1,0 +1,32 @@
+body {
+	margin: 40px;
+}
+
+h1, h2, h3 {
+	font-family: "Courier New", Arial, Verdana, sans-serif;
+  	color: #527bbd;
+	margin-bottom: 0em;
+}
+
+p {
+	margin-top: 0.1em;
+	margin-bottom: 0em;
+}
+thead {
+	background-color: #eee;
+}
+th {
+	text-align: left;
+	font-family: Verdana, sans-serif;
+	font-size: 10pt;
+}
+td {
+	text-align: left;
+	font-family: "Bitstream Vera Sans Mono", Monaco, monospace;
+	font-size: 10pt;
+	font-weight: normal;
+}
+table {
+	border-collapse: collapse;
+	border-color: #bbb;
+}
