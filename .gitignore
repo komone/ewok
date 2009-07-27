@@ -5,7 +5,7 @@
 Thumbs.db
 working/*
 .DS_Store
-.pspimage
+*.pspimage
 *.trace
 *.analysis
 priv/apps/beep/*
