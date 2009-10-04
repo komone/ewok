@@ -26,6 +26,9 @@
 
 -record(state, {id, fd, level=info, logs=[], prev}).
 
+%%%%%% TEMP
+-compile(export_all).
+
 %% 
 start_link() ->	
 	case lists:member(?MODULE, gen_event:which_handlers(error_logger)) of
@@ -34,8 +37,8 @@ start_link() ->
 		{ok, Opts} = application:get_env(ewok, boot),
 		LogId = proplists:get_value(log, Opts, boot),
 		LogPath = proplists:get_value(path, Opts, "."),
-		Overwrite = proplists:get_value(rollover, Opts, false),
-		gen_event:add_sup_handler(error_logger, ?MODULE, {LogId, LogPath, Overwrite});
+		Rollover = proplists:get_value(rollover, Opts, true),
+		gen_event:add_sup_handler(error_logger, ?MODULE, {LogId, LogPath, Rollover});
 	true -> 
 		ok
 	end.
@@ -48,7 +51,7 @@ stop() ->
 service_info() -> [ 
 	{name, "Ewok Logging Service"},
 	{version, {1,0,0}},
-	{comment, ""}
+	{depends, [error_logger]}
 ].
 
 %%
@@ -62,15 +65,12 @@ level(_)     -> level(info).
 %%
 %% gen_event callbacks
 %%
-init({{Id, Path, Overwrite}, {Prev, Buf}}) ->
+init({{Id, Path, Rollover}, {Prev, Buf}}) ->
     process_flag(trap_exit, true),
 	File = to_log_filename(Path, Id),
-	case Overwrite =:= false andalso filelib:is_regular(File) of
-	true ->
-		ArchiveFile = to_archive_filename(File),
-		file:rename(File, ArchiveFile);
-	false -> 
-		ok
+	case Rollover =:= true andalso filelib:is_regular(File) of
+	true -> archive_file(File); %%TODO: log the result of this???
+	false -> ok
 	end,
 	case file:open(File, [raw, write]) of
 	{ok, Fd} ->
@@ -90,11 +90,14 @@ init(Opts = {_, _, _}) ->
 % {error_report, Gleader, {Pid, Type, Report}}
 %%
 handle_event({_, GL, _}, State) when node(GL) =/= node() ->
+	?TTY("EVENT from: ~p~n", [node(GL)]),
     {ok, State};
 handle_event({_, _GL, {_From, ?MODULE, {default, Type, Messages}}}, State) ->
 	case level(Type) =< State#state.level of
 	false -> ignore;
-	true -> write_messages(State#state.fd, Type, Messages)
+	true ->
+%		Formatted = list_to_binary(io_lib:format("~p", [Messages])),
+		write_messages(State#state.fd, Type, Messages)
 	end,
     {ok, State};
 handle_event({_, _GL, {_From, ?MODULE, {LogId, Type, Messages}}}, State) ->
@@ -116,6 +119,7 @@ handle_event(Message, State) ->
     {ok, State}.
 %%
 handle_call({set_default_log, Id}, State) ->
+%	?TTY("SET DEFAULT LOG~n", []),
 	{Reply, NewState} = 
 		case lists:keyfind(Id, 2, State#state.logs) of
 		Log when is_record(Log, log) ->
@@ -161,12 +165,11 @@ handle_call({rollover, Id}, State) ->
 		false -> 
 			{{error, no_file}, State};
 		Log ->
+			write_messages(Log#log.fd, ?MODULE, [{Log#log.id, closed}]),
 			ok = file:close(Log#log.fd),
-			ArchiveFile = to_archive_filename(Log#log.path),
-			Success = file:rename(Log#log.path, ArchiveFile),
+			Success = archive_file(Log#log.path),
 			{ok, Fd} = file:open(Log#log.path, [raw, append]), %? delayed_write]),
-			Message = lists:flatten(io_lib:format("~p, ~p, ~p", [Id, ArchiveFile, Success])),
-			write_messages(Fd, ?MODULE, [{rollover, Message}]),
+			write_messages(Fd, ?MODULE, [{rollover, Id, Success}]),
 			LogList = lists:keystore(Id, 2, State#state.logs, Log#log{fd=Fd}),
 			case Id =:= State#state.id of
 			true ->
@@ -178,7 +181,14 @@ handle_call({rollover, Id}, State) ->
 	{ok, Reply, NewState};
 %
 handle_call({log_info, all}, State) ->
-	{ok, State#state.logs, State};
+	{ok, {ok, State#state.logs}, State};
+handle_call({log_info, default}, State) ->
+	LogInfo = 
+		case lists:keyfind(State#state.id, 2, State#state.logs) of
+		false -> undefined;
+		Value -> {ok, Value}
+		end,
+    {ok, LogInfo, State};
 handle_call({log_info, Id}, State) ->
 	LogInfo = 
 		case lists:keyfind(Id, 2, State#state.logs) of
@@ -209,8 +219,8 @@ handle_info(Info, State) ->
     {ok, State}.
 %% Is State here ever not #state?
 %% Sbould this install previous (like in 'EXIT')?
-terminate(_Reason, _State = #state{logs=Logs}) ->
-%	?TTY("TERMINATE: ~p~n", [{Reason, State}]),
+terminate(Reason, State = #state{logs=Logs}) ->
+	write_messages(State#state.fd, shutdown, [Reason]),
 	[file:close(Log#log.fd) || Log <- Logs],
 	ok.
 %%
@@ -222,7 +232,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %%
 create_log(Id) ->
-	case ewok_config:get({ewok, log, Id, enable}, false) of
+	case ewok:config({ewok, log, Id, enable}, false) of
 	true ->
 		File = to_log_filename(Id),
 		case file:read_file_info(File) of
@@ -230,17 +240,14 @@ create_log(Id) ->
 			{DateNow, _} = calendar:universal_time(),
 			[{DateThen, _}] = calendar:local_time_to_universal_time_dst(FileInfo#file_info.mtime),
 			case DateNow =/= DateThen of
-			true ->
-				ArchiveFile = to_archive_filename(File),
-				file:rename(File, ArchiveFile);
-			false -> 
-				ok
+			true -> archive_file(File); %% TODO: log the result of this...
+			false -> ok
 			end;
 		_ ->
 			ok  %% if we can't access the old log then.... don't worry about it?
 		end,
-		Rollover = ewok_config:get({ewok, log, Id, rollover}, infinity),
-		MaxFiles = ewok_config:get({ewok, log, Id, maxfiles}, infinity),
+		Rollover = ewok:config({ewok, log, Id, rollover}, infinity),
+		MaxFiles = ewok:config({ewok, log, Id, maxfiles}, infinity),
 	%% NOTE: !! Later, it will probably be better to add 'delayed_write' as an option for file:open
 		case file:open(File, [raw, append]) of
 		{ok, Fd} -> 
@@ -254,22 +261,23 @@ create_log(Id) ->
 %%
 to_log_filename(Path, Id) ->
 	Filename = atom_to_list(Id) ++ ?LOG_FILE_EXT, 
-	AppPath = ewok_config:get("ewok.log.path", ewok_util:appdir()),
-	filename:absname(filename:join([AppPath, Path, Filename])).
-	
+	filename:join([code:lib_dir(ewok), Path, Filename]).
+
 to_log_filename(Id) ->
 	Filename = atom_to_list(Id) ++ ?LOG_FILE_EXT, 
-	Path = ewok_config:get("ewok.log.path", ewok_util:appdir()),
-	filename:absname(filename:join(Path, Filename)).
+	Path = ewok:config({ewok, log, path}, "."),
+	filename:join([code:lib_dir(ewok), Path, Filename]).
 %%
-to_archive_filename(Path) ->
+archive_file(Path) ->
 	{{Y, Mo, D}, {H, M, S}} = calendar:universal_time(),
 	Dir = filename:dirname(Path),
 	BaseName = filename:basename(Path, ?LOG_FILE_EXT),
 	DateFormat = "~4.10.0B~2.10.0B~2.10.0BT~2.10.0B~2.10.0B~2.10.0B~s",
 	FileDate = io_lib:format(DateFormat, [Y, Mo, D, H, M, S, "Z"]),
-	ArchiveFile = lists:flatten([BaseName, "-", FileDate, ?LOG_FILE_EXT]),
-	filename:join(Dir, ArchiveFile).
+	FileName = lists:flatten([BaseName, "-", FileDate, ?LOG_ARCHIVE_EXT]),
+	Archive = filename:join(Dir, FileName),
+	Result = erl_tar:create(Archive, [Path], [compressed]),
+	{Result, Archive}.
 
 %% This should now be much more robust...
 write_messages(Fd, Type, Message) when is_binary(Message) ->

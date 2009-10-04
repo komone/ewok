@@ -3,8 +3,8 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
--include("esp.hrl").
+-include("../include/ewok.hrl").
+-include("../include/esp.hrl").
 
 -behaviour(ewok_http_resource).
 -export([filter/1, resource_info/0]).
@@ -42,10 +42,10 @@ filter(_Request) ->  ok.
 			PageSpec = 
 				case ewok_users:exists(Realm, Username) of
 				true -> 
-					page3();
-				false ->
 					Session:save({activation, {Realm, Username, Activation}}),
-					page2(Request, Username)
+					page2(Request, Username);
+				false ->
+					page3()
 				end,
 			ewok_web:render(Request, Session, PageSpec);
 		false ->

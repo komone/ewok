@@ -3,8 +3,8 @@
 -vsn("1.0").
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
--include("esp.hrl").
+-include("../include/ewok.hrl").
+-include("../include/esp.hrl").
 
 -behavior(ewok_http_resource).
 -export([filter/1, resource_info/0]).
@@ -70,7 +70,7 @@ get_form(Request, Session, Opts) ->
 	Redirect = 
 		case Session:take(redirect) of
 		{redirect, URL} -> URL;
-		undefined -> ewok_http:absolute_uri("/")
+		undefined -> "/"
 		end,
 	#form{method=post, action=Request:path(), body=[
 		#input{type=hidden, name="authorize", value=Redirect},

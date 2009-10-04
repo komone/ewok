@@ -1,11 +1,13 @@
 %% 
--module(ewok_request_obj, [Socket, Timeout, Method, Url, Version, Headers]).
+-module(ewok_request_obj, [Transport, Socket, Timeout, Method, Url, Version, Headers, MaxHeaders]).
+-vsn({1,0,0}).
+-author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 -include_lib("kernel/include/file.hrl").
 
--export([get_range/0, get_body_length/0, socket/0, timeout/0, 
-	remote_ip/0, version/0, url/0, headers/0, header/1, 
+-export([get_range/0, get_body_length/0, socket/0, timeout/0, max_headers/0,
+	remote_ip/0, version/0, url/0, headers/0, header/1, content/0, 
 	path/0, method/0, realm/0, set_realm/1]).
 -export([recv/1, recv/2, recv_body/0, recv_body/1, should_close/0]).
 -export([cookie/0, cookie/1, parameter/1, parameters/0]).
@@ -28,15 +30,17 @@
 % Maximum recv_body() length of 1MB
 -define(MAX_RECV_BODY, (1024 * 1024)).
 
-%% @spec get(field()) -> term()
-%% @doc Return the internal representation of the given field.
-
-%% Required before continuing with Keep-Alive (move to response?)
+%% NOTE!!! This is required before continuing with Keep-Alive however this
+%% call also breaks the write-once contract with the Process Dictionary, 
+%% and thus may invalidate the entire approach of using 'pseudo-objects'
+%% to improve the development API... see the alternative idea of an 
+%% ewok_http_connection handler that is a gen_event process.
 reset() ->
     [erase(K) || K <- ?CACHE].
 	
-socket() -> Socket.
+socket() -> {Transport, Socket}.
 timeout() -> Timeout.
+max_headers() -> MaxHeaders.
 version() -> Version.
 url() -> Url.
 method() -> Method.
@@ -44,36 +48,29 @@ headers() -> Headers.
 remote_ip() ->
 	case erlang:get(?REMOTE_IP) of
 	undefined ->
-		IP = case inet:peername(Socket) of
-			{ok, {Addr = {10, _, _, _}, _Port}} ->
-				case header(<<"X-Forwarded-For">>) of
-				undefined ->
-					list_to_binary(inet_parse:ntoa(Addr));
-				Hosts ->
-					ewok_util:trim(lists:last(re:split(Hosts, ",")))
-				end;
-			{ok, {{127, 0, 0, 1}, _Port}} ->
-				case header(<<"X-Forwarded-For">>) of
-				undefined ->
-					<<"127.0.0.1">>;
-				Hosts ->
-					ewok_util:trim(lists:last(re:split(Hosts, ",")))
-				end;
-			{ok, {Addr, _Port}} ->
-				list_to_binary(inet_parse:ntoa(Addr))
-			end,
+		IP = ewok_http:get_remote_ip(Transport, Socket, header(<<"X-Forwarded-For">>)),
 		erlang:put(?REMOTE_IP, IP),
 		IP;
 	IP -> IP
 	end.
 
+content() -> 
+	case erlang:get(?BODY_DATA) of
+	undefined -> 
+		Data = recv_body(),
+		erlang:put(?BODY_DATA, Data);
+	Value -> Value
+	end.
+
+%%
 set_realm(Realm) when is_atom(Realm) ->
-	put(?REALM, Realm).
-	
+	%% IMPL: enforces write once to PD
+	undefined = put(?REALM, Realm).
+%%
 realm() ->
 	get(?REALM).
 
-%
+%%
 should_close() ->
 	Version =/= {1,1} 
 	orelse header(connection) =:= <<"close">>
@@ -184,10 +181,13 @@ parse_query('GET') ->
 parse_query('POST') ->
 	case header(<<"Content-Type">>) of
 	<<"application/x-www-form-urlencoded">> -> 
-		case recv_body() of
-		QS when is_binary(QS) -> 
-			parse_query(QS);
-		_ -> []
+		case get(?BODY_DATA) of
+		undefined ->
+			case recv_body() of
+			QS when is_binary(QS) -> parse_query(QS);
+			_ -> []
+			end;
+		Value -> parse_query(Value)
 		end;
 	_ -> []
 	end;
@@ -196,8 +196,7 @@ parse_query(QS) ->
 	Pairs = [list_to_tuple(re:split(X, "=")) || X <- Props],
 	[{ewok_http:url_decode(X), ewok_http:url_decode(Y)} || {X, Y} <- Pairs].	
 
-%% @spec body_length() -> undefined | chunked | unknown_transfer_encoding | integer()
-%% @doc  Infer body length from transfer-encoding and content-length headers.
+%%
 get_content_length() ->
     case header(<<"Transfer-Encoding">>) of
 	undefined ->
@@ -216,7 +215,7 @@ recv(Length) ->
 	recv(Length, ?IDLE_TIMEOUT).
 %% Timeout in msec.
 recv(Length, IdleTimeout) ->
-    case gen_tcp:recv(Socket, Length, IdleTimeout) of
+    case Transport:recv(Socket, Length, IdleTimeout) of
 	{ok, Data} ->
 		put(?BODY_RECEIVE, true),
 		Data;
@@ -247,7 +246,8 @@ recv_body(MaxBody) ->
 		Length ->
 			exit({body_too_large, Length})
 		end,
-	%?TTY("GOT ~p~n", [Body]),		
+	% NOTE: Is it really such a good idea to store received content
+	% in the PD? If not, where does this go...
     put(?BODY_DATA, Body),
     Body.
 
@@ -266,7 +266,7 @@ read_chunked_body(Max, Acc) ->
 %% @doc Read the length of the next HTTP chunk.
 read_chunk_length() ->
     inet:setopts(Socket, [{packet, line}]),
-    case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+    case Transport:recv(Socket, 0, ?IDLE_TIMEOUT) of
         {ok, Header} ->
             inet:setopts(Socket, [{packet, raw}]),
             Splitter = 
@@ -285,7 +285,7 @@ read_chunk_length() ->
 read_chunk(0) ->
     inet:setopts(Socket, [{packet, line}]),
     F = fun (F1, Acc) ->
-			case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+			case Transport:recv(Socket, 0, ?IDLE_TIMEOUT) of
 			{ok, <<"\r\n">>} -> Acc;
 			{ok, Footer} -> F1(F1, [Footer | Acc]);
 			_ -> exit(normal)
@@ -294,9 +294,9 @@ read_chunk(0) ->
     Footers = F(F, []),
     inet:setopts(Socket, [{packet, raw}]),
     Footers;
-	
+%%
 read_chunk(Length) ->
-    case gen_tcp:recv(Socket, 2 + Length, ?IDLE_TIMEOUT) of
+    case Transport:recv(Socket, 2 + Length, ?IDLE_TIMEOUT) of
 	{ok, <<Chunk:Length/binary, "\r\n">>} -> Chunk;
 	_ -> exit(normal)
     end.

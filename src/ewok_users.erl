@@ -1,10 +1,11 @@
 %%
 -module(ewok_users).
 -vsn("1.0").
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -compile(export_all).
 
+%%
 init_db() ->
 	mnesia:start(),
 	ewok_db:create_tables([
@@ -52,6 +53,7 @@ login(Domain, Username, Password) ->
 			{error, no_domain}
 	end.
 
+%%
 exists(Realm, Username) ->
 	try begin
 		Realm1 = list_to_existing_atom(Realm),
@@ -113,7 +115,7 @@ create_user(Realm, Username, Password) ->
 		error:badarg -> 
 			{error, no_domain}
 	end.	
-%
+%%
 create_user(Domain, Username) when is_list(Domain) ->
 	create_user(list_to_existing_atom(Domain), Username);
 create_user(Domain, Username) ->
@@ -132,11 +134,11 @@ create_user(Domain, Username) ->
 		error:badarg -> 
 			{error, no_domain}
 	end.
-%
+%%
 get_user(ID) ->
 	{ok, User} = ewok_db:read(user, ID),
 	User.
-%
+%%
 get_activation(ID) ->
 	{ok, Auth} = ewok_db:read(auth, ID),
 	Auth#auth.activation.

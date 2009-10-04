@@ -3,8 +3,8 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
-%-include("esp.hrl").
+-include("../include/ewok.hrl").
+%-include("../include/esp.hrl").
 
 -behavior(ewok_http_resource).
 -export([filter/1, resource_info/0]).
@@ -65,7 +65,7 @@ get_file(Path) ->
 		File = read_file(Path),
 		case File of
 		_ when is_record(File, esp_cache) -> %% maybe cache...
-			case ewok_config:get("ewok.runmode") of
+			case ewok:config({ewok, runmode}) of
 			production -> ewok_cache:add(File);
 			_ -> ok
 			end;
@@ -79,7 +79,7 @@ get_file(Path) ->
 %
 read_file(Path) ->
 	BasePath = 
-		case ewok_config:get("ewok.http.www_root", ?DEFAULT_WWW_ROOT) of
+		case ewok:config({ewok, http, www_root}, ?DEFAULT_WWW_ROOT) of
 		Root = [$., $/|_] -> filename:absname(Root);
 		Root = [$/|_] -> filename:absname([$.|Root])
 		end,

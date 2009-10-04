@@ -1,7 +1,7 @@
 %%
 -module(ewok_response).
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 %-include_lib("kernel/include/file.hrl").
 
 -compile(export_all).
@@ -42,6 +42,7 @@ reply(Request, Response) when is_record(Response, response) ->
 			Response#response.headers
 		end,
 	HttpResponse = get_http_response(Response#response{headers=Headers}),
+%	?TTY("RESPONSE:~n" ++ binary_to_list(HttpResponse), []),
 	Socket = Request:socket(),
 	ok = send(Socket, HttpResponse),
 	case is_integer(ContentLength) andalso ContentLength > 0 of
@@ -58,22 +59,20 @@ content_length(Content) when is_list(Content); is_binary(Content) ->
 content_length(chunked) ->
 	0.
 
-%% 
+%% HACKY needs a fix 
 get_http_response(Response) ->
 	Code = ewok_http:status_code(Response#response.status),
 	StatusLine = [
 		<<"HTTP/1.1 ">>, list_to_binary(integer_to_list(Code)), 
 		<<" ">>, ewok_http:status_message(Code), <<"\r\n">>
 	],	
-    Headers = lists:append(
-		[{server, ?SERVER_ID},
-		{date, ewok_http:date()}],
-		Response#response.headers),
+    Headers = [{server, ?SERVER_ID}, {date, ewok_http:date()} 
+		|Response#response.headers],
     F = fun ({K, V}, Acc) ->
-			[ewok_http:header(K), <<": ">>, make_io(V), <<"\r\n">> | Acc]
+			[list_to_binary([ewok_http:header(K), <<": ">>, make_io(V), <<"\r\n">>]) | Acc]
 		end,
-    HeaderLines = lists:foldl(F, [<<"\r\n">>], Headers),
-	iolist_to_binary([StatusLine|HeaderLines]).
+    HeaderLines = lists:foldl(F, [], Headers),
+	iolist_to_binary([StatusLine|lists:reverse([<<"\r\n">>|HeaderLines])]).
 
 %%
 send(Socket, Bin) when is_binary(Bin) ->
@@ -97,8 +96,8 @@ send_file(Socket, Fd) ->
 		ok
     end.
 %%
-send_data(Socket, Data) ->
-    case gen_tcp:send(Socket, Data) of
+send_data({Transport, Socket}, Data) ->
+    case Transport:send(Socket, Data) of
 	ok -> ok;
 	_ -> exit(normal) %% leaving a file open?
     end.

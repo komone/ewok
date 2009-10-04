@@ -2,6 +2,7 @@
 *.beam
 *.out
 *.log
+*.exe
 Thumbs.db
 working/*
 .DS_Store
@@ -10,7 +11,7 @@ working/*
 *.analysis
 priv/apps/beep/*
 priv/data/*
+priv/log/*
 test/*
 *.lnk
-Tail.exe
 

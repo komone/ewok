@@ -3,7 +3,7 @@
 -vsn("1.0").
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 %% NOTE: in general, it would be much better to serve static files
 %% from the reverse proxy, however, if you insist...
@@ -45,7 +45,7 @@ filter(Request) ->
 	end.
 
 %%
-'GET'(Request, _Session) ->
+'GET'(Request, Session) ->
 	case get_file(Request) of 
 	File when is_record(File, file_cache) ->
 		Headers = [
@@ -66,7 +66,7 @@ filter(Request) ->
 			end
 		end;
 	undefined ->
-		not_found
+		ewok_web:errorpage(Request, Session, not_found)
 	end.
 
 %%
@@ -77,7 +77,7 @@ get_file(Request) ->
 	% If the server is in production mode static files are usually cached in RAM...
 	case ewok_cache:lookup(file, Path) of
 	undefined -> 
-		AppPath = ewok_config:get({Request:realm(), http, app_path}, "/"),
+		AppPath = ewok:config({Request:realm(), http, app_path}, "/"),
 		FilePath = 
 		%% Paths MUST be strings to allow filename joins in get_file/2 to work!
 			case re:split(Path, AppPath, [{return, list}]) of
@@ -88,8 +88,8 @@ get_file(Request) ->
 		case get_file(Request, FilePath) of
 		undefined -> undefined;
 		NewFile -> %% maybe cache...
-			Limit = ewok_config:get("ewok.http.cache.max_file_size", -1),
-			case ewok_config:get("ewok.runmode") of
+			Limit = ewok:config({ewok, http, cache, max_file_size}, -1),
+			case ewok:config({ewok, runmode}) of
 			production when NewFile#file_cache.size =< Limit ->
 				{ok, Binary} = file:read_file(NewFile#file_cache.path),
 				CacheableFile = NewFile#file_cache{bin=Binary},
@@ -100,7 +100,7 @@ get_file(Request) ->
 			end
 		end;
 	CachedFile -> 
-		?TTY("From cache ~p (~p)~n", [Path, ewok_config:get("ewok.runmode")]),
+		?TTY("From cache ~p (~p)~n", [Path, ewok:config({ewok, runmode})]),
 		CachedFile
 	end.
 
@@ -108,14 +108,16 @@ get_file(Request) ->
 get_file(Request, Path) ->
 	Realm = Request:realm(),
 	BasePath = 
-		case ewok_config:get({Realm, http, www_root}, ?DEFAULT_WWW_ROOT) of
-		Root = [$., $/|_] -> filename:join(ewok_util:appdir(Realm), Root);
-		Root = [$/|_] -> filename:join(ewok_util:appdir(Realm), [$.|Root])
+		case ewok:config({Realm, http, www_root}, ?DEFAULT_WWW_ROOT) of
+		Root = [$., $/|_] ->
+			filename:join(code:lib_dir(Realm), Root);
+		Root = [$/|_] -> 
+			filename:join(code:lib_dir(Realm), [$., Root])
 		end,
 	File = filename:join(BasePath, [$.|Path]), 
 	case filelib:is_dir(File) of
 	true ->
-		Index = ewok_config:get({Realm, http, index_file}, "index.html"),
+		Index = ewok:config({Realm, http, index_file}, "index.html"),
 		get_file(Request, filename:join(Path, Index));
 	false ->
 		case filelib:is_regular(File) of

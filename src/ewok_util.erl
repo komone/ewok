@@ -3,23 +3,45 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--compile(export_all).
--export([get_env/1, appdir/0, trim/1]).
+-export([appdir/0, appdir/1]).
+-export([get_env/1, tcp_ports/0]).
 -export([timestamp/0, timestamp/1]).
+-export([build_number/0, build_time/0]).
+-export([trim/1, unow/0, utime/0]).
+-export([ftime/1]).
+
+%%
+appdir() ->
+	appdir(ewok).
+appdir(App) when is_atom(App) ->
+	{'module', App} = code:ensure_loaded(App),
+	{file, Path} = code:is_loaded(App),
+	filename:dirname(filename:dirname(Path)).
+
+	
+
+%% possibly make an ewok_date module
+utime() ->
+	{{Y, Mo, D}, {H, M, S}} = calendar:universal_time(),
+	DateFormat = "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B~s",
+	list_to_binary(io_lib:format(DateFormat, [Y, Mo, D, H, M, S, "Z"])).
+%
+unow() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+
+
+%% 
+tcp_ports() ->
+	Sockets = [S || S = S1 <- erlang:ports(), 
+		erlang:port_info(S1, name) =:= {name, "tcp_inet"}],
+	Ports = [inet:port(P) || P <- Sockets],
+	[X || {ok, X} <- Ports].
 
 %%
 get_env(Key) when is_atom(Key) ->
 	{ok, Value} = application:get_env(ewok, Key),
 	Value.
-	
-%%
-appdir() ->
-	appdir(ewok).
-appdir(App) when is_atom(App) ->
-	code:ensure_loaded(App),
-	{file, Beam} = code:is_loaded(App),
-	filename:dirname(filename:dirname(Beam)).
-	
+
 %%
 build_number() ->
 	DateTime = build(),

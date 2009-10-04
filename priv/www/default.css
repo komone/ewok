@@ -6,7 +6,7 @@ body, td {
 	
 h1 {
 	font-size: 14pt;
-	color: #aaa;
+	color: teal;
 }
 hr {
 	border: 0px;
@@ -14,11 +14,6 @@ hr {
 	width: 100%;
 }
 
-td.label {
-	color: #777;
-	font-style: italic;
-	font-weight: bold;
-}
 #top { 
 	height: 30px; 
 	border-bottom: 3px solid #ccc;
@@ -102,7 +97,7 @@ td.label {
 	font-weight: bold;
 }
 .label {
-	text-align:right;
+	font-style: italic;
 	font-weight: bold;
 	color: #888;
 }

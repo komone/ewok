@@ -1,6 +1,10 @@
+%%
+%% A pirst stab at a "composable" validator API for
+%% the get/post request parameters.
+%%
 -module(esp_validator).
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -compile(export_all).
 
@@ -24,5 +28,4 @@ get_validator(_) -> error.
 %
 not_null(Param) -> 
 	?is_string(Param).
-
 

@@ -1,8 +1,10 @@
 %%
+%%
+%%
 -module(ewok_session_srv). 
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -behaviour(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
@@ -21,7 +23,6 @@
 
 -define(EWOK_SESSION_KEY, <<"_EWOKSID">>).
 
-%-record(ewok_session, {key, ip, user, data, started, expires, ttl, notify}).
 -record(state, {default_ttl, flush_interval, force_flush}).
 
 %% The ETS record
@@ -62,7 +63,7 @@ get_session(Cookie, RemoteIp) ->
 	),
 	Session:init(Record#ewok_session.user, Record#ewok_session.data),
 	Session.
-
+%%
 new_session(RemoteIp) ->
 	gen_server:call(?SERVER, {create_session, RemoteIp, default_ttl, self()}, infinity).
 	
@@ -88,7 +89,7 @@ close_session(Session) ->
 
 %% IMPL: This call MUST be kept in sync with any changes to the session record.
 % -record(session, {key, ip, user, data=[], started, expires, ttl, notify}).
-%% Takes the table lock so safe to do from the client process	
+%% update_element takes the table lock so this should be safe to do from the client process?
 update_session(Session) ->
 	{ewok_session, Key, _, User, Data, _, _Expires, TTL, _} = Session:value(),
 	ets:update_element(?ETS, Key, [{4, User}, {5, Data}, {7, unow() + TTL}]).
@@ -109,7 +110,7 @@ stop() ->
 service_info() -> [ 
 	{name, "Ewok Session Service"},
 	{version, {1,0,0}},
-	{depends, [ewok_scheduler_srv]}
+	{depends, [ewok_cache_srv, ewok_scheduler_srv]}
 ].
 
 %%
@@ -118,9 +119,9 @@ service_info() -> [
 init([]) ->
     ewok_identity:seed(),
     ets:new(?ETS, [set, named_table, public, {keypos, 2}]),
-	TTL = ewok_config:get("ewok.http.session.timeout", 1800),
-	IdleTimeout = ewok_config:get("ewok.http.session.flush.interval", 120) * 1000,
-	ForceTimeout = ewok_config:get("ewok.http.session.flush.force", 3600) * 1000,
+	TTL = ewok:config({ewok, http, session, timeout}, 1800),
+	IdleTimeout = ewok:config({ewok, http, session, flush, interval}, 120) * 1000,
+	ForceTimeout = ewok:config({ewok, http, session, flush, force}, 3600) * 1000,
 	State = #state{default_ttl=TTL, flush_interval=IdleTimeout, force_flush=ForceTimeout},
 %	?TTY("~p: ~p~n", [?MODULE, State]),
     schedule_timeout(State),
@@ -181,7 +182,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 unow() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
-%
+
+%%% TODO: should this be changed to use ewok_scheduler?
 schedule_timeout(State) when is_record(State, state) ->
     erlang:send_after(State#state.force_flush, self(), scheduled_timeout).
 

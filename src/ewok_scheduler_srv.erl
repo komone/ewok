@@ -4,7 +4,7 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -behaviour(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
@@ -12,10 +12,8 @@
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
 	handle_info/2, terminate/2, code_change/3]).
-
 %% API
 -export([add_task/1, cancel_task/1, get_tasks/0]).
-
 
 -define(SERVER, ?MODULE).
 -define(ETS, ?MODULE).
@@ -59,7 +57,6 @@ service_info() -> [
 init([]) ->
     ets:new(?ETS, [set, named_table, private, {keypos, 2}]),
 	State = #state{},
-	%?TTY("~p: ~p~n", [?MODULE, State]),
     {ok, State}.
 
 %%
@@ -141,11 +138,11 @@ schedule(T) when is_record(T, task) ->
 	end.
 %
 	
-%% TEMP
+%% from ewok.hrl
 %-record(task, {id, function, start=now, repeat=once, terminate=undefined, notify, timer_ref}).
 
 %% IMPL: This is rather dense validation code! Be very careful when making changes.
-%% Aim to catch all invalid schedules at first schedule time and detect normal exits.
+%% It aims to catch all invalid schedules at first schedule time and also detect normal exits.
 calc_next(_, _, _, End)
 		when is_atom(End) andalso End =/= infinity ->
 	{error, invalid_schedule};		
@@ -226,7 +223,7 @@ convert_times(T) when is_record(T, task) ->
 		start=convert_time(T#task.start),
 		terminate=convert_time(T#task.terminate)
 	}.
-%
+%%
 convert_time(T) when is_integer(T) -> T;
 convert_time(T = {{_,_,_},{_,_,_}}) ->
 	[UTC] = calendar:local_time_to_universal_time_dst(T),

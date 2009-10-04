@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>JSON Test</title>
+<style>
+	body { font-family: sans-serif; font-size: 10pt; margin: 30px; }
+	.item { 
+		margin-top: 15px; 
+		margin-left: 5px; 
+		margin-right: 15px; 
+	}
+	.edit, .save {
+		color: blue;
+		font-weight: bold;
+		font-size: 8pt;
+		}
+</style>
+<link rel="icon" href="/favicon.png" type="image/png" />
+<script type="text/javascript" src="scripts/jquery-1.3.2.js"></script>
+<script type="text/javascript" src="json.js"></script>
+<!--script type="text/javascript" src="jsontest.js"></script-->
+<script type="text/javascript">
+$(function () {
+	$("#butt").click(function () {
+		var result = $("#jsonform").serialize();
+		// alert(result);	
+		$.post("/json", result, 
+			function(data) {
+				$("#response2").text(data);
+			}, "text"
+		);
+	});
+	$("#butt2").click(function () {
+		var result = {
+			first: $("#first").attr("value"),
+			second: $("#second").attr("value"),
+			third: $("#third").attr("selected")
+		};
+		// alert(result);	
+		$.ajax({
+			url: "/json",
+			type: "POST",
+			contentType: "application/json",
+			data: result.toJSONString(), 
+   			success: function(response) {
+				$("#response3").text(response.toJSONString());
+   			},
+   			error: function(data) {
+				$("#response3").text(data);
+			}
+		});
+	});
+});
+$(function () {
+	$("#inplace-ctrl").click(function () {
+		if ($(this).html() == "edit") {
+			$("#inplace-val").html(
+				"<input id='inplace-input' type='text' value='" 
+				+ $("#inplace-val").html() + "'/>");
+			$(this).html("save");
+		} else {
+			var value = $("#inplace-input").attr("value");
+			$("#inplace-val").html(value);
+			var result = {inplace: value};
+			$.ajax({
+				url: "/json",
+				type: "POST",
+				contentType: "application/json",
+				data: result.toJSONString(), 
+	   			success: function(response) {
+					$("#response4").text(response.toJSONString());
+	   			},
+	   			error: function(data) {
+					$("#response4").text(data);
+				}
+			});
+			$(this).html("edit");
+		}
+	}).hover(
+		function(){$(this).css("cursor", "pointer")},
+		function(){$(this).css("cursor", "auto")}
+	); 
+});
+
+$(function () {
+	$(".inplace").find(".item").show();	
+	$(".inplace").find(".editor").hide();
+	
+	$(".inplace").find(".edit").show().hover(
+		function(){$(this).css("cursor", "pointer")},
+		function(){$(this).css("cursor", "auto")}
+	).click(function() {
+		$(this).hide();
+		$(this).siblings(".item").hide();
+		$(this).siblings(".save").show();
+		var value = $(this).siblings(".item").text();
+		$(this).siblings(".editor").show().find("input").attr("value", value);	
+	});
+	
+	$(".inplace").find(".save").hover(
+		function(){$(this).css("cursor", "pointer")},
+		function(){$(this).css("cursor", "auto")}
+	).click(function() {
+		$(this).hide();
+		$(this).siblings(".item").show();
+		$(this).siblings(".editor").hide();
+		$(this).siblings(".edit").show();
+		var value = $(this).siblings(".editor").children("input").attr("value");
+		$(this).siblings(".item").html(value);
+	}).hide();
+});
+
+//alert(confirm("Are you sure?"));
+</script>
+</head>
+<body>
+<form id="jsonform" method="POST" action="/json">
+<p>
+<input id="first" name="first" type="text" value="FOO"/>
+<input id="second" name="second" type="text" value="BAR"/>
+<select id="third" name="third">
+	<option selected="true">BAZ</option>
+</select>
+</p>
+<p><input type="submit" value="Web 1.0"/></p>
+</form>
+
+<p><input id="butt" type="button" value="Web 2.0 (Ajax)"/>
+<span id="response2"></span></p>
+<p><input id="butt2" type="button" value="Web 2.5 (JSON)"/>
+<span id="response3"></span></p>
+
+<p class="inplace">
+	<span class="item">Escort DeFarge</span> 
+	<span class="editor"><input type="text" value="nothing yet"/></span> 
+	<span class="edit">edit</span>
+	<span class="save">save</span>
+	<br/>
+	<span class="response"></span>
+</p>
+
+<p class="inplace">
+	<span class="item">Alyssa Bijoux</span> 
+	<span class="editor"><input type="text"></span> 
+	<span class="edit">edit</span>
+	<span class="save">save</span>
+	<br/><span class="response"></span>
+</p>
+
+<p id="inplace"><span class="value">Alyssa Bijoux</span> <span class="ctrl">edit</span><br/><span class="response"></span></p>
+
+	
+<p ><span id="inplace-val">Escort DeFarge</span><br/><span id="inplace-ctrl">edit</span><span id="response4"></span></p>
+</p>
+
+</body>
+</html>

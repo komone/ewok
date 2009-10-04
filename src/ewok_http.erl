@@ -1,17 +1,14 @@
 %%
 -module(ewok_http).
--vsn("1.0").
+-vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
--export([absolute_uri/1, date/0, date/1, browser_detect/1]).
+-export([absolute_uri/1, get_remote_ip/3, browser_detect/1]).
 -export([url_encode/1, url_decode/1]).
 -export([status_code/1, status_message/1, header/1]).
--export([mimetype/1]). 
--interface([{mimetype/1, public,
-	"Convert a file extension to a mimetype",
-	"'.'++string() -> string()++'/'++string() | undefined"}]).
+-export([mimetype/1, date/0, date/1]). 
 
 -export([absolute_uri_couch/1]).
 
@@ -19,8 +16,9 @@
 %% 
 absolute_uri(Path) -> 
 	{ok, Host} = inet:gethostname(),
+	%% TODO: perhaps ensure FQDN by adding inet:gethostbyname(Host), ?
 	Port =
-		case ewok_config:get("ewok.http.port") of
+		case ewok:config({ewok, http, port}) of
 		undefined -> "";
 		80 -> "";
 		Value -> lists:concat([":", Value])
@@ -33,11 +31,38 @@ absolute_uri_couch(Request) ->
     Host = 
 		case Request:header(<<"Host">>) of 
 		undefined -> 
-			{ok, {Address, Port}} = inet:sockname(Request:socket()), 
+			{_, Socket} = Request:socket(),
+			{ok, {Address, Port}} = inet:sockname(Socket), 
             inet_parse:ntoa(Address) ++ ":" ++ integer_to_list(Port); 
 		Value -> Value 
 		end, 
 	"http://" ++ Host ++ Request:path().
+
+%%
+get_remote_ip(Transport, Socket, ProxyHeader) ->
+	Peername = 
+		case Transport of
+		gen_tcp -> inet:peername(Socket);
+		ssl -> ssl:peername(Socket)
+		end,
+	case Peername of
+	{ok, {Addr = {10, _, _, _}, _Port}} ->
+		case ProxyHeader of
+		undefined ->
+			list_to_binary(inet_parse:ntoa(Addr));
+		Hosts ->
+			ewok_util:trim(lists:last(re:split(Hosts, ",")))
+		end;
+	{ok, {{127, 0, 0, 1}, _Port}} ->
+		case ProxyHeader of
+		undefined ->
+			<<"127.0.0.1">>;
+		Hosts ->
+			ewok_util:trim(lists:last(re:split(Hosts, ",")))
+		end;
+	{ok, {Addr, _Port}} ->
+		list_to_binary(inet_parse:ntoa(Addr))
+	end.
 
 %%
 browser_detect(UserAgent) when is_binary(UserAgent) ->
@@ -54,7 +79,7 @@ browser_detect(UserAgent) when is_binary(UserAgent) ->
 	%% maybe add OS later...
 	% OS = lists:foldr(Detector, UserAgent, platform_signatures()),
 	Browser.
-%
+%%
 browser_signatures() -> [
 	"Chrome/[0-9\\.]+", %% must be before Safari
 	"FireFox/[0-9\\.]+", 
@@ -136,7 +161,7 @@ url_encode_char($') -> "%27";
 url_encode_char($() -> "%28";
 url_encode_char($)) -> "%29";
 url_encode_char($*) -> "%2A";
-url_encode_char($+) -> "%2B";
+url_encode_char($+) -> "%2B"; % should this always be encoded?
 url_encode_char($,) -> "%2C";
 url_encode_char($/) -> "%2F";
 url_encode_char($:) -> "%3A";
@@ -202,7 +227,7 @@ header(set_cookie) ->          <<"Set-Cookie">>;
 header(origin) ->              <<"Origin">>;
 %% 'X' Headers
 header(X = <<"X-", _R/binary>>) -> X.
-%% Don't return undefined if not here... ewok_request gets unhappy.
+%% Don't return undefined if not found... ewok_request gets unhappy.
 
 % HTTP Status Codes
 status_code(Int) when is_integer(Int) -> Int;

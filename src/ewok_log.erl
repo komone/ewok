@@ -4,11 +4,20 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--export([add_log/1, remove_log/1, set_default/1, 
+-include("ewok_system.hrl").
+
+-export([init_server_log/0, add_log/1, remove_log/1, set_default/1, 
 	rollover/1, log_info/0, log_info/1, debug/1, 
 	info/1, warn/1, error/1, fatal/1, log/2, log/3]).
 
 -define(LOGGER, ewok_logging_srv).
+
+%% 
+init_server_log() ->
+	{ok, BootLog} = log_info(default),
+	add_log(server),
+	set_default(server),
+	remove_log(BootLog#log.id). %% the only ewok_system dep.
 
 %%
 add_log(Id) when is_atom(Id) ->

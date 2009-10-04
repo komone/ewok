@@ -1,7 +1,7 @@
 %%
 -module(ewok_session_obj, [ID, IP, Started, Expires, TTL, Notify, Cookie]).
 
-%-include("ewok.hrl").
+%-include("../include/ewok.hrl").
 
 -export([init/2, reset/0, value/0]).
 -export([key/0, ip/0, user/0, data/0, started/0, expires/0, ttl/0, cookie/0]).

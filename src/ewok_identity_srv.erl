@@ -1,7 +1,8 @@
 -module(ewok_identity_srv).
 -vsn("1.0").
 -author('steve@simulacity.com').
--include("ewok.hrl").
+
+-include("../include/ewok.hrl").
 
 -behavior(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
@@ -25,8 +26,8 @@ service_info() -> [
 ].
 
 keystore() ->
-	Path = ewok_config:get("ewok.identity.keystore", "./priv/data"),
-	Dir = filename:join(ewok_util:appdir(), Path),
+	Path = ewok:config({ewok, identity, keystore}, "./priv/data"),
+	Dir = filename:join(code:lib_dir(ewok), Path),
 	case filelib:is_dir(Dir) of
 	true ->
 		File = filename:join(Dir, ?KEYSTORE),

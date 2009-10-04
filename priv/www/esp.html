@@ -1,52 +1,90 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-<title>
-Ewok AS - Login</title>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-<link rel="stylesheet" href="default.css" type="text/css" media="all" charset="utf-8"/>
+<title>ESP Reference</title>
+	<script type="text/javascript" src="js/jquery-1.3.2.min.js"></script>
+	<script type="text/javascript" src="js/jquery-ui-1.7.2.min.js"></script>
+	<script type="text/javascript" src="ubf.js"></script>
+	<script type="text/javascript" src="esp-1.0.0.js"></script>
+	<link rel="stylesheet" href="css/ui-smoothness-1.7.2.css" type="text/css" />
+	<link rel="stylesheet" href="esp.css" type="text/css" />
+
 </head>
 <body>
-<div id="top">
-<img id="logo" src="./images/ewok-logo.png"/>
-<span id="dock">
-<span class="label">
-Guest | <a href="/admin/home">
-Dashboard</a>
- | <a href="/">
-News</a>
- | <a href="/">
-About</a>
-</span>
-</span>
-</div>
-<div id="page">
-<div id="nav">
-<p>
-A Web Application Server written in Erlang/OTP</p>
-</div>
-<div id="content">
-
-<form method="post" action="/">
-<input type="hidden" name="authorize"/>
-<input type="hidden" name="domain" value="ewok"/>
-<p>
-Username: <input type="text" name="username"/>
+<h1>ESP AJAX</h1>
+<!--
+<p class="inplace">
+	<span class="item">Escort DeFarge</span> 
+	<input name="name" class="editor" type="text"/>
+	<span class="edit">edit</span>
+	<span class="save">save</span>
+	<span class="message"></span>
 </p>
-<p>
-Password: <input type="password" name="password"/>
+<p class="inplace">
+	<span class="item">Alyssa Bijoux</span> 
+	<input name="name2" class="editor" type="text" />
+	<span class="edit">edit</span>
+	<span class="save">save</span>
+	<span class="message"></span>
 </p>
-<p>
-<input type="submit"/>
-</p>
-</form>
-</div>
-</div>
-<br clear="all"/>
-<div id="footer">
-<hr/>
-<p>
-Copyright &copy 2009 Simulacity.com. All Rights Reserved.</p>
-</div>
+-->
+<script>
+	//alert(new Date().toUBF());
+</script>
+<h2>Profile</h2>
+<table>
+	<tr class="inplace">
+		<td>
+			<span class="label">Username</span>
+		</td>		
+		<td>
+			<span class="main item">Escort DeFarge</span>
+			<input name="name" class="form editor" type="text"/>
+		</td>
+		<td>
+			<span class="edit">change</span>
+			<span class="save">save</span>
+		</td>
+		<td><span class="message"></span></td>
+	</tr>
+	<tr class="inplace">
+		<td>
+			<span class="label">Email Address</span>
+		</td>		
+		<td>
+			<span class="item">escort.defarge@gmail.com</span>
+			<input name="name2" class="form editor" type="text" size="30"/>
+		</td>
+		<td>
+			<span class="edit">change</span>
+			<span class="save">save</span>
+		</td>
+		<td><span class="message"></span></td>
+	</tr>
+	<tr class="inplace">
+		<td class="label">Postal Address</td>
+		<td>
+			<span class="item">34, Ivy Drive</span>			
+			<input name="addr1" class="form editor" type="text" size="30"/>
+			<br/>
+			<span class="item">Sometown</span>
+			<input name="addr2" class="form editor" type="text" size="30"/>
+			<br/>
+			<span class="item">England</span>
+			<input name="addr3" class="form editor" type="text" size="30"/>
+		</td>
+		<td class="controls">
+			<span class="edit">change</span>
+			<span class="save">save</span>
+		</td>
+		<td><span class="message"></span></td>
+	</tr>
+	</table>
+	<hr/>
+	<h3>View Transactions</h3>
+	<p>from <input type="text" class="form datepicker">
+		to <input type="text" class="form datepicker"> 
+		<input type="button" value="View"/></p> 
+<br/>
 </body>
 </html>

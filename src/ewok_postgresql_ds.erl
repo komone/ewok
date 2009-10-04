@@ -3,7 +3,7 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -behaviour(ewok_datasource).
 -export([init/1, datasource_info/0, metadata/1, table_info/1,

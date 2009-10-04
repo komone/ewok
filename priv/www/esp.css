@@ -1,0 +1,75 @@
+/* default esp.css */
+
+h1, h2, h3, h4, h5 {
+	color: teal;
+}
+
+h1 { font-size: 16pt; }
+h2 { font-size: 14pt; }
+h3 { font-size: 12pt; }
+h4 { font-size: 11pt; }
+h5 { font-size: 10pt; }
+	
+/*
+body, p, td, input { 
+ .content { 
+	font-size: 10pt;
+	font-family: "Bitstream Vera Sans", "Courier New", sans-serif;
+}
+*/
+
+table {
+	border-collapse: collapse;
+}
+
+input.editor {
+	background-color: #eee;
+	border: solid 1px #ccc;
+}
+td p {
+	margin: 4px 0px;
+}
+td { 
+	border: solid 0px #eee;
+	padding: 4px;
+}
+.main {
+	font-weight: bold;
+}
+
+.item { 
+	/* no style */
+}
+
+.edit, .save {
+	margin-left: 15px; 
+	color: #00c;
+	font-weight: normal;
+	font-family: serif;
+	font-size: 7pt;
+}
+
+.message {
+	color: #0a0;
+	font-weight: bold;
+	margin-left: 5px; 
+	font-size: 8pt;
+}
+
+/* override the jquery-ui size */
+.ui-datepicker{
+	font-size: 8pt;
+}
+
+.label {
+	padding-top: 8px;
+	vertical-align: top;
+	color: teal;
+	font-style: italic;
+	padding-right: 20px;
+}
+
+.controls {
+	padding-bottom: 8px;
+	vertical-align: bottom;
+}

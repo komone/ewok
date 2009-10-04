@@ -2,7 +2,7 @@
 
 -define(DEBUG, true).
 -define(PRINT(X), io:format("~p~n", [X])).
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -include_lib("stdlib/include/qlc.hrl").
 
@@ -109,8 +109,10 @@ create_table(T = {Table, _}) ->
 
 create_tables([{Table, Fields}|T]) 
 		when is_atom(Table), is_list(Fields) ->
-	{atomic, ok} = mnesia:create_table(Table, [{disc_copies, [node()]}, 
-		{attributes, Fields}]),
+	{atomic, ok} = 
+		mnesia:create_table(Table, 
+			[{disc_copies, [node()]}, 
+			{attributes, Fields}]),
 	create_tables(T);
 create_tables([]) -> ok.
  
@@ -122,7 +124,7 @@ drop_tables() ->
 	drop_tables(Tables).
 	
 drop_tables(Tables) when is_list(Tables) -> % this should require admin privileges
-	case ewok_config:get("ewok.runmode") of
+	case ewok:config({ewok, runmode}) of
 	development -> 
 		delete_tables(Tables, []);
 	Mode -> 

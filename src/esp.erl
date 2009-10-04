@@ -3,9 +3,9 @@
 -vsn("1.0").
 -author('steve@simulacity.com').
 
--include("esp.hrl").
+-include("../include/esp.hrl").
 %% TEMP
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -compile(export_all).
 %% API
@@ -18,8 +18,10 @@
 %% internal use for Cache lookup
 -record(template, {path, markup}).
 
+%%
 validate(Params) ->
 	esp_validator:validate(Params, [not_null]).
+%%
 validate(Params, Predicates) ->
 	esp_validator:validate(Params, Predicates).
 
@@ -140,7 +142,9 @@ render_element(E) when is_tuple(E), size(E) > 1 ->
 	Tag = atom_to_binary(Type, utf8), %% is latin1 "safer"?
 	Attrs = lists:zipwith(F, Fields, Values),
 	Body = 
-		%% this case is ENTIRELY to improve markup formatting
+		%% this case is ENTIRELY to improve markup formatting and should be removed
+		%% when html_prettyprint is done. In production mode, markup will be delivered
+		%% as a single line, in development we'll prettyprint to make life bearable
 		case esp_html:element_type(Type) of
 		block ->
 			case Fields of 
@@ -175,8 +179,10 @@ render_element(E) when is_tuple(E), size(E) > 1 ->
 
 %% first stab at this... 
 %% fprof appears to be saying that is_record guards eat up processing, so...
+transform_custom_element(E = #inplace{}) ->
+	esp_html:inplace(E);
 transform_custom_element(E = #css{}) ->
-	esp_html:stylesheet(E#css.path, E#css.type, E#css.media);
+	esp_html:stylesheet(E#css.src, E#css.type, E#css.media);
 transform_custom_element(E = #grid{}) ->
 	esp_html:grid(E);
 transform_custom_element(E) ->
@@ -197,10 +203,10 @@ get_template(Path) ->
 	T when is_record(T, template) -> 
 		T;
 	undefined ->
-		TemplateRoot = ewok_config:get("ewok.http.template_root"),
+		TemplateRoot = ewok:config({ewok, http, template_root}),
 		Markup = load_template(TemplateRoot, Path),
 		T = #template{path=Path, markup=Markup},
-		case ewok_config:get("ewok.runmode", production) of
+		case ewok:config({ewok, runmode}, production) of
 		true -> ok = ewok_cache:add(T);
 		_ -> ok
 		end,
@@ -210,7 +216,7 @@ get_template(Path) ->
 load_template(undefined, Path) -> 
 	{error, {undefined, Path}};
 load_template(Dir, Path) ->
-	File = filename:join([ewok_util:appdir(), Dir, Path]),
+	File = filename:join([code:lib_dir(ewok), Dir, Path]),
 	case filelib:is_regular(File) of
 	true -> 
 		{ok, Bin} = file:read_file(File),

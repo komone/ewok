@@ -1,18 +1,19 @@
 %%
+%%
 -module(ewok_http_srv).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -behavior(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
 
 %% API
--export([service/2, lookup_route/1]).
-
-%% temp
--export([cookie_compare/2]).
+-export([service/3]).
+% There will probably be a use for this API export, but
+% if no genuine use for it is actually found, then hide it.
+-export([lookup_route/1]). 
 
 %%
 service_info() -> [
@@ -24,66 +25,169 @@ service_info() -> [
 
 %%
 start_link() ->
-	ewok:config(),
-	Port = ewok_config:get({ewok, http, port}, 8000),
-	Timeout = ewok_config:get({ewok, http, request_timeout}, 30) * 1000,
-	Handler = fun(X) -> ?MODULE:service(X, Timeout) end,
-	ewok_log:log(default, service, {?MODULE, service_info()}),
-	ewok_log:log(default, configuration, {?MODULE, [{port, Port}, {request_timeout, Timeout}]}),
-
-	{ok, Pid} = ewok_tcp_srv:start_link(?MODULE, [{port, Port}, {handler, Handler}]),
-
-	ewok_log:add_log(access),
-	ewok_log:add_log(auth),
-	{ok, Pid}.
+	try begin
+		ewok_log:log(default, service, {?MODULE, service_info()}),
+		
+		%% DS = ewok_data_srv:connect(default)
+		
+		true = is_pid(whereis(ewok_cache_srv)),
+		true = is_pid(whereis(ewok_session_srv)),
+		
+		SocketOpts = [
+			ewok:config("ewok.http.tcp.socket.mode", binary),
+			{ ip, ewok:config({ewok, ip}, {0, 0, 0, 0}) }, 
+			{ packet, ewok:config("ewok.http.tcp.socket.packet", 0) },
+			{ backlog, ewok:config("ewok.http.tcp.socket.backlog", 30) },
+			{ active, ewok:config("ewok.http.tcp.socket.active", false) },
+			{ nodelay, ewok:config("ewok.http.tcp.socket.nodelay", true) },
+			{ reuseaddr, ewok:config("ewok.http.tcp.socket.reuseaddr", true) }
+		],
+		
+		%% IMPL: note that 'Transport' is the actual **module name**
+		{Transport, SSLOpts} = 
+			case ewok:config("ewok.http.ssl.enabled", false) of
+			true ->
+				ssl:start(), %% TODO: is this really the right place to be starting ssl?
+				{ssl, [ 
+					{ssl_imp, new}, %% NOTE: ONLY SUPPORT NEW_SSL 
+					{ verify, ewok:config("ewok.http.ssl.verify", 0) },
+					{ depth, ewok:config("ewok.http.ssl.depth", 1) },
+					%{ password, ewok:config("ewok.http.ssl.password", undefined) }, %% TODO: ONLY SET if keyfile is protected
+					{ keyfile, ewok:config("ewok.http.ssl.keyfile", "./priv/ssl/yaws-key.pem") },
+					{ certfile, ewok:config("ewok.http.ssl.certfile", "./priv/ssl/yaws-cert.pem") }
+					%{ cacertfile, ewok:config("ewok.http.ssl.cacertfile", "./priv/ssl/cacerts.pem") } 
+				]};
+			false -> {gen_tcp, [ %% add in options that are not supported for ssl sockets
+					{ recbuf, ewok:config("ewok.http.tcp.socket.recbuf", 8192) }
+				]}
+			end,
+		
+		Port = ewok:config({ewok, http, port}, 8000),
+		MaxConnections = ewok:config("ewok.http.tcp.max_connections", infinity),
+		
+		Timeout = ewok:config({ewok, http, request_timeout}, 30) * 1000,
+		MaxHeaders = ewok:config({ewok, http, header_limit}, 100),
+		Handler = fun(X) -> ?MODULE:service(X, Timeout, MaxHeaders) end,
+		
+		TCPConfiguration = [
+			{name, ?MODULE},
+			{transport, Transport}, %% defines use of gen_tcp or ssl module
+			{port, Port},
+			{protocol, http},
+			{max_connections, MaxConnections},
+			{socket_opts, lists:append(SocketOpts, SSLOpts)},
+			{handler, Handler}
+		],
+		%?TTY("CONFIG:~n~p~n", [TCPConfiguration]),
+		
+		ewok_log:log(default, configuration, {?MODULE, TCPConfiguration}),
+		
+		%% Starts a TCP Server for HTTP
+		{ok, Pid} = ewok_tcp_srv:start_link(?MODULE, TCPConfiguration),
+		
+		ewok_log:add_log(access),
+		ewok_log:add_log(auth),
+		{ok, Pid}
+	end catch
+	Error:Reason -> {Error, Reason}
+	end.
 
 %%	
 stop() -> 
 	ewok_tcp_srv:stop(?MODULE),
+	ewok_log:remove_log(auth),
 	ewok_log:remove_log(access).
 
 %% Callback from ewok_tcp_srv, handing over a client connection
-service(Socket, Timeout) ->
-    ok = inet:setopts(Socket, [{packet, http_bin}]),
-	case gen_tcp:recv(Socket, 0, Timeout) of
+service({Transport, Socket}, Timeout, MaxHeaders) ->
+	ok = 
+		case Transport of 
+		gen_tcp -> inet:setopts(Socket, [{packet, http_bin}]);
+		ssl -> ssl:setopts(Socket, [{packet, http_bin}])
+		end,
+	case Transport:recv(Socket, 0, Timeout) of
 	{ok, {http_request, Method, URI, Version}} ->
 		RequestLine = {Method, uri_to_path(URI), Version},
-%		ewok_log:info([{request, RequestLine}]),
-		get_headers(Socket, RequestLine, [], Timeout);
+%		ewok_log:debug([{request, RequestLine}]),
+%		ok = inet:setopts(Socket, [{packet, httph_bin}]),
+		ok = 
+			case Transport of 
+			gen_tcp -> inet:setopts(Socket, [{packet, httph_bin}]);
+			ssl -> ssl:setopts(Socket, [{packet, httph_bin}])
+			end,
+		get_headers({Transport, Socket}, RequestLine, [], Timeout, 0, MaxHeaders);
+	%% TODO: is there any reason that would mean that we can/should continue?
 	{error, Reason} ->
 		ewok_log:warn([{connection, Reason}]),
-		gen_tcp:close(Socket),
+		Transport:close(Socket),
 		exit(normal)
     end.
 
 %%
-get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout) ->
-    case gen_tcp:recv(Socket, 0, Timeout) of
-	{ok, {http_header, _, Name, _, Value}} ->
+get_headers({Transport, Socket}, RequestLine, Headers, _Timeout, MaxHeaders, MaxHeaders) ->
+	ProxyHeader = proplists:get_value(<<"X-Forwarded-For">>, Headers),
+	ewok_log:error([
+		{message, "Too many headers"}, 
+		{request_line, RequestLine}, 
+		{remote_ip, ewok_http:get_remote_ip(Socket, ProxyHeader)}
+	]),
+	%% NOTE: Consider sending the response 'bad_request' instead of just closing out?
+	Transport:close(Socket),
+	exit(normal);
+%%
+get_headers({Transport, Socket}, RequestLine = {Method, Path, Version}, Headers, Timeout, Count, MaxHeaders) ->
+	case Transport:recv(Socket, 0, Timeout) of
+	{ok, {http_header, _Integer, Name, _Reserved, Value}} ->
 		HeaderName =
-			case Name of
-			_ when is_atom(Name) -> atom_to_binary(Name, utf8); % would latin1 be "safer"?
-			_ when is_binary(Name) -> Name
+			case is_atom(Name) of
+			true -> atom_to_binary(Name, utf8); % would latin1 be "safer"?
+			false -> Name % must be a binary
 			end,
-		get_headers(Socket, RequestLine, [{HeaderName, Value} | Headers], Timeout);
+		NewCount = 
+			case is_integer(Count) of
+			true -> Count + 1;
+			false -> Count %% i.e. 'infinity'
+			end,
+		get_headers({Transport, Socket}, RequestLine, [{HeaderName, Value} | Headers], Timeout, NewCount, MaxHeaders);
 	{ok, http_eoh} ->
-		inet:setopts(Socket, [{packet, raw}]), 
-		Request = ewok_request_obj:new(Socket, Timeout, Method, Path, Version, Headers),
+%		ok = inet:setopts(Socket, [{packet, raw}]), 
+		ok = 
+			case Transport of 
+			gen_tcp -> inet:setopts(Socket, [{packet, raw}]);
+			ssl -> ssl:setopts(Socket, [{packet, raw}])
+			end,
+		Request = ewok_request_obj:new(Transport, Socket, Timeout, Method, Path, Version, Headers, MaxHeaders),
 		get_session(Request);
-	{error, Reason} ->
-		?TTY("Socket Error... ~p~n", [Reason]), 
-		gen_tcp:close(Socket),
+%% IMPL: If the client screws up should we be strict (as currently), or lenient (as below)...
+%%	{error, {http_error, <<$\r, $\n">>}} ->
+%%		get_headers(Socket, RequestLine, Timeout, Count, MaxHeaders);
+%%	{error, {http_error, <<$\n>>}} ->
+%%		get_headers(Socket, RequestLine, Timeout, Count, MaxHeaders);
+	%% TODO: is there any other reason that would mean that we can/should continue?
+	{error, {http_error, Reason}} ->
+		ewok_log:error([{http_error, Reason}]), 
+		Transport:close(Socket), 
+		exit(normal);
+	{Error, Reason} ->
+		ewok_log:error([{socket_error, {Error, Reason}}]), 
+		Transport:close(Socket),
 		exit(normal)
     end.
 	
 %% WHO
 get_session(Request) ->
 	Session = ewok_session_srv:get_session(Request:cookie(), Request:remote_ip()),
+%	?TTY("~p~n", [Request]),
 	case Request:version() of
 	{1, 1} -> 
 		get_route(Request, Session);
-	_ -> 
-		?TTY("~p~n", [Request]),
+	{1, 0} -> 
+		get_route(Request, Session);
+	Version -> 
+		ewok_log:warn([
+			{http_protocol, Version()}, 
+			{user_agent, Request:header(user_agent)}
+		]),
 		do_response(Request, Session, http_version_not_supported)
 	end.
 
@@ -95,26 +199,32 @@ get_route(Request, Session) ->
 		Request:set_realm(Route#route.realm),
 		get_access(Request, Session, Route);
 	_ ->
-		do_response(Request, Session, internal_server_error)
+		do_response(Request, Session, internal_server_error) %% TODO: shouldn't this be 404?
 	end.
 
 % HOW
 get_access(Request, Session, #route{handler=Module, realm=Realm, roles=Roles}) ->	
+%	?TTY("REALM: ~p~n", [Request:realm()]),
 	case validate_access(Session:user(), Realm, Roles) of
 	ok -> 
 		handle_request(Request, Session, Module);
 	not_authorized ->
-		case ewok_config:get({Realm, http, login}) of
+		case ewok:config({Realm, http, login}) of
 		undefined -> 
-			%?TTY("Access denied~n", []),
+			ewok_log:warn([{auth_login_undefined, Realm}]),
 			do_response(Request, Session, unauthorized);
 		LoginPath ->
-			% it may be cleaner to use a module (other than proplists) that implement set/replacekey
-			Here = ewok_http:absolute_uri(Request:path()),
+			% it may be cleaner to use a module (other than proplists) that implements set/replacekey
+			Here =
+				case Request:header(referer) of
+				undefined -> 
+					ewok_http:absolute_uri(Request:path());
+				Value -> Value
+				end,
 			Session:save({redirect, Here}),
-			Location = ewok_http:absolute_uri(LoginPath),
-			%% NOTE: found = 302 - but perhaps temporary_redirect 307 would be better?
-			do_response(Request, Session, {found, [{location, Location}], []})
+			%Location = ewok_http:absolute_uri(LoginPath),
+			%% NOTE: traditionally, this is 'found 302' - but 'temporary_redirect 307' may be better
+			do_response(Request, Session, {found, [{location, LoginPath}], []})
 		end
 	end.
 
@@ -170,65 +280,76 @@ do_response(Request, Session, Status) when is_integer(Status) ->
 do_response(Request, Session, {Status, Headers}) ->
 	do_response(Request, Session, {Status, Headers, []});
 % by this time, we should have a full response
-do_response(Request, Session, {Status, Headers, Content}) ->	
+do_response(Request, Session, {Status, Headers, Content}) ->
 	Code = ewok_http:status_code(Status),
 	%
 	ewok_session_srv:update_session(Session),
-	%
+	% only set-cookie if cookie not set...
 	NewHeaders =
 		case cookie_compare(Request:cookie(), Session:cookie()) of
 		false -> [{set_cookie, Session:cookie()}|Headers];
 		true -> Headers
 		end,
 	Response = {response, Code, NewHeaders, Content, false},
+	
+	%% and finally...
 	{ok, _HttpResponse, BytesSent} = ewok_response:reply(Request, Response),
-	%
+	%%
 	{Tag, Message} = format_access_log(Request, Session, Code, BytesSent),
 	ok = ewok_log:log(access, Tag, Message),
-	%
+	%%
 	cleanup(Request, Session).
 
 %%
 cleanup(Request, Session) ->
-	% ?TTY("REQ:~n~p~n", [Request]),
-	Socket = Request:socket(),
+	%?TTY("~nPD STATE~n~p~n", [lists:sort(get())]),
+	{Transport, Socket} = Request:socket(),
 	case Request:should_close() of
 	true ->
-		ewok_session_srv:close_session(Session),
-		receive
-			Message = {session_end, _Type, _Key} -> ?TTY("~p~n", [Message])
-		after 1000 -> 
-			ok
-		end,
+		%ewok_session_srv:close_session(Session),
+		%receive
+		%Message = {session_end, _Type, _Key} -> 
+		%	?TTY("~p~n", [Message]),
+		%	ok
+		%after 1000 ->
+		%	ok
+		%end,
 		?TTY("Closed ~p~n", [Socket]),
-		gen_tcp:close(Socket),
+		Transport:close(Socket),
 		exit(normal);
 	false ->
 		%?TTY("Connection ~p~n", [Request:header(connection)]),
-		%% NOTE: IE and Chrome (not Firefox) will close out if 304 not_modified returned
-		%% even though they ask for keep-alive... weird! Chrome lists this as a bug in 
-		%% the browser so it will be fixed, which again leaves IE as the toy.
+		%% NOTE: IE and Chrome (not Firefox) will close out when 304 not_modified is 
+		%% returned even though they ask for keep-alive... weird! Chrome lists this 
+		%% as a fixed bug in their browser, which again leaves IE as the toy.
 		Timeout = Request:timeout(), 
-		Session:reset(),
+		MaxHeaders = Request:max_headers(),
+		Session:reset(), %% ?? not sure we should do this...
 		Request:reset(),
-		?MODULE:service(Socket, Timeout)
+		?MODULE:service({Transport, Socket}, Timeout, MaxHeaders)
 	end.
 
 %%
 %% INTERNAL
 %%
 
+%% TODO: This is a TOTAL HACK
 %% There is a more elegant way to do this using binary matching... I'm certain of it.
-cookie_compare(RequestCookie, SessionCookie) -> 
-	case re:split(SessionCookie, <<";">>) of
-	[RequestCookie|_] -> true;
+cookie_compare([], _SessionCookie) ->
+	false;
+cookie_compare([{Tag, RequestCookie}], SessionCookie) -> 
+%	?TTY("Cookie Compare ~p ~p~n", [RequestCookie, SessionCookie]),
+	case re:split(SessionCookie, "[=;]") of
+	[Tag, RequestCookie|_] -> true;
 	_ -> false
 	end.
 
 %%
 uri_to_path({abs_path, Path}) -> 
 	Path;
-%% detect this case to find out when/if it happens...
+%% Detect this case to find out when/if it happens...
+%% IMPL: Ewok is not ever intended to support HTTPS. 
+%% so consider setting the Protocol match as 'http'
 uri_to_path(URI = {absoluteURI, _Protocol, _Host, _Port, Path}) ->
 	ewok_log:warn([{request_uri, URI}]),
 	Path;
@@ -237,7 +358,7 @@ uri_to_path(URI = {absoluteURI, _Protocol, _Host, _Port, Path}) ->
 uri_to_path(Path = '*') -> 
 	ewok_log:warn([{request_uri, Path}]),
 	Path;
-%% Should never happen...
+%% This should probably never happen... right?
 uri_to_path(URI) -> 
 	ewok_log:error([{request_uri, URI}]),
 	URI.
@@ -258,6 +379,7 @@ lookup_route(Path) ->
 %% note that since ewok_file_handler is usually the default -- ALL file urls 
 %% will be processed here -> could be a problem...
 %% Turning this into a gb_tree may possibly improve wildcard lookup/support for REST?
+%% Well, first, let's see if it shows up in profiling under load.
 lookup_wildcard_route(Parts = [_|T]) ->
 	Path = lists:append("/", filename:join(lists:reverse(["*"|Parts]))),
 	case ewok_cache:lookup(route, Path) of
@@ -272,7 +394,7 @@ lookup_wildcard_route([]) ->
 	Error -> Error
 	end.
 
-%%
+%% TODO: move to ewok_identity/ewok_auth... ** i.e. make pluggable
 validate_access(_, _, any) -> ok;
 validate_access(undefined, _, _) -> not_authorized;
 validate_access(#user{roles = UserRoles}, Realm, ResourceRoles) ->
@@ -282,7 +404,7 @@ validate_access(#user{roles = UserRoles}, Realm, ResourceRoles) ->
 	_ -> ok
 	end.
 
-%% TODO: Move this later on
+%% TODO: Move this later on. To...?
 format_access_log(Request, Session, StatusCode, BytesSent) ->
 	UserId = 
 		case Session:user() of
@@ -294,6 +416,12 @@ format_access_log(Request, Session, StatusCode, BytesSent) ->
 	{Major, Minor} = Request:version(),
 	Version = list_to_binary(io_lib:format("HTTP/~w.~w", [Major, Minor])),
 	Status = list_to_binary(integer_to_list(StatusCode)),
+	UserAgent =
+		case Request:header(<<"User-Agent">>) of
+		undefined -> <<"(No Header: User-Agent)">>;
+		Value -> Value
+		end,
+
 	RequestLine = list_to_binary([
 		Request:remote_ip(), <<" ">>, 
 		UserId, <<" ">>,
@@ -301,6 +429,6 @@ format_access_log(Request, Session, StatusCode, BytesSent) ->
 		Request:url(), <<" ">>, Version,
 		<<$">>, <<" ">>,
 		list_to_binary(integer_to_list(BytesSent)), <<" ">>,
-		ewok_http:browser_detect(Request:header(<<"User-Agent">>))
+		ewok_http:browser_detect(UserAgent)
 	]),
 	{Status, RequestLine}.

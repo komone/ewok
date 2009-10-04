@@ -1,64 +1,78 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
-%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 %% API
 -export([start/0, stop/0]).
--export([id/0]).
--export([info/1, config/0, configure/0]).
--export([deploy/1, deploy/2, undeploy/1, undeploy/2]).
+-export([ident/0]).
+-export([info/1, config/1, config/2, configure/0, configure/1]).
+-export([autodeploy/0, deploy/1, deploy/2, undeploy/1, undeploy/2]).
 
--define(BOOT_LOG_ID, boot).
+%% NOTE: consider an "embedded" mode startup?
 
 %%
-id() ->
+%% API
+%% NOTE: try to make this semantically the same as application:start(ewok),
+%% but allow a few pre-launch checks.
+start() ->
+	%% TEMP!!
+	%% NOTE: check whether ewok is running on same host/different node...
+	%% i.e. when the port is in use
+	%% how? well, not like this... ;)
+	Running = 
+		try 
+			{ok, Socket} = gen_tcp:connect("localhost", 8000, []),
+			gen_tcp:close(Socket),
+			true
+		catch
+		_:_ -> false
+		end,
+	case Running of
+	true -> {error, {not_started, eaddrinuse}};
+	false ->
+		%% NOTE: validate config file here so that the user sees a clear message
+		%% in the console at start time...
+		case ewok_configuration:preload(ewok) of
+		{ok, _File, _Config} -> application:start(ewok);
+		Error -> Error
+		end
+	end.
+	
+%%
+stop() -> 
+	%% I'm pretty sure that the following is no longer necessary I think since we 
+	%% are using a sup handler...
+	%	case application:stop(ewok) of
+	%	ok -> ewok_logging_srv:stop(); %% still needed?
+	%	Error -> Error
+	%	end.
+	%%... so this is just (and ideal)
+	application:stop(ewok).
+
+%%
+ident() ->
 	list_to_binary([
 		?SERVER_ID, 
 		<<" build#">>, ewok_util:build_number(), 
 		<<" [">>, ewok_util:build_time(), <<"]">>
 	]).
-%%
-%% API
-%%
-start() ->
-	%% Load early to get access to the ewok application env
-	application:load(ewok),
 	
-	{ok, Opts} = application:get_env(ewok, boot),
-	LogId = proplists:get_value(log, Opts, ?BOOT_LOG_ID),
-	ewok_logging_srv:start_link(LogId), %% ensure boot logging is available
-
-	%% IMPL: note that at this time, the boot log is the default log
-	ewok_log:log(default, server, id()),
-	ewok_log:log(default, loaded, application:loaded_applications()),
-	
-	%{ok, AutoInstall} = application:get_env(ewok, autoinstall),
-	case application:start(ewok) of
-	ok ->
-		Deploy = ewok_config:get({ewok, autodeploy}, []),
-		Results = [ewok_deployment_srv:deploy(App) || App <- Deploy],
-		case lists:dropwhile(fun(X) -> X =:= ok end, Results) of
-		[] -> 
-			ewok_log:add_log(server),
-			ewok_log:set_default(server),
-			ewok_log:remove_log(?BOOT_LOG_ID),
-			ok;
-		Errors -> {error, Errors}
-		end;
-	Error -> Error 
-	end.
-	
-%%
-stop() -> 
-	case application:stop(ewok) of
-	ok -> ewok_log:stop(); %% still needed?
-	Error -> Error
-	end.
-
 % TOO: This will likely be radically revised over the course of development
 info(Key) -> 
 	case Key of
@@ -68,15 +82,22 @@ info(Key) ->
 		Build = calendar:datetime_to_gregorian_seconds({{Y, Mo, D}, {H, M, S}}),
 		{Major, Minor, Patch, Build};
 	running -> whereis(ewok_sup) =/= undefined;
-	config -> ewok_config:print();
-	routes -> ewok_config:print(route);
-	webapps -> ewok_config:print(web_app);
+	ports -> inet:i();
+	config -> ewok_configuration:print();
+	routes -> ewok_configuration:print(route);
+	webapps -> 
+		case whereis(ewok_deployment_srv) of
+		undefined -> {error, not_started};
+		Pid when is_pid(Pid) ->
+			{_,_,_,Apps} = ewok_deployment_srv:list(),
+			Apps
+		end;
 	users -> ewok_db:select(user);
 	auth -> ewok_db:select(auth);
 	roles -> ewok_db:select(role);
 	sessions ->	 
 		case whereis(ewok_session_srv) of 	
-		undefined -> undefined;
+		undefined -> {error, not_started};
 		_ -> 
 			Sessions = ewok_session_srv:sessions(),
 			lists:foreach(fun(S) -> io:format("~p~n", [S]) end, Sessions),
@@ -98,10 +119,40 @@ info(Key) ->
 	end.
 
 % 
-config() ->
-	configure().
+config(Property) ->
+	ewok_configuration:get_value(Property).
+%
+config(Property, Default) ->
+	ewok_configuration:get_value(Property, Default).
+%	
 configure() ->
-	ewok_config:load().
+	ewok_configuration:load().
+configure(App) ->
+	ewok_configuration:load(App).
+
+%%
+autodeploy() ->
+	AppList = 
+		case ewok_installer:validate() of
+		true ->
+			ewok:config({ewok, http, autodeploy}, []);
+		false ->
+			% NOTE: placeholder... not fully implemented
+			ewok:info(config),
+			ewok:info(routes),
+			[ewok_installer]
+		end,
+	ewok_log:info({autodeploy, AppList}),
+	case whereis(ewok_deployment_srv) of
+	P when is_pid(P) ->
+		Results = [ewok_deployment_srv:deploy(App) || App <- AppList],
+		case lists:dropwhile(fun(X) -> X =:= ok end, Results) of
+		[] -> ok;
+		Errors -> ewok_log:error({autodeploy, Errors})
+		end;
+	undefined ->
+		ewok_log:warn({autodeploy, {not_running, ewok_deployment_srv}})
+	end.
 
 %%
 deploy(App)->

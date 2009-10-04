@@ -3,7 +3,7 @@
 -vsn("1.0.0").
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 -define(SERVER, ?MODULE).
 
 -behaviour(ewok_service).
@@ -18,22 +18,24 @@
 %% ewok_service callbacks
 %%
 start_link() -> 
-	ewok_log:log(default, service, {?MODULE, service_info()}),
+	ewok_log:log(default, service, [{?MODULE, service_info()}]),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
+%
 stop() ->
     gen_server:cast(?SERVER, stop).
-	
+%	
 service_info() -> [ 
 	{name, "Ewok Cache Service"},
-	{version, {1,0,0}}
+	{version, {1,0,0}},
+	{depends, []}
 ].
 
 %%
 %%% gen_server
 %%
 init([]) ->
-    process_flag(trap_exit, true), % why do we need this?
+	% trap_exit --> do we need this? *why* do we need this?
+    process_flag(trap_exit, true), 
     {ok, []}.
 %%
 handle_call({add, Record}, _From, State) ->
@@ -48,6 +50,14 @@ handle_call({add, Record}, _From, State) ->
 		end,
 	ets:insert(Type, Record),
     {reply, ok, NewState};
+%%
+handle_call({remove, Record}, _From, State) ->
+	Type = element(1, Record),
+	Key = element(2, Record),
+	%% IMPL: don't use delete_object as the record
+	%% may have had runtime changes
+	true = ets:delete(Type, Key),
+    {reply, ok, State};
 %
 handle_call({clear, Type}, _From, State) ->
 	case lists:member(Type, State) of

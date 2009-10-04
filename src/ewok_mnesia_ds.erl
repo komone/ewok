@@ -9,7 +9,7 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 -behaviour(ewok_datasource).
--export([init/1, datasource_info/0, metadata/1, table_info/1,
+-export([init/1, datasource_info/0, metadata/0, metadata/1, table_info/1,
 	create/1, read/1, update/1, delete/1, select/1, run/1, 
 	create_table/2, drop_table/1]).
 
@@ -17,22 +17,42 @@
 
 %%
 datasource_info() -> [
- {name, "Mnesia"}
+	{name, "Mnesia"},
+	{version, mnesia:system_info(version)}
 ]. %% ...more!
 
 %%
-init([{dir, DataDir}]) ->
+init([]) ->
+	DataDir = ewok:config({ewok, datasource, mnesia, path}, "./priv/data"),
+	DSDataDir = filename:join([code:lib_dir(ewok), DataDir, "Mnesia." ++ atom_to_list(node())]),
 	case mnesia:system_info(is_running) of
 	yes -> 
-		case mnesia:system_info(use_dir) 
-			andalso mnesia:system_info(directory) =:= DataDir of
+		case mnesia:system_info(use_dir) of
+		%% ??	andalso mnesia:system_info(directory) =:= DSDataDir of 
+		%% OR Should we stop mnesia and check the install?
 		true -> get_spec(); 
 		false -> {error, {invalid_path, mnesia:system_info(directory)}}
 		end;
 	starting -> {error, {wait, starting}};
 	stopping -> {error, {wait, stopping}};
 	no -> 
-		application:set_env(mnesia, dir, DataDir),
+		case application:get_env(ewok, autoinstall) of
+		{ok, true} ->
+			ewok_log:info([autoinstall, {db_dir, DSDataDir}]),
+			%% NOTE: This needs to be done with utmost care...
+			case mnesia:system_info(use_dir) of
+			false -> application:set_env(mnesia, dir, DSDataDir); 
+			true -> ok
+			end,
+			case mnesia:system_info(use_dir) of
+			false ->
+				ok = filelib:ensure_dir(DSDataDir),
+				ok = mnesia:create_schema([node()]);
+			true -> ok
+			end;
+		_ -> 
+			ok
+		end,
 		case mnesia:system_info(use_dir) of
 		true ->
 			mnesia:start(),
@@ -54,8 +74,11 @@ get_spec() ->
 	}.
 
 %%
-metadata(_Key) ->
-	not_implemented.
+metadata() -> 
+	metadata(all).
+metadata(Key) ->
+	%% for now...
+	mnesia:system_info(Key).
 
 %%
 table_info(Table) when is_atom(Table) ->
@@ -164,7 +187,7 @@ drop_table(Table) when is_atom(Table) ->
 	drop_tables([Table]).
 		
 drop_tables(Tables) when is_list(Tables) -> % this should require admin privileges?
-	case ewok_config:get("ewok.runmode") of
+	case ewok:config({ewok, runmode}) of
 	development -> 
 		delete_tables(Tables, []);
 	Mode -> 

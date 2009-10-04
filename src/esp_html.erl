@@ -1,10 +1,15 @@
 %% 
 -module(esp_html).
 
--include("esp.hrl").
+-include("../include/esp.hrl").
 
 -compile(export_all).
 -export([charref/1]).
+
+%% TODO: !!! html_encoding...
+%% TODO: !!! html_encoding...
+%% TODO: !!! html_encoding...
+%% TODO: !!! html_encoding...
 
 %
 page(Title, Head, Body) ->
@@ -51,6 +56,46 @@ stylesheet(Path, Mimetype) ->
 	stylesheet(Path, Mimetype, "all").
 stylesheet(Path, Mimetype, Media) ->
 	#link{rel="stylesheet", href=Path, type=Mimetype, media=Media}.
+	
+%%
+datepicker(ID) -> #input{name=ID, class="datepicker", type="text"}.
+
+%%
+inplace(List) when is_list(List) ->
+	inplace_table(List, []);
+inplace(R = #inplace{}) ->
+	inplace_para(R).
+
+inplace_table([H|T], Acc) ->
+	inplace_table(T, [inplace_row(H)|Acc]);
+inplace_table([], Acc) ->
+	#table{body=[lists:reverse(Acc)]}.
+
+inplace_row(R = #inplace{}) ->
+	#tr{class="inplace", body=[
+		#td{class="label", body=[R#inplace.label]},
+		#td{body=[
+			#span{class="item", body=[R#inplace.value]},
+			#input{type="text", class="editor", name=R#inplace.id}
+		]},
+		#td{body=[
+			#span{class="edit", body=[R#inplace.edit]},
+			#span{class="save", body=[R#inplace.save]}
+		]},
+		#td{body=[ #span{class="message", body=[R#inplace.message]} ]}
+	]}.
+
+inplace_para(R = #inplace{}) ->
+	#p{class="inplace", body=[
+		R#inplace.label,
+		#span{class="item", body=[R#inplace.value]},
+		#input{type="text", class="editor", name=R#inplace.id},
+		#span{class="edit", body=[R#inplace.edit]},
+		#span{class="save", body=[R#inplace.save]},
+		#span{class="message", body=[R#inplace.message]}
+	]}.
+
+
 
 %
 table(Data) ->

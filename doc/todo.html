@@ -26,136 +26,141 @@ font-size: 12pt;
 </style>
 <body>
 <h1>Ewok - Current Hit List</h1>
-
-<h2>esp</h2>
-<ul>
-<li>
-esp refactor to account for request delegation and realm/app skinning
-</li>
-<li>
-review template/page record structure throughout
-</li>
-</ul>
+<p>In general, these items are listed somewhat in order of priority...</p>
 
 <h2>ewok_deployment_srv</h2>
 <ul>
-<li>
-finish ewok server installation/verification/autoinstall
-</li>
-<li>
-finish app deploy/undeploy, especially verification
-</li>
-<li>
-implement deployment for ".ez" archives -- add a "packaging" call for tpas (third-party applications)
-</li>
-<li>
-allow deployment from a path - this will entail a lot of work on code paths to avoid conflicts, but allow "free-standing" app development and multiple ewok vm instances to run on one machine
-</li>
+<li>*** finish load/deploy logic</li>
+<li>implement deployment for ".ez" archives -- add a "packaging" call for tpas (third-party applications)</li>
+<li>allow deployment from a path - this will entail a lot of work on code paths to avoid conflicts, but allow "free-standing" app development and (?) multiple ewok vm instances to run on one machine</li>
 </ul>
 
-<h2>general</h2>
+<h2>ewok_installer</h2>
 <ul>
-<li>move service APIs to own modules to clarify purpose improve the API naming and "protect" the underlying gen_servers from application developers</li>
-<li>consistently handle strings as binaries *throughout* the codebase</li>
-<li>reconsider the original property file format as opposed to the current 'term' implementation -- (remember SciTe).</li>
+<li>Finish up installation -- maybe can remove the module ewok_installer</li>
 </ul>
 
-<h2>ewok_log</h2>
+<h2>ewok_http_srv</h2>
 <ul>
-<li>
-make this api totally bulletproof -- remember that a crash in the gen_event logger installed in error_logger can cause logging to entirely stop -- it's more robust than it was but it's not 100% yet...
-</li>
-<li>
-create the handler using gen_event:add_sup_handler? if so, be careful of the dependencies...
-</li>
-<li>
-use scheduled tasks for log rollover
-</li>
-<li>
-compress old logs
-</li>
+<li>verify support for HTTP/1.0 in the codebase (main reason? NginX upstream / proxy-pass)</li>
 </ul>
+
+
+<h2>esp</h2>
+<ul>
+<li>complete request delegation - the approach is still not 100% clear, but may become so when you've written a few more ewok applications...</li>
+<li>complete ESP templates and esp:include</li>
+</ul>
+
+<h2>esp_ajax</h2>
+<ul>
+<li>define and implement ewok.js... should very likely use the Observer/Event Handler pattern (but beware crappy ids littering the html.</li>
+<li>define and implement ubf.js, which will be an UBF codec implementation for javascript.</li>
+</ul>
+<h2>esp_html</h2>
+<ul>
+<li>provide a pretty-printer for html that would be used in development mode</li>
+</ul>
+
+<h2>ewok_admin (application)</h2>
+<ul>
+<li>Ajaxify the app</li>
+<li>complete general admin tasks for the admin web interface</li>
+<li>add development functionality to the admin web interface</li>
+</ul>
+
 
 <h2>ewok_session_srv</h2>
 <ul>
-<li>
-change session server cleanup to use scheduled tasks
-</li>
-</ul>
-<h2>ewok_tcp_srv</h2>
-<ul>
-<li>
-change tcp socket configuration to allow different configurations per protocol/service
-</li>
-<li>
-convert logging to ewok_log
-</li>
+<li>consider changing session server cleanup to use scheduled tasks</li>
 </ul>
 
-<h2>ewok_request</h2>
+<h2>ewok_logging_srv</h2>
 <ul>
-<li>
-chunked/multipart transfer
-</li>
-</ul>
-<h2>ewok_response</h2>
-<ul>
-<li>
-chunked/multipart transfer
-</li>
-<li>
-ranged requests
-</li>
+<li>make this api totally bulletproof -- remember that a crash in the gen_event logger installed in error_logger can cause logging to entirely stop -- it's more robust than it was but it's not 100% yet...</li>
+<li>review the use of gen_event:add_sup_handler - currently this links to the starting process and hands over to error_logger -- i am not AT ALL certain this is a valid way to do this...</li>
+<li>use scheduled tasks for log rollover</li>
 </ul>
 
-<h2>ewok_db</h2>
+<h2>ewok_configuration</h2>
 <ul>
-<li>
-early days -- needs a total rewrite -- maybe attempt to create an unified datasource connection API (this would be great if "done right" but it's a tough, tough job with a history of prominent failures and borked implementations -- read widely and learn from the mistakes of others!!) -- make mnesia appear as "just" the 'default' ds
-</li>
-</ul>
-
-<h2>ewok_aws</h2>
-<ul>
-<li>
-implement ewok_http_client
-</li>
-<li>
-convert erlaws into an ewok datasource
-</li>
-<li>
-update erlaws to use latest sdb api and signatures (keep this as a REST API - avoid/ignore SDB WS!!)
-</li>
+<li>reconsider offering the original property file format, e.g. "ewok.http.port=8000", as well as the more correct OTP 'term' implementation -- (remember how you felt about SciTe config)</li>
 </ul>
 
 <h2>ewok_identity_srv</h2>
 <ul>
-<li>
-complete gen_server for id server
-</li>
-<li>
-move realm access validation/control from ewok_http_srv into here? (or an ewok_security module?)
-</li>
-<li>
-implement a protected .keystore for datasource/eis passwords/keys (c port/driver?)
-</li>
+<li>complete gen_server for id server</li>
+<li>move realm access validation/control from ewok_http_srv into here? (or an ewok_security module?)</li>
+<li>implement a protected .keystore for datasource/eis passwords/keys (c port/driver?)</li>
+<li>make authentication pluggable</li>
+</ul>
+<h2>general</h2>
+<ul>
+<li>move service APIs to own modules to clarify purpose improve the API naming and "protect" the underlying gen_servers from application developers (partly done)</li>
+<li>consistently handle strings as binaries *throughout* the codebase</li>
+<li>review logging throughout the codebase</li>
+<li>Finish up installation -- maybe can remove ewok_installer</li>
+</ul>
+
+<h2>ewok_uws</h2>
+<ul>
+<li>define and create the UBF web service interface/implementation</li>
+<li>consider this as a basis for all AJAX calls, with XML Web Services implemented as an alternative facade to UWS</li>
+</ul>
+
+<h2>ewok_request_obj</h2>
+<ul>
+<li>chunked/multipart transfer</li>
+</ul>
+
+<h2>ewok_response</h2>
+<ul>
+<li>chunked/multipart transfer</li>
+<li>ranged requests</li>
+</ul>
+
+<h2>ewok_mail</h2>
+<ul>
+<li>create an smtp client for outgoing mail</li>
+</ul>
+
+<h2>ewok_data_srv</h2>
+<ul>
+<li>consider how best to provide pooled connections (where necessary)</li>
+<li>figure out "generic metadata" access via ewok_datasource interface</li>
+<li>convert erlaws into an ewok datasource</li>
+<li>implement ewok_http_client for AWS</li>
+<li>update erlaws to use latest sdb api and signatures (keep this as a REST API - avoid/ignore SDB WS?!)</li>
 </ul>
 
 <h2>ewok_geoip_srv</h2>
 <ul>
-<li>
-convert egeoip into an ewok_service
-</li>
-<li>
-implement country lookup/gen_server (use mnesia?)
-</li>
+<li>convert egeoip into an ewok_service</li>
+<li>implement country lookup/gen_server (use mnesia/default ds)</li>
 </ul>
 
 <h2>Don't forget...</h2>
-<p>...why the following are NOT on the list: HTTP/1.0 (dead), SSL and Port 80 (always use a reverse proxy such as NginX), more...</p>
+<p>...why the following are NOT on the list: SSL and Port 80 (by design, ewok should always use a downstream proxy such as NginX, Litespeed, Apache), more...?</p>
 
 <h2>...and documentation</h2>
 <p>installation/deployment; overview and design (UML process, seq, deployment diags); administration guide; tutorials; examples; downstream http server configuration examples for NginX and Apache; 'redoc' api documentation/reference</p>
+
+<h2>Ewok/1.1 (Teebo)</h2>
+<ul>
+<li>Consider an "embedded" mode</li>
+<li>Consider a modified "ewgi" web app interface (the offered ewgi i/f isn't mature enough)</li>
+<li>Add support for distributed deployment (this... sounds... HARD)</li>
+<li>Add SNMP traps/support</li>
+<li>implement city-level lookup for geoip</li>
+<li>add riak datasource</li>
+<li>add couchdb datasource</li>
+<li>add postgresql datasource</li>
+<li>add mysql datasource</li>
+<li>add Oracle DS</li>
+<li>add blog application</li>
+<li>add SMS interface</li>
+<li>webmail...??</li>
+</ul>
 
 </body>
 </html>

@@ -7,8 +7,10 @@
 
 %% Then everything else 
 {"src/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/ewok/*", [{i, "include"}, {outdir, "ebin/ewok"}, debug_info, strict_record_tests]}.
 
 %% Then built-in applications
+{"priv/apps/beep/src/*", [{i, "include"}, {outdir, "priv/apps/beep/ebin"}, debug_info, strict_record_tests]}.
 {"priv/apps/admin/src/*", [{i, "include"}, {outdir, "priv/apps/admin/ebin"}, debug_info, strict_record_tests]}.
 {"priv/apps/redoc/src/*", [{i, "include"}, {outdir, "priv/apps/redoc/ebin"}, debug_info, strict_record_tests]}.
 {"priv/apps/wiki/src/*", [{i, "include"}, {outdir, "priv/apps/wiki/ebin"}, debug_info, strict_record_tests]}.

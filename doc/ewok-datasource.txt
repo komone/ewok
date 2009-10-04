@@ -15,5 +15,6 @@ update(RECORD).
 delete(RECORD | PK).
 
 // DB Queries
+find(MATCH). // instead of select??
 select(MATCH).
 run(NATIVE_COMMAND).

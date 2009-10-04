@@ -4,13 +4,15 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("ewok.hrl").
+-include("../include/ewok.hrl").
 
 -export([encode/1, decode/1]).
+-export([int/0, constant/0, string/0, bin/0]).
 
-%% API functions
+%% API
 
-%%
+%% UBF(A)
+%% Codec
 encode(Term) ->
 	list_to_binary([encode_value(Term), <<$$>>]).
 %%
@@ -19,6 +21,18 @@ decode(UBF) when is_list(UBF) ->
 decode(UBF) ->
 	{ok, [Term], <<>>} = decode_value(UBF, []),
 	Term.
+
+%% UBF(B) 
+%% Fundamental types
+int()      -> integer.
+constant() -> constant.
+string()   -> string.
+bin()      -> binary.
+
+%% UBF(C)
+% All client/server remote-proceedure calls have the following form:
+% Msg$  => {Reply, NextState}$
+% Where Msg and Reply are UBF(A) types; NextState is the next state of the server.
 
 %%
 %% Internal functions
