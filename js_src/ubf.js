@@ -1,19 +1,17 @@
 /*
 	UBF(A) codec
 	Version: 1.0 alpha
-     Author: Steve Davis <steve@simulacity.com>
+	Author: Steve Davis <steve@simulacity.com>
 	Specification: <http://www.sics.se/~joe/ubf/site/home.html>
 	Modified from: http://www.JSON.org/json2.js (2009-06-29)
 	License: Public Domain.
-	 NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-*/
-/*
+	NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+
 STATUS INCOMPLETE:
 	1) Allows invalid escape sequences in strings (\f\t\r...) 	
 	2) No binary support
 	3) Does not account for UBF Register pushes
-*/
-/*
+
 Usage:
     UBF.encode(JSObject) -> UBF.
     UBF.decode(UBF) -> JSObject.

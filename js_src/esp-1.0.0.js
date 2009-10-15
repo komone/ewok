@@ -1,9 +1,11 @@
-// Ewok ESP AJAX
-// Version: 1.0.0
-// Copyright (c) 2009 Steve Davis <steve@simulacity.com>. All rights reserved.
-// Depends: JQuery 1.3.2, JQuery UI 1.7.2
+/*
+	Ewok ESP AJAX
+	Version: 1.0.0
+	Copyright (c) 2009 Steve Davis <steve@simulacity.com>. All rights reserved.
+	Depends: JQuery 1.3.2, JQuery UI 1.7.2
 
-// In-Place Field Editor
+	In-Place Field Editor
+*/
 $(function () {
 	$(".inplace").find(".item").show();
 	$(".inplace").find(".editor").hide();
