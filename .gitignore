@@ -14,4 +14,6 @@ priv/data/*
 priv/log/*
 test/*
 *.lnk
+*.war
+*.pdf
 

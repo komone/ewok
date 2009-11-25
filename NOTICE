@@ -1,0 +1,31 @@
+Ewok
+Copyright 2009 Steve Davis <steve@simulacity.com>
+ 
+This product includes software developed at
+Simulacity.com (http://www.simulacity.com/).
+ 
+This product also includes the following third-party components:
+  
+ * jQuery (http://jquery.com/)
+   Copyright 2009, John Resig
+ 
+ * json2.js (http://www.json.org/)
+   In the public domain
+
+ * Riak (http://riak.basho.com/)
+   Copyright 2007-2009, Basho Technologies
+
+ * Osmos (http://code.google.com/p/osmos/)
+   Copyright 2009, Michael Radford
+
+ * RabbitMQ (http://www.rabbitmq.com/)
+   [gen_server2, priority_queue]
+   Copyright 2009 LShift Ltd
+
+This product also includes software derived from:
+ 
+ * MochiWeb (http://code.google.com/p/mochiweb/)
+   Copyright 2007-2009, Mochi Media Coporation
+ 
+ * Erlang OAuth (http://github.com/tim/erlang-oauth/tree/master)
+   Copyright 2009, Tim Fletcher <http://tfletcher.com/>

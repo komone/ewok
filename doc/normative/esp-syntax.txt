@@ -1,0 +1,19 @@
+ESP SYNTAX
+++++++++++
+
+<%-- comment --%>
+
+<% esp:include("File") %>
+<% esp:date() %>
+# ...more?
+
+<% page:Function() %>
+
+<% request:Function() %>
+
+<% session:realm() %>
+<% session:user() %>
+<% session:roles() %>
+
+# maybe...
+<% Module:Function(Arguments) %>

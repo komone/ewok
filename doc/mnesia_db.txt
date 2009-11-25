@@ -1,0 +1,11 @@
+{tables,[{user,[{record_name,user},{attributes,[id,name,email,roles]}]},
+         {auth,[{record_name,auth},{attributes,[id,password,activation]}]},
+         {role,[{record_name,role},{attributes,[id,info]}]}]}.
+{user,<<225,1,109,120,133,184,69,203,190,248,30,96,158,11,32,17>>,
+      {ewok,"ewok"},
+      undefined,
+      [{ewok,admin}]}.
+{auth,<<225,1,109,120,133,184,69,203,190,248,30,96,158,11,32,17>>,
+      <<91,170,97,228,201,185,63,63,6,130,37,11,108,248,51,27,126,230,143,216>>,
+      <<"4a3fc0c74400495f872f69526e078111">>}.
+{role,{ewok,admin},[]}.
