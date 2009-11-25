@@ -12,15 +12,14 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
-%% PRE_CACHE everything!
 -module(ewok_cache).
--vsn("1.0.0").
+-vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
 %% Cache API
--export([add/1, remove/1, clear/1, reset/0, lookup/1, lookup/2]).
+-export([add/1, remove/1, clear/1, lookup/1, lookup/2]).
 
 -define(SERVER, ewok_cache_srv).
 
@@ -39,9 +38,6 @@ remove(Record) when ?is_record(Record) ->
 
 clear(Type) when is_atom(Type) ->
 	gen_server:call(?SERVER, {clear, Type}, infinity).
-	
-reset() ->
-	gen_server:call(?SERVER, {reset}, infinity).
 
 lookup(Type) ->
 	case lists:member(Type, ets:all()) of

@@ -29,6 +29,6 @@ init([]) ->
 %%
 create(Workflow) ->
 	ChildSpec = {Workflow#workflow.id, 
-		{esp_workflow, start_link, [Workflow]}, 
-		transient, 5000, worker, [esp_workflow]},
-	supervisor:start_child(esp_workflow_sup, ChildSpec).
+		{ewok_workflow, start_link, [Workflow]}, 
+		transient, 5000, worker, [ewok_workflow]},
+	supervisor:start_child(?MODULE, ChildSpec).

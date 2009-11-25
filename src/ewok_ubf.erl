@@ -1,13 +1,26 @@
-%% UBF(A) specification by Joe Armstrong. 
-%% SEE: http://www.sics.se/~joe/ubf/site/home.html
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_ubf).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
-
 -export([encode/1, decode/1]).
 -export([int/0, constant/0, string/0, bin/0]).
+
+%% @ref UBF(A) specification by Joe Armstrong. 
+%% http://www.sics.se/~joe/ubf/site/home.html
 
 %% API
 
@@ -30,7 +43,7 @@ string()   -> string.
 bin()      -> binary.
 
 %% UBF(C)
-% All client/server remote-proceedure calls have the following form:
+% All client/server remote-procedure calls have the following form:
 % Msg$  => {Reply, NextState}$
 % Where Msg and Reply are UBF(A) types; NextState is the next state of the server.
 

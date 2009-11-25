@@ -1,18 +1,31 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
-%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_logging_srv).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-name("Ewok Logging Service").
+-depends([error_logger]).
+-interface([]).
+
+-include("ewok.hrl").
 -include("ewok_system.hrl").
 -include_lib("kernel/include/file.hrl").
 
 %% *** NOTE: This entire module needs a thorough review...!!!
-%% *** NOTE: In order for this to be controlled by ewok_sup, we need
-%% to change error_logger:add_report_handler to gen_event:add_sup_handler().
-%% this should be done carefully to ensure all dependency requirements are
-%% met.
+
 %% *** NOTE: need to implement a scheduled task to rollover the log files...
 %% *** NOTE: Later, it will probably be better to add 'delayed_write' as an 
 %% option for file:open (currently at lines 194, 226) - at least in production mode
@@ -57,7 +70,7 @@ service_info() -> [
 %%
 level(debug) -> 4;
 level(info)  -> 3;
-level(warn ) -> 2;
+level(warn)  -> 2;
 level(error) -> 1;
 level(fatal) -> 0;
 level(_)     -> level(info).

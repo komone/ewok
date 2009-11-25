@@ -1,23 +1,53 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
--module(ewok_identity).
-%% RFC-4122 <http://www.ietf.org/rfc/rfc4122.txt>
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 
--export([start/0, start/1, start_link/0, start_link/1, stop/0]).
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([seed/0, key/0, id/0, uuid/0]).
+-module(ewok_identity).
+-vsn("1.0").
+-author('steve@simulacity.com').
+%% RFC-4122 <http://www.ietf.org/rfc/rfc4122.txt>
+-include("ewok.hrl").
+
+-export([seed/0, key/0, id/0, uuid/0, keystore/0]).
 -export([random/0, srandom/0, sha/2, md5/2, timestamp/0, timestamp/2]).
 -export([to_string/1]).
 
--define(SERVER, ?MODULE).
 -define(UUID_DNS_NAMESPACE, <<107,167,184,16,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_URL_NAMESPACE, <<107,167,184,17,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_OID_NAMESPACE, <<107,167,184,18,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_X500_NAMESPACE, <<107,167,184,20,157,173,17,209,128,180,0,192,79,212,48,200>>).
 
--record(state, {node, clock_seq}).
+-define(SERVER, ewok_identity_srv).
+-define(KEYSTORE, ".keystore").
 
 %% API
-
+keystore() ->
+	Path = ewok:config({ewok, identity, keystore}, "./priv/data"),
+	Dir = filename:join(code:lib_dir(ewok), Path),
+	case filelib:is_dir(Dir) of
+	true ->
+		File = filename:join(Dir, ?KEYSTORE),
+		case filelib:is_regular(File) of
+		true ->	
+			{ok, [Term]} = file:consult(File),
+			Term;
+		false ->
+			{error, no_keystore}
+		end;
+	false ->
+		{error, invalid_path}
+	end.
+	
 %% FROM YAWS
 %% pretty good seed, but non portable
 seed() ->
@@ -103,59 +133,6 @@ to_compact_string(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>) ->
 
 to_string(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>> = _UUID) ->
     lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~2.16.0b~2.16.0b-~12.16.0b", [TL, TM, THV, CSR, CSL, N])).
-
-%%
-%% uuid gen_server for generating timestamps with saved state
-%%
-
-start() ->
-    start([]).
-
-start(Args) ->
-    gen_server:start({local, ?SERVER}, ?MODULE, Args, []).
-
-start_link() ->
-    start_link([]).
-
-start_link(Args) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
-
-stop() ->
-    gen_server:cast(?SERVER, stop).
-
-init(Options) ->
-    {A1,A2,A3} = proplists:get_value(seed, Options, erlang:now()),
-    random:seed(A1, A2, A3),
-    State = #state{
-        node = proplists:get_value(node, Options, <<0:48>>),
-        clock_seq = random:uniform(65536)
-    },
-    error_logger:info_report("uuid server started"),
-    {ok, State}.
-
-handle_call(timestamp, _From, State) ->
-    Reply = timestamp(State#state.node, State#state.clock_seq),
-    {reply, Reply, State};
-
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-handle_cast(stop, State) ->
-    {stop, normal, State};
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-terminate(_Reason, _State) ->
-    error_logger:info_report("uuid server stopped"),
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
 
 %%
 %% Internal API

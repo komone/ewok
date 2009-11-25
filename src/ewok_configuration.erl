@@ -17,22 +17,20 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
--export([preload/1, load/0, load/1, unload/1, get_value/1, get_value/2]).
+-export([preload/1, load/1, unload/1, get_value/1, get_value/2]).
 -export([print/0, print/1]).
 
 %%
 %% API
-%%
+%
 preload(App) when is_atom(App) ->
-	case load_termfile(App) of
-	{ok, File, Terms} -> {ok, File, load_config(Terms, [])};
+	case load_file(App) of
+	{ok, File, Terms} -> {ok, File, parse_config(Terms, [])};
 	Error -> Error
 	end.
-%%
-load() ->
-	load(ewok).
+	
 %
 load(App) when is_atom(App) ->
 	case preload(App) of
@@ -54,7 +52,7 @@ get_value(Key, Default) ->
 	end.
 get_value(Key) when is_binary(Key) ->
 	get_value(binary_to_list(Key));
-get_value(Key) when is_list(Key) ->
+get_value(Key) when ?is_string(Key) ->
 	Parts = [list_to_atom(X) || X <- re:split(Key, "\\.", [{return, list}])],
 	get_value(list_to_tuple(Parts));
 get_value(Key) when is_tuple(Key) ->
@@ -85,7 +83,7 @@ print(Type) ->
 %%
 
 %%
-load_termfile(App) ->
+load_file(App) ->
 	case code:ensure_loaded(App) of
 	{'module', App} ->
 		Path = filename:dirname(code:which(App)),
@@ -99,29 +97,31 @@ load_termfile(App) ->
 			%% C{error,{103,erl_parse,["syntax error before: ","'{'"]}}
 			_:{badmatch, {error, {Line, _, Message}}} -> 
 				{error, {file, File}, {line, Line}, {reason, lists:flatten(Message)}};
-			E:R -> {E, R}
+			Error:Reason -> 
+				{Error, Reason}
 			end;
 		false ->
 			{error, {nofile, File}}
 		end;
-	_ -> {error, {no_app_found, App}}
+	_ -> 
+		{error, {no_app_found, App}}
 	end.
 
 %target format e.g.-> {ewok,server,ip}, {127,0,0,1}}
-%% may later validate on type...
-load_config([{_Type, Id, Props}|T], Acc) ->
-	Config = load_properties({}, Id, Props),
-	load_config(T, [Config|Acc]);
-load_config([], Acc) ->
+%% may later validate on Type...
+parse_config([{_Type, Id, Props}|T], Acc) ->
+	Config = parse_properties({}, Id, Props),
+	parse_config(T, [Config|Acc]);
+parse_config([], Acc) ->
 	lists:flatten(Acc).
 %
-load_properties(Parent, autodeploy, Props) ->
+parse_properties(Parent, autodeploy, Props) ->
 	Key = erlang:append_element(Parent, autodeploy),
 	{?MODULE, Key, Props};
-load_properties(Parent, roles, Props) ->
+parse_properties(Parent, roles, Props) ->
 	Key = erlang:append_element(Parent, roles),
 	{?MODULE, Key, Props};
-load_properties(Parent, Id, Props) -> 
+parse_properties(Parent, Id, Props) -> 
 	Key = erlang:append_element(Parent, Id),
 %	io:format("~p ~p~n", [Key, Props]),
 	case is_list(Props) of 
@@ -131,8 +131,8 @@ load_properties(Parent, Id, Props) ->
 		Keys -> 
 			F = fun (X) ->
 				case proplists:get_value(X, Props) of
-				undefined -> load_records(X, Props);
-				Value -> load_properties(Key, X, Value)
+				undefined -> parse_records(X, Props);
+				Value -> parse_properties(Key, X, Value)
 				end
 			end,
 			[F(X) || X <- Keys]
@@ -140,5 +140,5 @@ load_properties(Parent, Id, Props) ->
 	false -> {?MODULE, Key, Props}
 	end.
 %
-load_records(Type, Props) ->
+parse_records(Type, Props) ->
 	[X || X = X1 <- Props, element(1, X1) =:= Type].

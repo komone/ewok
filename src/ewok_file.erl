@@ -28,6 +28,17 @@ list(_Path, _Opts) ->
 
 %% collected crap
 
+%% from utest
+%%
+find_files(Path, [$.|T]) ->
+	Pattern = lists:flatten(["\\.", T, $$]),
+	filelib:fold_files(Path, Pattern, true, fun(F, Acc) -> [F|Acc] end, []);
+%
+find_files(Path, Dir) when is_list(Dir) -> 
+	FullPath = filename:join([Path, Dir]), 
+	filelib:fold_files(FullPath, ".*", false, fun(F, Acc) -> [F|Acc] end, []).
+
+
 %% full_path() -> #web_app{} | undefined
 load_path(Path) when ?is_string(Path) ->
 	case filelib:is_dir(Path) of 

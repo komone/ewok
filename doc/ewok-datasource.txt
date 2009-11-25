@@ -5,14 +5,23 @@ PK -> {TABLE, KEY}.
 datasource_info().
 table_info(TABLE).
 
-create_table(TABLE, [FIELD, FIELD, ...]).
-drop_table(TABLE).
+(TABLE, [FIELD, FIELD, ...]).
+drop(TABLE).
 
 // CRUD
 create(RECORD).
+new(RECORD).
+
 read(PK).
+lookup(PK).
+
 update(RECORD).
+change(RECORD).
+
 delete(RECORD | PK).
+remove(RECORD | PK).
+forget(RECORD | PK).
+
 
 // DB Queries
 find(MATCH). // instead of select??

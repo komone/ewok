@@ -6,7 +6,7 @@
 # Required-Stop:     $all
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: starts the ewok web application server
+# Short-Description: starts the ewok application server
 # Description:       starts ewok using start-stop-daemon
 ### END INIT INFO
 
@@ -15,16 +15,16 @@ DAEMON=/usr/local/bin/erl
 NAME=ewok
 DESC=ewok
 
-test -x $DAEMON || exit 0
+# test -x $DAEMON || exit 0
 
-# Include nginx defaults if available
-if [ -f /etc/default/nginx ] ; then
-        . /etc/default/nginx
+# Include ewok defaults if available
+if [ -f /etc/ewok.conf ] ; then
+        . /etc/ewok.conf
 fi
 
 set -e
 
-. /lib/lsb/init-functions
+#. /lib/lsb/init-functions
 
 case "$1" in
   start)
@@ -55,7 +55,7 @@ case "$1" in
       echo "$NAME."
       ;;
   status)
-      status_of_proc -p /var/run/$NAME.pid "$DAEMON" nginx && exit 0 || exit $?
+      status_of_proc -p /var/run/$NAME.pid "$DAEMON" ewok && exit 0 || exit $?
       ;;
   *)
         N=/etc/init.d/$NAME

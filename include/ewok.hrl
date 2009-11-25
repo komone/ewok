@@ -14,7 +14,7 @@
 -define(VERSION, {1,0,0}).
 -define(AUTHOR, 'steve@simulacity.com').
 
--define(CONFIG_FILE_EXT, ".web").
+-define(CONFIG_FILE_EXT, ".conf").
 -define(ARCHIVE_FILE_EXT, ".ez").
 
 -define(ESP_FILE_EXT, ".esp").
@@ -45,6 +45,10 @@
 %% If 'repeat' is 'once' then only execute this task once at 'start' and then drop it. 
 %% The value of 'timer_ref' is reserved and allocated/used by the scheduler (ewok_scheduler_srv).
 -record(task, {id, function, start=now, repeat=once, terminate=infinity, notify, timer_ref}).
+
+%% Ewok Session Management
+-define(EWOK_SESSION_KEY, <<"_EWOKSID">>).
+-record(ewok_session, {key, ip, user, data=[], started, expires, ttl, notify}).
 
 %% Ewok User Management
 -record(user, {id, name, email, roles=[]}). %% TODO: move 'email' to profile.

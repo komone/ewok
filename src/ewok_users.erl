@@ -1,7 +1,7 @@
 %%
 -module(ewok_users).
 -vsn("1.0").
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
 -compile(export_all).
 

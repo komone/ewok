@@ -1,10 +1,22 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
-%%
-%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_session_srv). 
+-vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
 -behaviour(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
@@ -13,96 +25,19 @@
 -export([init/1, handle_call/3, handle_cast/2, 
 	handle_info/2, terminate/2, code_change/3]).
 
-%% API
--export([get_session/2]).
--export([update_session/1, close_session/1]).
--export([sessions/0]).
+
+-record(state, {default_ttl, flush_interval, force_flush}).
 
 -define(SERVER, ?MODULE).
 -define(ETS, ?MODULE).
 
--define(EWOK_SESSION_KEY, <<"_EWOKSID">>).
-
--record(state, {default_ttl, flush_interval, force_flush}).
-
-%% The ETS record
--record(ewok_session, {key, ip, user, data=[], started, expires, ttl, notify}).
-
-%%
-%% API
-%%
-
-%%
-get_session(Cookie, RemoteIp) ->
-	Record = 
-		case proplists:get_value(?EWOK_SESSION_KEY, Cookie) of
-		undefined -> 
-			new_session(RemoteIp);
-		SessionKey ->
-			case ets:lookup(?ETS, SessionKey) of
-			[] -> 
-				new_session(RemoteIp);
-			[Value] when is_record(Value, ewok_session) ->  
-				%% NOTE: check that the IP is valid, if it isn't then return a new session
-				case Value#ewok_session.ip of
-				RemoteIp -> Value;
-				_ -> new_session(RemoteIp)
-				end
-			end
-		end,
-	%% IMPORTANT! This instantiation MUST be done in the calling process, not in the remote gen_server process
-	Key = Record#ewok_session.key,		
-	Session = ewok_session_obj:new(
-		Key,
-		Record#ewok_session.ip,
-		Record#ewok_session.started,
-		Record#ewok_session.expires,
-		Record#ewok_session.ttl,
-		Record#ewok_session.notify,
-		make_cookie(Key)
-	),
-	Session:init(Record#ewok_session.user, Record#ewok_session.data),
-	Session.
-%%
-new_session(RemoteIp) ->
-	gen_server:call(?SERVER, {create_session, RemoteIp, default_ttl, self()}, infinity).
-	
-
-%% This only needs done once...
-make_cookie(Key) ->
-	%% NOTE: for -> cookie2...
-	%% Expiry = ewok_util:date(calendar:gregorian_seconds_to_datetime(Expires)),	
-	Cookie = [
-		?EWOK_SESSION_KEY, <<"=">>, Key,
-		<<";Version=1">>, 
-		%% Allow browser to discard the cookie, i.e. don't set Max-Age
-		%% Later this may be used for "remember me", but then the session
-		%% needs to be persisted in ewok_db also
-		%% <<";Max-Age">>, integer_to_list(TTL),
-		<<";Path=/">>
-	],
-	list_to_binary(Cookie).
-		
-%%
-close_session(Session) -> 
-	gen_server:call(?SERVER, {delete_session, Session:value()}, infinity).
-
-%% IMPL: This call MUST be kept in sync with any changes to the session record.
-% -record(session, {key, ip, user, data=[], started, expires, ttl, notify}).
-%% update_element takes the table lock so this should be safe to do from the client process?
-update_session(Session) ->
-	{ewok_session, Key, _, User, Data, _, _Expires, TTL, _} = Session:value(),
-	ets:update_element(?ETS, Key, [{4, User}, {5, Data}, {7, unow() + TTL}]).
-
-%
-sessions() ->
-    ets:tab2list(?ETS).
-
+-define(DEPENDS, [ewok_cache_srv, ewok_identity_srv]).
 %%
 %% ewok_service Callbacks
 %%
 start_link() ->
 	ewok_log:log(default, service, {?MODULE, service_info()}),
+	ewok_util:check_dependencies(?DEPENDS),
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 stop() ->
     gen_server:cast(?SERVER, stop).
@@ -130,7 +65,7 @@ init([]) ->
 %%
 handle_call({create_session, IP, TTL, Pid}, _From, State) ->
     Timestamp = calendar:universal_time(),
-	Now = calendar:datetime_to_gregorian_seconds(Timestamp),
+	Now = ewok_util:unow(),
 	TTL1 = 
 		case TTL of 
 		default_ttl -> State#state.default_ttl;
@@ -179,9 +114,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%
 %%% internal functions
-%%
-unow() ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %%% TODO: should this be changed to use ewok_scheduler?
 schedule_timeout(State) when is_record(State, state) ->
@@ -189,7 +121,7 @@ schedule_timeout(State) when is_record(State, state) ->
 
 %%
 cleanup() -> 
-	cleanup(unow(), ets:first(?ETS)).
+	cleanup(ewok_util:unow(), ets:first(?ETS)).
 %
 cleanup(_, '$end_of_table') -> 
 	ok;

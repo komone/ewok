@@ -12,7 +12,8 @@
 %% the question is... is this assumption *absolutely true*??? If not - another question arises
 %% which is: would it matter?
 
-%-record(session, {key, ip, user, data=[], started, expires, ttl, notify}).
+%-record(session, {id, ip, user, data=[], started, expires, ttl, notify}).
+
 -define(USER, www_session_user).
 -define(DATA, www_session_data).
 

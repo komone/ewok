@@ -16,10 +16,10 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
 %% API
--export([start/0, stop/0]).
+-export([start/0, start/1, stop/0]).
 -export([ident/0]).
 -export([info/1, config/1, config/2, configure/0, configure/1]).
 -export([autodeploy/0, deploy/1, deploy/2, undeploy/1, undeploy/2]).
@@ -29,40 +29,35 @@
 %%
 %% API
 %% NOTE: try to make this semantically the same as application:start(ewok),
-%% but allow a few pre-launch checks.
+%% but allow non-stateful pre-launch checks.
 start() ->
-	%% TEMP!!
-	%% NOTE: check whether ewok is running on same host/different node...
-	%% i.e. when the port is in use
-	%% how? well, not like this... ;)
-	Running = 
-		try 
-			{ok, Socket} = gen_tcp:connect("localhost", 8000, []),
-			gen_tcp:close(Socket),
-			true
-		catch
-		_:_ -> false
-		end,
-	case Running of
-	true -> {error, {not_started, eaddrinuse}};
-	false ->
-		%% NOTE: validate config file here so that the user sees a clear message
-		%% in the console at start time...
-		case ewok_configuration:preload(ewok) of
-		{ok, _File, _Config} -> application:start(ewok);
-		Error -> Error
-		end
+	%% NOTE: validate config file here so that the user sees a clear message
+	%% in the console at start time...
+	case ewok_configuration:preload(ewok) of
+	{ok, _File, _Config} -> application:start(ewok);
+	Error -> Error
 	end.
-	
+
+%%
+start(http) ->
+	ok;
+start(smtp) ->
+	ok;
+start(pop3) ->
+	ok;
+start(imap) ->
+	ok;
+start(amqp) ->
+	ok;
+start(ldap) ->
+	ok;
+start(dns) ->
+	ok;
+start(_) -> 
+	error.
+
 %%
 stop() -> 
-	%% I'm pretty sure that the following is no longer necessary I think since we 
-	%% are using a sup handler...
-	%	case application:stop(ewok) of
-	%	ok -> ewok_logging_srv:stop(); %% still needed?
-	%	Error -> Error
-	%	end.
-	%%... so this is just (and ideal)
 	application:stop(ewok).
 
 %%
@@ -99,7 +94,7 @@ info(Key) ->
 		case whereis(ewok_session_srv) of 	
 		undefined -> {error, not_started};
 		_ -> 
-			Sessions = ewok_session_srv:sessions(),
+			Sessions = ewok_session:list(),
 			lists:foreach(fun(S) -> io:format("~p~n", [S]) end, Sessions),
 			{ok, length(Sessions)}
 		end;
@@ -118,7 +113,7 @@ info(Key) ->
 		end
 	end.
 
-% 
+% TODO: improve naming config/configure
 config(Property) ->
 	ewok_configuration:get_value(Property).
 %
@@ -126,7 +121,7 @@ config(Property, Default) ->
 	ewok_configuration:get_value(Property, Default).
 %	
 configure() ->
-	ewok_configuration:load().
+	configure(ewok).
 configure(App) ->
 	ewok_configuration:load(App).
 

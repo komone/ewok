@@ -3,11 +3,11 @@
 -vsn("1.0.0").
 -author('steve@simulacity.com').
 
--include_lib("ewok/include/ewok.hrl").
--include_lib("ewok/include/esp.hrl").
--include_lib("ewok/src/ewok_system.hrl").
+-include("ewok.hrl").
+-include("esp.hrl").
+-include("ewok_system.hrl").
 
--behavior(ewok_http_resource).
+-behaviour(ewok_http_resource).
 % http_resource callbacks
 -export([filter/1, resource_info/0]).
 
@@ -127,7 +127,7 @@ spec(datasources) ->
 		  },
 		  esp_html:text(X#datasource.id),
 
-		  esp_html:text(X#datasource.interface),
+		  esp_html:text(X#datasource.mod),
 		  esp_html:text(X#datasource.running),
 		  esp_html:text(X#datasource.valid),
 		  esp_html:text(X#datasource.data),

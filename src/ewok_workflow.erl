@@ -10,27 +10,26 @@
 	handle_info/3, terminate/3, code_change/4]).
 
 
--record(sdata, {workflow}).
+-record(state, {workflow}).
 
 %%
 init([Workflow]) ->
-	{ok, new_request, #sdata{workflow=Workflow}}.
-
+	{ok, new_request, #state{workflow=Workflow}}.
 %%
-handle_event(_Event, State, StateData) ->
+handle_event(_Event, StateName, State) ->
 	%
-	{next_state, State, StateData}.
+	{next_state, StateName, State}.
 %%
-handle_sync_event(_Event, _From, State, StateData) ->
+handle_sync_event(_Event, _From, StateName, State) ->
 	%
-	{next_state, State, StateData}.
+	{next_state, StateName, State}.
 %%
-handle_info(_Info, State, StateData) ->
+handle_info(_Info, StateName, State) ->
 	%
-	{next_state, State, StateData}.
+	{next_state, StateName, State}.
 %%
-terminate(_Reason, _State, _StateData) ->
+code_change(_OldVsn, StateName, State, _Extra) ->
+	{ok, StateName, State}.
+%%
+terminate(_Reason, _StateName, _State) ->
 	 void.
-%%
-code_change(_OldVsn, State, StateData, _Extra) ->
-	{ok, State, StateData}.

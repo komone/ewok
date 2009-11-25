@@ -1,25 +1,25 @@
 %% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_deployment_srv).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 -include("ewok_system.hrl").
 
--behavior(ewok_service).
+-behaviour(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
 
 -behaviour(gen_server).
@@ -30,25 +30,28 @@
 -export([list/0, package/1]).
 
 -define(SERVER, ?MODULE).
+-define(DEPENDS, [ewok_cache_srv, ewok_scheduler_srv]).
 
+%% callback: Starts the web application deployment service
+%
+% in: void()
+% out: {ok, pid()} | ignore | {error, term()}
 start_link() ->
-	%% dependency check
-	true = is_pid(whereis(ewok_cache_srv)),
-	
+	ewok_log:log(default, service, {?MODULE, service_info()}),
+	ewok_util:check_dependencies(?DEPENDS),
 	Runmode = ewok:config({ewok, runmode}),
 	AppRoot = ewok:config({ewok, http, deploy_root}, ?DEFAULT_APP_ROOT),
-	ewok_log:log(default, service, {?MODULE, service_info()}),
 	ewok_log:log(default, configuration, {?MODULE, [{runmode, Runmode}, {deploy_root, AppRoot}]}),
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Runmode, AppRoot], []).
 
+%% out: ok
 stop() ->
     gen_server:cast(?SERVER, stop).
-
+	
+%% out: proplist()
 service_info() -> [
 	{name, "Ewok Deployment Service"},
-	{version, ?VERSION},
-	{comment, ""},
-	{depends, [ewok_cache_srv, ewok_scheduler_srv]}
+	{depends, ?DEPENDS}
 ].
 
 %% TODO: placeholder
@@ -61,7 +64,7 @@ package(App) when is_atom(App) ->
 	zip:create(File ++ ".ez", [File], [
 		{cwd, filename:dirname(Dir)}, 
 		{compress, all}, 
-		{uncompress,[".beam",".app",".web"]}
+		{uncompress,[".beam",".app",".conf"]}
 	]).
 
 %%
@@ -90,15 +93,14 @@ list() ->
 	gen_server:call(?SERVER, {list}, infinity).
 
 
-%%
-%% gen_server callbacks 
-%%
+%% section: gen_server callbacks 
+%
 init([Runmode, AppRoot]) ->
-	DeployDir = filename:join(code:lib_dir(ewok), AppRoot),
+	DeployDir = filename:join(ewok_util:appdir(), AppRoot),
 	{ok, Files} = file:list_dir(DeployDir),
 	Paths = [filename:join(DeployDir, X) || X <- Files],
 	AppList = load_paths(Paths, []),
-    {ok, #server{runmode=Runmode, dir=DeployDir, apps=AppList}}.
+    {ok, #server{runmode=Runmode, path=DeployDir, apps=AppList}}.
 
 %%
 handle_call({load, App}, _From, State) -> 
@@ -160,9 +162,8 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) -> 
 	{ok, State}.	
 
-%%
-%% Internal
-%%
+%% section: internal
+
 load_paths([H|T], Acc) ->
 	case load_path(H) of
 	App = #web_app{} ->

@@ -1,13 +1,27 @@
+%%%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_util).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
 -export([appdir/0, appdir/1]).
 -export([get_env/1, tcp_ports/0]).
--export([timestamp/0, timestamp/1]).
+-export([timestamp/0, timestamp/1, unow/0, utime/0]).
 -export([build_number/0, build_time/0]).
--export([trim/1, unow/0, utime/0]).
+-export([check_dependencies/1]).
+-export([trim/1, to_upper/1]).
 -export([ftime/1]).
 
 %%
@@ -18,17 +32,12 @@ appdir(App) when is_atom(App) ->
 	{file, Path} = code:is_loaded(App),
 	filename:dirname(filename:dirname(Path)).
 
-	
-
-%% possibly make an ewok_date module
-utime() ->
-	{{Y, Mo, D}, {H, M, S}} = calendar:universal_time(),
-	DateFormat = "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B~s",
-	list_to_binary(io_lib:format(DateFormat, [Y, Mo, D, H, M, S, "Z"])).
 %
-unow() ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
-
+check_dependencies(Depends) ->
+	case [X || X <- Depends, is_pid(whereis(X)) =/= true] of
+	[] -> ok;
+	NotRunning -> erlang:error(dependency, NotRunning)
+	end.
 
 %% 
 tcp_ports() ->
@@ -57,12 +66,33 @@ build() ->
 	{{Y, Mo, D}, {H, M, S}}.
 
 %%
+trim(S) when is_list(S) ->
+	string:strip(S);
 trim(S) when is_binary(S) -> 
 	% @credit Seth Falcon
 	re:replace(S, "^\\s+|\\s+$", "", [{return, binary}, global]);
-trim(S) when is_list(S) ->
-	string:strip(S);
 trim(S) -> S.
+
+%
+to_upper(S) when is_list(S) ->
+	string:to_upper(S);
+to_upper(S) when is_binary(S) ->
+	bin_to_upper(S, <<>>);
+to_upper(S) -> S.
+%
+bin_to_upper(<<C, Rest/binary>>, Acc) when C >= $a, C =< $z ->
+	bin_to_upper(Rest, <<Acc/binary, (C - 32)>>);
+bin_to_upper(<<C, Rest/binary>>, Acc) ->
+	bin_to_upper(Rest, <<Acc/binary, C>>);
+bin_to_upper(<<>>, Acc) ->
+	Acc.
+
+%% possibly make an ewok_date module
+utime() ->
+	timestamp().
+%
+unow() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %%
 timestamp() ->

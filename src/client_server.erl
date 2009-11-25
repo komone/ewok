@@ -6,7 +6,7 @@
 start() ->
     start([ssl, subject]).
 
-start(CertOpts) ->
+start(_CertOpts) ->
     %% Start ssl application
     application:start(ssl),
 
