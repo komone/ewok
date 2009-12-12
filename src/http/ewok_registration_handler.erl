@@ -6,8 +6,8 @@
 -include("../include/ewok.hrl").
 -include("../include/esp.hrl").
 
--behavior(ewok_http_resource).
--export([filter/1, do/3, resource_info/0]).
+-behaviour(ewok_http_resource).
+-export([resource_info/0, filter/1, 'GET'/2, 'POST'/2]).
 
 %%
 %% Resource Callbacks
@@ -18,7 +18,7 @@ resource_info() -> [{name, "Ewok Registration Handler"}].
 filter(_Request) ->  
 	ok.
 %%
-do('GET', Request, Session) ->
+'GET'(Request, Session) ->
 %	?TTY("Registration ~p~n", [{Request, Session}]),
 	Spec = [
 		{title, <<"Ewok - Registration">>},
@@ -37,9 +37,9 @@ do('GET', Request, Session) ->
 			]}
 		]}
 	],
-	ewok_admin:page(Spec, Request, Session); %% later generalize on realm/domain
+	ewok_web:render(Request, Session, Spec). %% later generalize on realm/domain
 %
-do('POST', Request, Session) ->
+'POST'(Request, Session) ->
 	Domain = Request:parameter("domain"), %% hidden
 	Username = Request:parameter("username"),
 	Password = Request:parameter("password"),
@@ -52,18 +52,15 @@ do('POST', Request, Session) ->
 		{ok, Activation} -> 
 			?TTY("ACCEPTED: ~p~n", [Activation]),
 			Spec = success(Request, Session, Activation),
-			ewok_admin:page(Spec, Request, Session); %% later generalize on realm/domain			
+			ewok_web:render(Request, Session, Spec); %% later generalize on realm/domain			
 		E = {error, __} ->
 			?TTY("DENIED ~p~n", [E]), 
 			%% do more with this later
-			do('GET', Request, Session)
+			'GET'(Request, Session)
 		end;
 	false ->
 		precondition_failed
-	end;
-%
-do(_Method, _Request, _Session) -> 
-	not_implemented.
+	end.
 
 success(_Request, _Session, Activation) -> [
 	{title, <<"Ewok - New User">>},
@@ -73,6 +70,6 @@ success(_Request, _Session, Activation) -> [
 		#grid{body=[
 			[<<"Your Activation Key: ">>, #span{class="hilite", body=[Activation]}]
 		]},
-		#p{body=[<<"You may now">>, #a{href="/login", body=[<<"Log in">>]}, <<".">>]}
+		#p{body=[<<"You may now ">>, #a{href="/login", body=[<<"Log in">>]}, <<".">>]}
 	]}
 ].

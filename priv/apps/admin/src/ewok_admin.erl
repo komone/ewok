@@ -15,29 +15,29 @@ application_info() -> [
 
 %
 page(Spec, _Request, Session) ->
-	Title = proplists:get_value(title, Spec, <<"Ewok AS">>),
-	Head = [
-		#css{src="/default.css"},
-		#link{rel="icon", href="/favicon.png", type="image/png"},
-		proplists:get_value(head, Spec, [])
-	],
-	Body = [
-		#'div'{id="top", body=[
-			#img{id="logo", src="/images/ewok-logo.png"},
-			#'div'{id="dock", body=dock(Session)}
-		]},
-		#'div'{id="page", body=[
-			#'div'{id="nav", body=proplists:get_value(menu, Spec, [])},
-			#'div'{id="content", body=proplists:get_value(content, Spec, [])}
-		]},
-		#br{clear="all"},
-		#'div'{id="footer", body=[
-			#hr{},
-			#p{body=[<<"Copyright &copy; 2009 Simulacity.com. All Rights Reserved.">>]}
-		]}
-	],
-	%
-	esp:render(#page{title=Title, head=Head, body=Body}).
+	esp:render(#page{
+		title = proplists:get_value(title, Spec, <<"Ewok AS">>),
+		head = [
+			#css{src="/default.css"},
+			#link{rel="icon", href="/favicon.png", type="image/png"},
+			proplists:get_value(head, Spec, [])
+		],
+		body = [
+			#'div'{id="top", body=[
+				#img{id="logo", src="/images/ewok-logo.png"},
+				#'div'{id="dock", body=dock(Session)}
+			]},
+			#'div'{id="page", body=[
+				#'div'{id="nav", body=proplists:get_value(menu, Spec, [])},
+				#'div'{id="content", body=proplists:get_value(content, Spec, [])}
+			]},
+			#br{clear="all"},
+			#'div'{id="footer", body=[
+				#hr{},
+				#p{body=[<<"Copyright &copy; 2009 Simulacity.com. All Rights Reserved.">>]}
+			]}
+		]
+	}).
 
 %
 dock(Session) ->

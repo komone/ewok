@@ -1,9 +1,9 @@
 %% 
--module(ewok_request_obj, [Transport, Socket, Timeout, Method, Url, Version, Headers, MaxHeaders]).
+-module(ewok_request_obj, [Socket, Timeout, Method, Url, Version, Headers, MaxHeaders]).
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 -include_lib("kernel/include/file.hrl").
 
 -export([get_range/0, get_body_length/0, socket/0, timeout/0, max_headers/0,
@@ -11,7 +11,7 @@
 	path/0, method/0, realm/0, set_realm/1]).
 -export([recv/1, recv/2, recv_body/0, recv_body/1, should_close/0]).
 -export([cookie/0, cookie/1, parameter/1, parameters/0]).
--export([reset/0]).
+-export([reset/0, websocket/0]).
 
 %%
 -define(REALM, www_request_realm).
@@ -22,6 +22,7 @@
 -define(BODY_RECEIVE, www_request_body).
 -define(BODY_LENGTH, www_request_length).
 -define(BODY_DATA, www_request_body).
+-define(WEB_SOCKET, www_web_socket).
 -define(CACHE, [?REALM, ?PATH, ?REMOTE_IP, ?COOKIE, ?QUERY, ?BODY_LENGTH, ?BODY_DATA]).
 
 % 10 second default idle timeout
@@ -38,17 +39,26 @@
 reset() ->
     [erase(K) || K <- ?CACHE].
 	
-socket() -> {Transport, Socket}.
+socket() -> Socket.
 timeout() -> Timeout.
 max_headers() -> MaxHeaders.
 version() -> Version.
 url() -> Url.
 method() -> Method.
 headers() -> Headers.
+
+websocket() ->
+	case erlang:get(?WEB_SOCKET) of
+	undefined ->
+		erlang:put(?BODY_RECEIVE, true),
+		erlang:put(?WEB_SOCKET, true);
+	Value -> Value
+	end.
+	
 remote_ip() ->
 	case erlang:get(?REMOTE_IP) of
 	undefined ->
-		IP = ewok_http:get_remote_ip(Transport, Socket, header(<<"X-Forwarded-For">>)),
+		IP = ewok_http:get_remote_ip(Socket, header(<<"X-Forwarded-For">>)),
 		erlang:put(?REMOTE_IP, IP),
 		IP;
 	IP -> IP
@@ -65,10 +75,10 @@ content() ->
 %%
 set_realm(Realm) when is_atom(Realm) ->
 	%% IMPL: enforces write once to PD
-	undefined = put(?REALM, Realm).
+	undefined = erlang:put(?REALM, Realm).
 %%
 realm() ->
-	get(?REALM).
+	erlang:get(?REALM).
 
 %%
 should_close() ->
@@ -215,7 +225,7 @@ recv(Length) ->
 	recv(Length, ?IDLE_TIMEOUT).
 %% Timeout in msec.
 recv(Length, IdleTimeout) ->
-    case Transport:recv(Socket, Length, IdleTimeout) of
+    case ewok_socket:recv(Socket, Length, IdleTimeout) of
 	{ok, Data} ->
 		put(?BODY_RECEIVE, true),
 		Data;
@@ -267,7 +277,7 @@ read_chunked_body(Max, Acc) ->
 %% @doc Read the length of the next HTTP chunk.
 read_chunk_length() ->
     inet:setopts(Socket, [{packet, line}]),
-    case Transport:recv(Socket, 0, ?IDLE_TIMEOUT) of
+    case ewok_socket:recv(Socket, 0, ?IDLE_TIMEOUT) of
         {ok, Header} ->
             inet:setopts(Socket, [{packet, raw}]),
             Splitter = 
@@ -286,7 +296,7 @@ read_chunk_length() ->
 read_chunk(0) ->
     inet:setopts(Socket, [{packet, line}]),
     F = fun (F1, Acc) ->
-			case Transport:recv(Socket, 0, ?IDLE_TIMEOUT) of
+			case ewok_socket:recv(Socket, 0, ?IDLE_TIMEOUT) of
 			{ok, <<"\r\n">>} -> Acc;
 			{ok, Footer} -> F1(F1, [Footer | Acc]);
 			_ -> exit(normal)
@@ -297,7 +307,7 @@ read_chunk(0) ->
     Footers;
 %%
 read_chunk(Length) ->
-    case Transport:recv(Socket, 2 + Length, ?IDLE_TIMEOUT) of
+    case ewok_socket:recv(Socket, 2 + Length, ?IDLE_TIMEOUT) of
 	{ok, <<Chunk:Length/binary, "\r\n">>} -> Chunk;
 	_ -> exit(normal)
     end.

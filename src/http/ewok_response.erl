@@ -1,7 +1,7 @@
 %%
 -module(ewok_response).
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 %-include_lib("kernel/include/file.hrl").
 
 -compile(export_all).
@@ -41,8 +41,9 @@ reply(Request, Response) when is_record(Response, response) ->
 		Value when is_integer(Value) -> 
 			Response#response.headers
 		end,
-	HttpResponse = get_http_response(Response#response{headers=Headers}),
-%	?TTY("RESPONSE:~n" ++ binary_to_list(HttpResponse), []),
+%	?TTY("~p -> get_http_response~n~p~n", [Request:url(), Response]),
+	HttpResponse = get_http_response(Request, Response#response{headers=Headers}),
+%	?TTY("~p ->~nHttpResponse~n~p~n", [Request, HttpResponse]),
 	Socket = Request:socket(),
 	ok = send(Socket, HttpResponse),
 	case is_integer(ContentLength) andalso ContentLength > 0 of
@@ -60,19 +61,32 @@ content_length(chunked) ->
 	0.
 
 %% HACKY needs a fix 
-get_http_response(Response) ->
+get_http_response(Request, Response) ->
 	Code = ewok_http:status_code(Response#response.status),
-	StatusLine = [
-		<<"HTTP/1.1 ">>, list_to_binary(integer_to_list(Code)), 
-		<<" ">>, ewok_http:status_message(Code), <<"\r\n">>
-	],	
-    Headers = [{server, ?SERVER_ID}, {date, ewok_http:date()} 
-		|Response#response.headers],
-    F = fun ({K, V}, Acc) ->
-			[list_to_binary([ewok_http:header(K), <<": ">>, make_io(V), <<"\r\n">>]) | Acc]
-		end,
-    HeaderLines = lists:foldl(F, [], Headers),
-	iolist_to_binary([StatusLine|lists:reverse([<<"\r\n">>|HeaderLines])]).
+	case Code of 
+	101 ->
+        % According to the spec, this should be hard-coded!?!?!
+		% http://tools.ietf.org/html/draft-hixie-thewebsocketprotocol
+		[<<"HTTP/1.1 101 Web Socket Protocol Handshake\r\n">>,
+		<<"Upgrade: WebSocket\r\n">>,
+		<<"Connection: Upgrade\r\n">>,
+		<<"WebSocket-Origin: ">>, ewok_http:absolute_uri(""), <<"\r\n">>, 
+		<<"WebSocket-Location: ">>, ewok_http:absolute_uri(<<"ws">>, Request:path()), <<"\r\n">>, 
+%		<<"WebSocket-Protocol: sample\r\n">>, 
+		<<"\r\n">>];
+	_ ->
+		StatusLine = [
+			<<"HTTP/1.1 ">>, list_to_binary(integer_to_list(Code)), 
+			<<" ">>, ewok_http:status_message(Code), <<"\r\n">>
+		],	
+		Headers = [{server, ?SERVER_ID}, {date, ewok_http:date()} 
+			|Response#response.headers],
+		F = fun ({K, V}, Acc) ->
+				[list_to_binary([ewok_http:header(K), <<": ">>, make_io(V), <<"\r\n">>]) | Acc]
+			end,
+		HeaderLines = lists:foldl(F, [], Headers),
+		iolist_to_binary([StatusLine|lists:reverse([<<"\r\n">>|HeaderLines])])
+	end.
 
 %%
 send(Socket, Bin) when is_binary(Bin) ->

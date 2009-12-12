@@ -4,8 +4,8 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
--include("../include/esp.hrl").
+-include("ewok.hrl").
+-include("esp.hrl").
 %%
 -export([validate/0]).
 

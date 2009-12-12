@@ -45,8 +45,7 @@ service_info() -> [
 %%% gen_server
 %%
 init([]) ->
-	% trap_exit --> do we need this? *why* do we need this?
-    % process_flag(trap_exit, true), 
+    % process_flag(trap_exit, true), % do we need this? *why* do we need this?
     {ok, []}.
 %%
 handle_call({add, Record}, _From, State) ->
@@ -65,8 +64,7 @@ handle_call({add, Record}, _From, State) ->
 handle_call({remove, Record}, _From, State) ->
 	Type = element(1, Record),
 	Key = element(2, Record),
-	%% IMPL: don't use delete_object as the record
-	%% may have had runtime changes
+	%% IMPL: don't use delete_object as the record may have had runtime changes
 	true = ets:delete(Type, Key),
     {reply, ok, State};
 %

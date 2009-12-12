@@ -13,7 +13,7 @@
 %% limitations under the License.
 
 -module(ewok_umtp).
--vsn({1, 0, 0}).
+-vsn("1.0.0").
 -author('steve@simulacity.com').
 
 -include("ewok.hrl").
@@ -37,7 +37,7 @@ start_link() ->
 		true = is_pid(whereis(ewok_cache_srv)),
 		Transport = gen_tcp, %% TEMP
 		Port = ewok:config({ewok, umtp, port}, 30),
-		SocketOpts = ewok_socket_srv:configure(Transport, "ewok.umtp"),
+		SocketOpts = ewok_socket:configure(Transport, "ewok.umtp"),
 		MaxConnections = ewok:config("ewok.umtp.tcp.max_connections", infinity),
 		Timeout = ewok:config({ewok, umtp, timeout}, 10) * 1000,
 		

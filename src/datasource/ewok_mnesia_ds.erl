@@ -1,9 +1,9 @@
 %%  
 -module(ewok_mnesia_ds, []).
--vsn({1,0,0}).
+-vsn("1.0.0").
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 -include("ewok_system.hrl").
 
 -include_lib("stdlib/include/qlc.hrl").

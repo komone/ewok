@@ -3,7 +3,7 @@
 -vsn("1.0").
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
 %% NOTE: in general, it would be much better to serve static files
 %% from the reverse proxy, however, if you insist...

@@ -1,7 +1,19 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
-%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_http_srv).
--vsn({1,0,0}).
+-vsn("1.0.0").
 -author('steve@simulacity.com').
 
 -include("ewok.hrl").
@@ -37,7 +49,7 @@ start_link() ->
 		ewok_util:check_dependencies(?DEPENDS),
 		
 		Transport = gen_tcp, %% TEMP
-		SocketOpts = ewok_socket_srv:configure(Transport, "ewok.http"),
+		SocketOpts = ewok_socket:configure(Transport, "ewok.http"),
 		Port = ewok:config({ewok, http, port}, 8080),
 		MaxConnections = ewok:config({ewok, http, tcp, max_connections}, infinity),
 		
@@ -70,37 +82,27 @@ start_link() ->
 
 %%	
 stop() -> 
-	ewok_tcp_srv:stop(?MODULE),
+	ewok_socket_srv:stop(?MODULE),
 	ewok_log:remove_log(auth),
 	ewok_log:remove_log(access).
 
 %% Callback from ewok_tcp_srv, handing over a client connection
-service({Transport, Socket}, Timeout, MaxHeaders) ->
-	ok = 
-		case Transport of 
-		gen_tcp -> inet:setopts(Socket, [{packet, http_bin}]);
-		ssl -> ssl:setopts(Socket, [{packet, http_bin}])
-		end,
-	case Transport:recv(Socket, 0, Timeout) of
+service(Socket, Timeout, MaxHeaders) ->
+	ok = ewok_socket:setopts(Socket, [{packet, http_bin}]),
+	case ewok_socket:recv(Socket, 0, Timeout) of
 	{ok, {http_request, Method, URI, Version}} ->
 		RequestLine = {Method, uri_to_path(URI), Version},
-%		ewok_log:debug([{request, RequestLine}]),
-%		ok = inet:setopts(Socket, [{packet, httph_bin}]),
-		ok = 
-			case Transport of 
-			gen_tcp -> inet:setopts(Socket, [{packet, httph_bin}]);
-			ssl -> ssl:setopts(Socket, [{packet, httph_bin}])
-			end,
-		get_headers({Transport, Socket}, RequestLine, [], Timeout, 0, MaxHeaders);
+		ok = ewok_socket:setopts(Socket, [{packet, httph_bin}]),
+		get_headers(Socket, RequestLine, [], Timeout, 0, MaxHeaders);
 	%% TODO: is there any reason that would mean that we can/should continue?
 	{error, Reason} ->
 		ewok_log:warn([{connection, Reason}]),
-		Transport:close(Socket),
+		ewok_socket:close(Socket),
 		exit(normal)
     end.
 
 %%
-get_headers({Transport, Socket}, RequestLine, Headers, _Timeout, MaxHeaders, MaxHeaders) ->
+get_headers(Socket, RequestLine, Headers, _Timeout, MaxHeaders, MaxHeaders) ->
 	ProxyHeader = proplists:get_value(<<"X-Forwarded-For">>, Headers),
 	ewok_log:error([
 		{message, "Too many headers"}, 
@@ -108,11 +110,11 @@ get_headers({Transport, Socket}, RequestLine, Headers, _Timeout, MaxHeaders, Max
 		{remote_ip, ewok_http:get_remote_ip(Socket, ProxyHeader)}
 	]),
 	%% NOTE: Consider sending the response 'bad_request' instead of just closing out?
-	Transport:close(Socket),
+	ewok_socket:close(Socket),
 	exit(normal);
 %%
-get_headers({Transport, Socket}, RequestLine = {Method, Path, Version}, Headers, Timeout, Count, MaxHeaders) ->
-	case Transport:recv(Socket, 0, Timeout) of
+get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Count, MaxHeaders) ->
+	case ewok_socket:recv(Socket, 0, Timeout) of
 	{ok, {http_header, _Integer, Name, _Reserved, Value}} ->
 		HeaderName =
 			case is_atom(Name) of
@@ -124,15 +126,10 @@ get_headers({Transport, Socket}, RequestLine = {Method, Path, Version}, Headers,
 			true -> Count + 1;
 			false -> Count %% i.e. 'infinity'
 			end,
-		get_headers({Transport, Socket}, RequestLine, [{HeaderName, Value} | Headers], Timeout, NewCount, MaxHeaders);
+		get_headers(Socket, RequestLine, [{HeaderName, Value} | Headers], Timeout, NewCount, MaxHeaders);
 	{ok, http_eoh} ->
-%		ok = inet:setopts(Socket, [{packet, raw}]), 
-		ok = 
-			case Transport of 
-			gen_tcp -> inet:setopts(Socket, [{packet, raw}]);
-			ssl -> ssl:setopts(Socket, [{packet, raw}])
-			end,
-		Request = ewok_request_obj:new(Transport, Socket, Timeout, Method, Path, Version, Headers, MaxHeaders),
+		ok = ewok_socket:setopts(Socket, [{packet, raw}]),
+		Request = ewok_request_obj:new(Socket, Timeout, Method, Path, Version, Headers, MaxHeaders),
 		get_session(Request);
 %% IMPL: If the client screws up should we be strict (as currently), or lenient (as below)...
 %%	{error, {http_error, <<$\r, $\n">>}} ->
@@ -142,18 +139,18 @@ get_headers({Transport, Socket}, RequestLine = {Method, Path, Version}, Headers,
 	%% TODO: is there any other reason that would mean that we can/should continue?
 	{error, {http_error, Reason}} ->
 		ewok_log:error([{http_error, Reason}]), 
-		Transport:close(Socket), 
+		ewok_socket:close(Socket), 
 		exit(normal);
 	{Error, Reason} ->
 		ewok_log:error([{socket_error, {Error, Reason}}]), 
-		Transport:close(Socket),
+		ewok_socket:close(Socket),
 		exit(normal)
     end.
 	
 %% WHO
 get_session(Request) ->
 	Session = ewok_session:get_session(Request:cookie(), Request:remote_ip()),
-%	?TTY("~p~n", [Request]),
+	%% ?TTY("~p~n", [Request]),
 	case Request:version() of
 	{1, 1} -> 
 		get_route(Request, Session);
@@ -256,7 +253,8 @@ do_response(Request, Session, Status) when is_integer(Status) ->
 do_response(Request, Session, {Status, Headers}) ->
 	do_response(Request, Session, {Status, Headers, []});
 % by this time, we should have a full response
-do_response(Request, Session, {Status, Headers, Content}) ->
+do_response(Request, Session, {Status, Headers, Content}) ->	
+
 	Code = ewok_http:status_code(Status),
 	%
 	ewok_session:update(Session),
@@ -267,9 +265,11 @@ do_response(Request, Session, {Status, Headers, Content}) ->
 		true -> Headers
 		end,
 	Response = {response, Code, NewHeaders, Content, false},
+%	?TTY("~p -> ~p~n", [Request:url(), Response]),
 	
 	%% and finally...
 	{ok, _HttpResponse, BytesSent} = ewok_response:reply(Request, Response),
+%	?TTY("HTTP~nREQUEST:~n~p~nRESPONSE:~n~p~n~n", [Request, HttpResponse]),
 	%%
 	{Tag, Message} = format_access_log(Request, Session, Code, BytesSent),
 	ok = ewok_log:log(access, Tag, Message),
@@ -279,7 +279,6 @@ do_response(Request, Session, {Status, Headers, Content}) ->
 %%
 cleanup(Request, Session) ->
 	%?TTY("~nPD STATE~n~p~n", [lists:sort(get())]),
-	{Transport, Socket} = Request:socket(),
 	case Request:should_close() of
 	true ->
 		%ewok_session:close(Session),
@@ -290,19 +289,26 @@ cleanup(Request, Session) ->
 		%after 1000 ->
 		%	ok
 		%end,
-		?TTY("Closed ~p~n", [Socket]),
-		Transport:close(Socket),
+		?TTY("Closing ~p~n", [Request:socket()]),
+		ewok_log:info({closed, Request:socket()}),
+		ewok_socket:close(Request:socket()),
 		exit(normal);
 	false ->
-		%?TTY("Connection ~p~n", [Request:header(connection)]),
-		%% NOTE: IE and Chrome (not Firefox) will close out when 304 not_modified is 
-		%% returned even though they ask for keep-alive... weird! Chrome lists this 
-		%% as a fixed bug in their browser, which again leaves IE as the toy.
-		Timeout = Request:timeout(), 
-		MaxHeaders = Request:max_headers(),
-		Session:reset(), %% ?? not sure we should do this...
-		Request:reset(),
-		?MODULE:service({Transport, Socket}, Timeout, MaxHeaders)
+		case Request:websocket() of
+		true ->
+			%?TTY("Keeping WebSocket Open...~n", []),
+			ok;
+		_ ->
+			%?TTY("Connection ~p~n", [Request:header(connection)]),
+			%% NOTE: IE and Chrome (not Firefox) will close out when 304 not_modified is 
+			%% returned even though they ask for keep-alive... weird! Chrome lists this 
+			%% as a fixed bug in their browser, which again leaves IE as the toy.
+			Timeout = Request:timeout(), 
+			MaxHeaders = Request:max_headers(),
+			Session:reset(), %% ?? not sure we should do this...
+			Request:reset(),
+			?MODULE:service(Request:socket(), Timeout, MaxHeaders)
+		end
 	end.
 
 %%

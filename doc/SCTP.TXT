@@ -1,0 +1,71 @@
+
+Jayson Vantuyl
+View profile  
+ More options Sep 20, 6:37 pm
+Short Version: 
+Strictly speaking, SCTP doesn't really have an accept at the protocol   
+level.  It only has associations.  While the protocol has a   
+specification (RFC 2960), the socket API is only a draft.  The draft   
+does specify an accept function, but it's only for convenience of   
+people who write imperative, heavily state-laden code.  Since the   
+protocol doesn't really have an "accept" at the low-level, it's all   
+really mental acrobatics on the part of the Socket API. 
+The Erlang implementation appears to use the API that fits SCTP's   
+primary use-case.  Associations happen automatically if you're   
+listening, and you can kill them if you don't like them.  I don't have   
+a working SCTP deployment to play with right now, but I'm pretty sure   
+that new associations come in as assoc_change events when you're   
+receiving. 
+Long Version: 
+I've looked at two implementations; one in Python (pySCTP) and one in   
+Java (javaSCTP).  The Java one does not have an accept function.  The   
+Python one does.  The Socket API draft goes so far as to have two   
+types of SCTP-sockets, a one-to-many-style socket, and a one-to-one- 
+style socket. 
+At a protocol level, SCTP just forms associations.  You can ask it to   
+do so, and the behavior of the server isn't exactly specified.  In the   
+Socket API draft, they suggest that one-to-many sockets should   
+automatically accept associations (like UDP does), and one-to-one   
+sockets are either accepted explicitly (like TCP) or peeled off of a   
+many-to-many socket using sctp_peeloff (unlike anything else at all). 
+I personally think that this draft does a good job at enabling people   
+to use SCTP in completely the wrong way.  I think it's what happens   
+when people who think in terms of threaded, stateful code work with a   
+protocol that's good for stateless, event-driven coding.  Basically,   
+horror ensues. 
+This is all largely because the use-case for SCTP is very different   
+from the one for UDP or TCP.  TCP is largely made for individual   
+connections where a single server and single client have a meaningful   
+relationship in a stream of bytes that ends when the connection   
+closes.  UDP is largely made for extremely unstructured blasting of   
+stateless records of data between arbitrary combinations of hosts.   
+SCTP is made for blended situations where a mesh of clients and   
+servers blast stateless records to each other, interleaved with   
+ordered streams of records. 
+As an example of *the* SCTP use-case, consider tunneling phone-switch   
+data over the internet.  You may have a dozen phone switches, each   
+blasting each other with streams of events that must be processed in a   
+certain order.  You may have multiple streams, e.g. control   
+information (allocate this line, this line is ringing), load   
+information (I'm loaded, route around me), messaging information (here   
+are some SMS messages).  On the other hand, there may be diagnostic   
+information that is sent completely outside of any stream (I'm   
+shutting down, I had a hardware fault, etc). 
+Each of these might be of relative importance.  Each of these   
+typically will take the form of records of a specific size.  Some of   
+these should be ordered with respect to each other, but not all of   
+them.  This is where TCP falls down and SCTP shines. 
+For TCP, each ordered stream would be a different connection between   
+the machines.  Each connection could be lost and would have to be re- 
+established.  If you were to multiplex multiple connections in a   
+single TCP connection, you get head-of-line blocking problems.  When   
+you have record oriented data, you have to frame it with data   
+structures to tell when one record ends and the other begins.  If you   
+get out of sync, the only way to resynchronize reliably may be to kill   
+the connection.  It's just not optimal. 
+With SCTP, you simply initiate associations and watch for data /   
+events.  Data shows up in neat packets, marked with their source.   
+Streams are neatly independent.  There is no need to do framing.   
+There are no head-of-line problems that you don't create for   
+yourself.  There is no management of associations, they just form and   
+break as is possible. 

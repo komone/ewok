@@ -59,7 +59,7 @@ start_link() ->
 		%% DS = ewok_data_srv:connect(default)
 		Transport = gen_tcp, %% TEMP
 		Port = ewok:config({ewok, smtp, port}, 2525),
-		SocketOpts = ewok_socket_srv:configure(Transport, "ewok.smtp"),
+		SocketOpts = ewok_socket:configure(Transport, "ewok.smtp"),
 		MaxConnections = ewok:config("ewok.smtp.tcp.max_connections", infinity),
 		Timeout = ewok:config({ewok, smtp, request_timeout}, 30) * 1000,
 		

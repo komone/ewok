@@ -3,8 +3,8 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
-%-include("../include/esp.hrl").
+-include("ewok.hrl").
+%-include("esp.hrl").
 
 -behavior(ewok_http_resource).
 -export([filter/1, resource_info/0]).

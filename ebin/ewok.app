@@ -29,11 +29,11 @@
 		ewok_data_srv,
 		ewok_identity_srv,
 		ewok_session_srv,
-		ewok_workflow_sup,
+%		ewok_workflow_sup,
 		ewok_deployment_srv,
-		ewok_http_srv,
-		ewok_smtp_srv,
-		ewok_umtp
+		ewok_http_srv
+%		ewok_smtp_srv,
+%		ewok_umtp
 	]}},
 	%% 
 	{env, [

@@ -3,9 +3,9 @@
 -vsn({1,0,0}).
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
--export([absolute_uri/1, get_remote_ip/3, browser_detect/1]).
+-export([absolute_uri/1, absolute_uri/2, get_remote_ip/2, browser_detect/1]).
 -export([url_encode/1, url_decode/1]).
 -export([status_code/1, status_message/1, header/1]).
 -export([mimetype/1, date/0, date/1]). 
@@ -13,18 +13,19 @@
 -export([absolute_uri_couch/1]).
 
 
-%% 
 absolute_uri(Path) -> 
+	absolute_uri(<<"http">>, Path).
+%% 
+absolute_uri(Protocol, Path) when is_binary(Protocol) -> 
 	{ok, Host} = inet:gethostname(),
 	%% TODO: perhaps ensure FQDN by adding inet:gethostbyname(Host), ?
 	Port =
 		case ewok:config({ewok, http, port}) of
-		undefined -> "";
-		80 -> "";
-		Value -> lists:concat([":", Value])
+		undefined -> <<>>;
+		80 -> <<>>;
+		Value -> [<<":">>, integer_to_list(Value)]
 		end,
-	URI = lists:concat(["http://", Host, Port, Path]),
-	list_to_binary(URI).
+	list_to_binary([Protocol, <<"://">>, string:to_lower(Host), Port, Path]).
 	
 %% Couchdb version...
 absolute_uri_couch(Request) -> 
@@ -39,13 +40,8 @@ absolute_uri_couch(Request) ->
 	"http://" ++ Host ++ Request:path().
 
 %%
-get_remote_ip(Transport, Socket, ProxyHeader) ->
-	Peername = 
-		case Transport of
-		gen_tcp -> inet:peername(Socket);
-		ssl -> ssl:peername(Socket)
-		end,
-	case Peername of
+get_remote_ip(Socket, ProxyHeader) ->
+	case ewok_socket:peername(Socket) of
 	{ok, {Addr = {10, _, _, _}, _Port}} ->
 		case ProxyHeader of
 		undefined ->
@@ -225,6 +221,8 @@ header(www_authenticate) ->    <<"WWW-Authenticate">>;
 header(cookie) ->              <<"Cookie">>;
 header(set_cookie) ->          <<"Set-Cookie">>;
 header(origin) ->              <<"Origin">>;
+%% WebSockets
+header(WebSocket = <<"WebSocket-", _R/binary>>) -> WebSocket;
 %% 'X' Headers
 header(X = <<"X-", _R/binary>>) -> X.
 %% Don't return undefined if not found... ewok_request gets unhappy.

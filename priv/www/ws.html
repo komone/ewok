@@ -1,0 +1,26 @@
+<html>
+<head>
+	<title>Web Socket Test Page</title>
+	<link rel="icon" href="/favicon.png" type="image/png"/> 
+	<script type="text/javascript" src="scripts/jquery-1.3.2.js"></script>
+</head>
+<body> 
+<h1 id="first">WebSockets</h1>
+<script>
+if ("WebSocket" in window) {
+	var ws = new WebSocket("ws://ferrari:8080/websocket"); 
+	ws.onopen = function() { 
+		ws.send(navigator.userAgent); 
+	}
+	ws.onmessage = function (evt) { 
+		$("#first").html(evt.data);
+	}
+	ws.onclose = function() { 
+		alert("closed"); 
+	}
+} else {
+	//
+}
+</script> 
+</body> 
+</html>
