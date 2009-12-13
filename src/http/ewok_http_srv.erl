@@ -18,7 +18,7 @@
 
 -include("ewok.hrl").
 
--behavior(ewok_service).
+-behaviour(ewok_service).
 -export([start_link/0, stop/0, service_info/0]).
 
 %% API
