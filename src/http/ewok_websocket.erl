@@ -23,7 +23,9 @@
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--record(state, {socket}).
+-define(USAGE, "valid commands are 'start' and 'stop'").
+
+-record(state, {socket, timer}).
 
 start(Socket) ->
     gen_server:start_link(?MODULE, [Socket], []).
@@ -37,7 +39,6 @@ init([Socket]) ->
 %	?TTY("WEBSOCKET ~p~n", [Socket]),
 %	ewok_socket:send(Socket, [<<0>>, <<"websocket server started">>, <<255>>]),
     ewok_log:info("websocket server started"),
-	erlang:start_timer(1000, self(), update),
     {ok, #state{socket=Socket}}.
 
 handle_call(Message, _From, State) ->
@@ -51,18 +52,44 @@ handle_cast(Message, State) ->
     {noreply, State}.
 
 handle_info({timeout, _Ref, update}, State) ->
-	ewok_socket:send(State#state.socket, frame(ewok_util:timestamp())),
-	erlang:start_timer(1000, self(), update),
-    {noreply, State};	
+	send(State#state.socket, ewok_util:timestamp()),
+	Ref = erlang:start_timer(1000, self(), update),
+    {noreply, State#state{timer=Ref}};	
 handle_info({tcp_closed, _Socket}, State) ->
+	cleanup(State),
 	ewok_log:debug("websocket closed"),
 	{stop, normal, State};
 handle_info({tcp_error, _Socket, Reason}, State) ->
 	ewok_log:warn([{"websocket error", Reason}]),
 	{stop, normal, State};
 handle_info({tcp, _Socket, Data}, State) ->
-	ewok_log:info([{"browser message: ", unframe(Data)}]),
-    {noreply, State};
+	ewok_log:info([{"browser: ", unframe(Data)}]),
+	NewState = 
+		case unframe(Data) of
+		"start" -> 
+			case State#state.timer of
+			Ref when is_reference(Ref) ->
+				send(State#state.socket, "already started!"),
+				State;
+			_ ->
+				send(State#state.socket, ewok_util:timestamp()),
+				Ref = erlang:start_timer(1000, self(), update),
+				State#state{timer=Ref}
+			end;
+		"stop" ->
+			case State#state.timer of
+			Ref when is_reference(Ref) -> 
+				erlang:cancel_timer(Ref),
+				State#state{timer=undefined};
+			_ -> 
+				send(State#state.socket, "already stopped!"),
+				State
+			end;
+		_ -> 
+			send(State#state.socket, ?USAGE),
+			State
+		end,
+    {noreply, NewState};
 handle_info(Message, State) ->
 	ewok_log:warn(["websocket info", Message]),
     {noreply, State}.
@@ -70,9 +97,22 @@ handle_info(Message, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
+	cleanup(State),
     ewok_log:info("websocket server stopped"),
     ok.
+
+send(Socket, Text) ->
+	ewok_socket:send(Socket, frame(Text)).
+
+cleanup(State) ->
+	case State#state.timer of
+	Ref when is_reference(Ref) -> 
+		erlang:cancel_timer(Ref);
+	_ ->
+		ok
+	end.
+	
 
 unframe(Data) when is_binary(Data) ->
 	unframe(binary_to_list(Data));

@@ -3,24 +3,67 @@
 	<title>Web Socket Test Page</title>
 	<link rel="icon" href="/favicon.png" type="image/png"/> 
 	<script type="text/javascript" src="scripts/jquery-1.3.2.js"></script>
+	<script>
+	var ws;
+	function start() {
+		if ("WebSocket" in window) {
+			ws = new WebSocket("ws://" + location.host + "/websocket"); 
+			ws.onopen = function() { 
+				ws.send(navigator.userAgent); 
+				$("#label").html(navigator.userAgent);
+			}
+			ws.onmessage = function (evt) { 
+				$("#response").html(evt.data);
+			}
+			ws.onclose = function() { 
+				$("#label").html("websocket closed");
+			}
+		} else {
+			alert("Requires Google Chrome Browser 4.0.249 or later");
+		}
+	}
+	$(function() {
+		$("#send").click(function() {
+			var command = $("#enter").attr("value");
+			if (command.length > 0) {
+				ws.send(command);
+				$("#label").html(command);
+			} else {
+				$("#label").html("enter a command");
+			}
+		});
+	});
+	</script> 
+<style>
+	body {
+		font-family: arial;
+		font-size: 9pt;
+	}
+	h1 {
+		font-size: 18pt;
+		align: center;
+	}
+	#container {
+		margin: 50px;
+		padding: 20px;
+		background-color: #eee;
+		border: solid 1px #333;
+		align: center;
+		vertical-align: center;
+	}
+	#label {
+		font-weight: bold;
+	}
+</style>
 </head>
-<body> 
-<h1 id="first">WebSockets</h1>
-<script>
-if ("WebSocket" in window) {
-	var ws = new WebSocket("ws://ferrari:8080/websocket"); 
-	ws.onopen = function() { 
-		ws.send(navigator.userAgent); 
-	}
-	ws.onmessage = function (evt) { 
-		$("#first").html(evt.data);
-	}
-	ws.onclose = function() { 
-		alert("closed"); 
-	}
-} else {
-	//
-}
-</script> 
+<body onload="start()"> 
+<div id="container">
+<h1>WebSockets Clock Demo</h1>
+<input id="enter" type="text"/>
+<input id="send" type="button" value="Send"/>
+<h2 id="response">Valid commands: start, stop, clear</h2>
+<p>Sent: <span id="label"/></p>
+</div>
+<p >
 </body> 
 </html>
