@@ -39,13 +39,9 @@ filter(_Request) ->
 		Error:Reason ->
 			{Error, Reason}
 		end,
-	%?TTY("UPGRADE: ~p~n", [Upgrade]),
 	case Upgrade of
 	ok ->
-		Host = Request:header(<<"Host">>),
-		%Origin = Request:header(<<"Origin">>),
 		Protocol = Request:header(<<"WebSocket-Protocol">>),
-		%?TTY("WebSocket {Host: ~p, Origin: ~p, Protocol ~p}~n", [Host, Origin, Protocol]),
 		case Protocol of
 		%% WebSocket modules to handle custom protocols should be added here...
 		% undefined -> ??
@@ -53,11 +49,7 @@ filter(_Request) ->
 		_ -> 
 			{ok, Pid} = ewok_websocket:start(Request:socket()),
 			ok = ewok_socket:controlling_process(Request:socket(), Pid),
-			{switching_protocols, [
-				{<<"WebSocket-Origin">>, Host},
-				{<<"WebSocket-Location">>, Request:url()},
-				{<<"WebSocket-Protocol">>, Protocol}
-			]}
+			switching_protocols
 		end;
 	_ -> 
 		bad_request	
