@@ -70,8 +70,8 @@ get_http_response(Request, Response) ->
 		[<<"HTTP/1.1 101 Web Socket Protocol Handshake\r\n">>,
 		<<"Upgrade: WebSocket\r\n">>,
 		<<"Connection: Upgrade\r\n">>,
-		<<"WebSocket-Origin: ">>, ewok_http:absolute_uri(""), <<"\r\n">>, 
-		<<"WebSocket-Location: ">>, ewok_http:absolute_uri(<<"ws">>, Request:path()), <<"\r\n">>, 
+		<<"WebSocket-Origin: ">>, Request:header(<<"Origin">>), <<"\r\n">>, 
+		<<"WebSocket-Location: ws://">>, Request:header(<<"Host">>), Request:path(), <<"\r\n">>, 
 %		<<"WebSocket-Protocol: sample\r\n">>, 
 		<<"\r\n">>];
 	_ ->
