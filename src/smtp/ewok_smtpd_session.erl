@@ -77,7 +77,7 @@ mail(Message, _From, State) ->
 
 %%
 data({_, <<$.>>}, _From, State) ->
-	ewok_log:log(mail, State),
+	ewok_log:message(mail, State),
 	ewok_smtp_store:save(State#state{id=ewok_identity:key()}),
 	{reply, service_ready, session, #state{}};
 data(Message, _From, State) ->
@@ -105,18 +105,18 @@ init(Options) ->
 	
 %% TODO: complete callback set
 handle_event(stop, _StateName, State) ->
-	ewok_log:log(mail, stop),
+	ewok_log:message(mail, stop),
 	{stop, normal, State};
 handle_event(Event, StateName, State) ->
-	ewok_log:log(mail, event, Event),
+	ewok_log:message(mail, event, Event),
     {stop, {StateName, undefined_event, Event}, State}.
 
 handle_sync_event(Event, _From, StateName, State) ->
-	ewok_log:log(mail, error, Event),
+	ewok_log:message(mail, error, Event),
     {stop, {StateName, undefined_event, Event}, State}.
 
 handle_info(Info, StateName, State) ->
-	ewok_log:log(mail, info, Info),
+	ewok_log:message(mail, info, Info),
     {noreply, StateName, State}.
 
 code_change(_OldVsn, StateName, State, _Extra) ->

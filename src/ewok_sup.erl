@@ -13,8 +13,9 @@
 %% limitations under the License.
 
 -module(ewok_sup).
--vsn({1,0,0}).
--author('steve@simulacity.com').
+-vsn("1.0.0").
+-name("Ewok AS Supervisor").
+-depends([kernel, stdlib]).
 
 -include("ewok.hrl").
 
@@ -23,55 +24,37 @@
 
 %% TODO: ewok_sup is actually a 'fake' service...
 %% TODO: remove "upgrade" and figure out how to do it better
--export([service_info/0, start_services/1, upgrade/0]).
-
-%% NOTE: This is a 'fake' service
-service_info() -> [ 
-	{name, "Ewok AS Supervisor"}, 
-	{version, {1,0,0}}, 
-	{depends, [kernel, stdlib]} 
-].
-
+-export([start_services/1, upgrade/0]).
 
 %%
 %% supervisor callback
 %%
 init(Args) ->
-    {ok, _IP} = %% IMPL: Maybe use this later -- for now ignore
-		case os:getenv("EWOK_IP") of 
-		false -> {ok, {0,0,0,0}};
-		Any -> inet_parse:address(Any) 
-		end,
 	ChildSpecs = [spec(Service) || Service <- Args],
 	case supervisor:check_childspecs(ChildSpecs) of
-	ok ->
-		%% IMPL: Start the cache server first as other services
-		%% depend on configuration parameters being available. 
-		%% Services are thus started after init has completed
-		{ok, {{one_for_one, 10, 10}, [spec(ewok_cache_srv)]}};
-	Error ->
-		Error
+	ok -> {ok, {{one_for_all, 0, 1}, ChildSpecs}};
+	Error -> Error
 	end.
 
 %%
-start_services(Args) ->
-	ChildSpecs = [spec(Service) || X = Service <- Args, X =/= ewok_cache_srv],
-	start_services1(ChildSpecs).
-
-start_services1([Child|Rest]) ->
+start_services([Child|Rest]) ->
+	ewok_log:message(?MODULE, [{starting, Child}]),
 	case supervisor:start_child(?MODULE, Child) of
 	Error = {error, _} -> Error;
 %	{ok, undefined} -> {error, {service_failure, Child}};
-	_ -> start_services1(Rest)
+	_ -> start_services(Rest)
 	end;	
-start_services1([]) ->
+start_services([]) ->
 	ok.
 	
 %% TODO: Review all of these options on a per-service basis after
 %% performance tests. For now, just set reasonable defaults.
+
+%% @deprecated
 spec(ewok_cache_srv) -> 
 	{ewok_cache_srv, {ewok_cache_srv, start_link, []}, 
 		permanent, 5000, worker, [ewok_cache_srv]};
+%%
 spec(ewok_data_srv) -> 
 	{ewok_data_srv, {ewok_data_srv, start_link, []}, 
 		permanent, 5000, worker, [ewok_data_srv]};
@@ -93,6 +76,7 @@ spec(ewok_workflow_sup) ->
 spec(ewok_http_srv) -> 
 	{ewok_http_srv, {ewok_http_srv, start_link, []}, 
 		permanent, 5000, worker, [ewok_http_srv]};
+%% review (non-existent)
 spec(ewok_geoip_srv) -> 
 	{ewok_geoip_srv, {ewok_geiop_srv, start_link, []}, 
 		permanent, 5000, worker, [ewok_geiop_srv]};
@@ -101,10 +85,6 @@ spec(Other) when is_atom(Other) ->
 	{Other, {Other, start_link, []}, 
 		permanent, 5000, worker, [Other]}.
 
-
-%% NOT USED (yet?)
-%% from mochiweb
-upgrade() ->
-    {ok, {_, Specs}} = init([]),
-    [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
-    ok.
+%% what to do here?
+upgrade() -> 
+	ok.

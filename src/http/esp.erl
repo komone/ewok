@@ -1,11 +1,22 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
--module(esp).
--vsn("1.0").
--author('steve@simulacity.com').
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 
--include("../include/esp.hrl").
-%% TEMP
--include("../include/ewok.hrl").
+-module(esp).
+
+-include("esp.hrl").
+-include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -compile(export_all).
 %% API
@@ -26,7 +37,10 @@ validate(Params, Predicates) ->
 	esp_validator:validate(Params, Predicates).
 
 %% 
-render(Page) when is_record(Page, page) ->
+render(Page) ->
+	render(ok, Page).
+	
+render(Status, Page = #page{}) ->
 	Spec = esp_html:page(Page#page.title, Page#page.head, Page#page.body),
 	try begin
 		Elements = render_elements([Spec], []),
@@ -35,9 +49,9 @@ render(Page) when is_record(Page, page) ->
 			{content_type, ewok_http:mimetype(Page#page.doctype)},
 			{content_length, size(Markup)}
 		], 
-		{ok, Headers, Markup}
+		{Status, Headers, Markup}
 	end catch
-	_Error:Reason ->
+	Error:Reason ->
 		{internal_server_error, [], Reason}
 	end.
 %% 
@@ -67,7 +81,7 @@ render_page(Spec, Module, Request, Session, AllowInclude)  ->
 			{esp, 'include', Filename} ->
 				true = AllowInclude, % intentionally throw parse error
 				%have to load the file now...
-				?TTY("ESP include: ~p~n", [Filename]);
+				?TTY({"ESP include", Filename});
 				%render_page(Spec, Module, Request, Session, false);
 			{page, Function, []} -> 
 				Result = Module:Function(Request, Session),
@@ -81,7 +95,7 @@ render_page(Spec, Module, Request, Session, AllowInclude)  ->
 				esp_html:text(Session:started());
 			{session, user, []} ->
 				case Session:user() of
-				User when is_record(User, user) -> User#user.name;
+				User when is_record(User, ewok_user) -> User#ewok_user.name;
 				_ -> <<"undefined">>
 				end;
 			{session, data, []} ->

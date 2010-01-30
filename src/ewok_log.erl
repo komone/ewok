@@ -13,23 +13,26 @@
 %% limitations under the License.
 
 -module(ewok_log).
--vsn({1,0,0}).
--author('steve@simulacity.com').
 
--include("ewok_system.hrl").
+-include("ewok.hrl").
 
--export([init_server_log/0, add_log/1, remove_log/1, set_default/1, 
-	rollover/1, log_info/0, log_info/1, debug/1, 
-	info/1, warn/1, error/1, fatal/1, log/2, log/3]).
+-export([add_log/1, remove_log/1, set_default/1, 
+	rollover/1, log_info/0, log_info/1, message/2, message/3,
+	debug/1, info/1, warn/1, error/1, fatal/1]).
 
 -define(LOGGER, ewok_logging_srv).
 
-%% 
-init_server_log() ->
-	{ok, BootLog} = log_info(default),
-	add_log(server),
-	set_default(server),
-	remove_log(BootLog#log.id). %% the only ewok_system dep.
+%%
+message(Tag, Message) -> 
+	log({default, Tag, Message}).
+message(Log, Tag, Message) when is_atom(Log) -> 
+	log({Log, Tag, Message}).
+%%
+debug(Message) -> log({default, debug, Message}).
+info(Message)  -> log({default, info, Message}).
+warn(Message)  -> log({default, warn, Message}).
+error(Message) -> log({default, error, Message}).
+fatal(Message) -> log({default, fatal, Message}).
 
 %%
 add_log(Id) when is_atom(Id) ->
@@ -53,24 +56,11 @@ log_info() ->
 log_info(Id) when is_atom(Id) ->
 	gen_event:call(error_logger, ?LOGGER, {log_info, Id}).
 
-%%
-debug(Message) -> log({default, debug, Message}).
-info(Message)  -> log({default, info, Message}).
-warn(Message)  -> log({default, warn, Message}).
-error(Message) -> log({default, error, Message}).
-fatal(Message) -> log({default, fatal, Message}).
-
 %% Use error_report for everything and manage log_level internally
 %% Using format irresponsibly can crash out the error_logger entirely,
 %% so force custom formatting work into the appropriate service and not 
 %% try to do it here...
 log(Report = {LogId, _, Message}) when is_atom(LogId), is_list(Message) ->
-	Return = error_logger:error_report(?LOGGER, Report),
-	Return;
+	error_logger:error_report(?LOGGER, Report);
 log({LogId, Type, Message}) ->
 	log({LogId, Type, [Message]}).
-%%
-log(LogId, Message) ->	log({LogId, undefined, Message}).
-%%
-log(LogId, Level, Message) -> log({LogId, Level, Message}).
-

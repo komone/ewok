@@ -9,6 +9,7 @@
 		if ("WebSocket" in window) {
 			ws = new WebSocket("ws://" + location.host + "/websocket"); 
 			ws.onopen = function() { 
+				alert(ws.readyState);
 				ws.send(navigator.userAgent); 
 				$("#label").html(navigator.userAgent);
 			}
@@ -61,7 +62,7 @@
 <h1>WebSockets Clock Demo</h1>
 <input id="enter" type="text"/>
 <input id="send" type="button" value="Send"/>
-<h2 id="response">Valid commands: start, stop, clear</h2>
+<h2 id="response">Valid commands: start, stop</h2>
 <p>Sent: <span id="label"/></p>
 </div>
 <p >

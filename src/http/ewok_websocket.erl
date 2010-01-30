@@ -51,17 +51,6 @@ handle_cast(Message, State) ->
 	ewok_log:warn(["websocket cast", Message]),
     {noreply, State}.
 
-handle_info({timeout, _Ref, update}, State) ->
-	send(State#state.socket, ewok_util:timestamp()),
-	Ref = erlang:start_timer(1000, self(), update),
-    {noreply, State#state{timer=Ref}};	
-handle_info({tcp_closed, _Socket}, State) ->
-	cleanup(State),
-	ewok_log:debug("websocket closed"),
-	{stop, normal, State};
-handle_info({tcp_error, _Socket, Reason}, State) ->
-	ewok_log:warn([{"websocket error", Reason}]),
-	{stop, normal, State};
 handle_info({tcp, _Socket, Data}, State) ->
 	ewok_log:info([{"browser: ", unframe(Data)}]),
 	NewState = 
@@ -90,6 +79,17 @@ handle_info({tcp, _Socket, Data}, State) ->
 			State
 		end,
     {noreply, NewState};
+handle_info({tcp_closed, _Socket}, State) ->
+	cleanup(State),
+	ewok_log:debug("websocket closed"),
+	{stop, normal, State};
+handle_info({tcp_error, _Socket, Reason}, State) ->
+	ewok_log:warn([{"websocket error", Reason}]),
+	{stop, normal, State};
+handle_info({timeout, _Ref, update}, State) ->
+	send(State#state.socket, ewok_util:timestamp()),
+	Ref = erlang:start_timer(1000, self(), update),
+    {noreply, State#state{timer=Ref}};	
 handle_info(Message, State) ->
 	ewok_log:warn(["websocket info", Message]),
     {noreply, State}.

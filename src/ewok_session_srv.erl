@@ -13,13 +13,15 @@
 %% limitations under the License.
 
 -module(ewok_session_srv). 
--vsn({1,0,0}).
--author('steve@simulacity.com').
+
+-name("Ewok Session Service").
+-depends([ewok_cache_srv, ewok_scheduler_srv]).
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
+-export([start_link/0, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
@@ -31,28 +33,21 @@
 -define(SERVER, ?MODULE).
 -define(ETS, ?MODULE).
 
--define(DEPENDS, [ewok_cache_srv, ewok_identity_srv]).
+-define(DEPENDS, [ewok_data_srv, ewok_identity_srv]).
 %%
 %% ewok_service Callbacks
 %%
 start_link() ->
-	ewok_log:log(default, service, {?MODULE, service_info()}),
 	ewok_util:check_dependencies(?DEPENDS),
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 stop() ->
     gen_server:cast(?SERVER, stop).
 
-service_info() -> [ 
-	{name, "Ewok Session Service"},
-	{version, {1,0,0}},
-	{depends, [ewok_cache_srv, ewok_scheduler_srv]}
-].
 
 %%
 %% gen_server Callbacks
 %%
 init([]) ->
-    ewok_identity:seed(),
     ets:new(?ETS, [set, named_table, public, {keypos, 2}]),
 	TTL = ewok:config({ewok, http, session, timeout}, 1800),
 	IdleTimeout = ewok:config({ewok, http, session, flush, interval}, 120) * 1000,

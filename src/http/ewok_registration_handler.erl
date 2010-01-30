@@ -45,16 +45,16 @@ filter(_Request) ->
 	Password = Request:parameter("password"),
 	Password2 = Request:parameter("password2"),
 
-	?TTY("REGISTRATION ~p~n", [{Domain, Username, Password}]),
+	?TTY({"REGISTRATION", {Domain, Username, Password}}),
 	case Password =:= Password2 of
 	true ->
 		case ewok_users:create_user(Domain, Username, Password) of 
 		{ok, Activation} -> 
-			?TTY("ACCEPTED: ~p~n", [Activation]),
+			?TTY({"ACCEPTED", Activation}),
 			Spec = success(Request, Session, Activation),
 			ewok_web:render(Request, Session, Spec); %% later generalize on realm/domain			
 		E = {error, __} ->
-			?TTY("DENIED ~p~n", [E]), 
+			?TTY({"DENIED", E}), 
 			%% do more with this later
 			'GET'(Request, Session)
 		end;

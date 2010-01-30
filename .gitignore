@@ -16,4 +16,4 @@ test/*
 *.lnk
 *.war
 *.pdf
-
+*.tar.gz

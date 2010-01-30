@@ -4,9 +4,6 @@
 %% Author: Steve Davis <steve@simulacity.com>
 %% Updated: July 30, 2009
 %%
-%% DON'T CHANGE THIS FILE WITHOUT COPYING TO INCLUDE/ESP.HRL 
-%% LATER: move all references to this file in the modules/source
-%% to ../include/esp.hrl and delete the copy in ./src
 
 %% ESP component record definitions for use in applications
 

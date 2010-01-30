@@ -1,10 +1,9 @@
 %%
 -module(ewok_activation_handler).
--vsn({1,0,0}).
--author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
--include("../include/esp.hrl").
+-include("ewok.hrl").
+-include("ewok_system.hrl").
+-include("esp.hrl").
 
 -behaviour(ewok_http_resource).
 -export([filter/1, resource_info/0]).
@@ -14,7 +13,7 @@
 %%
 %% Resource Callbacks
 %%
-resource_info() -> [{name, "Ewok Activation Handler"}].
+resource_info() -> [].
 
 %%
 filter(_Request) ->  ok.
@@ -31,7 +30,7 @@ filter(_Request) ->  ok.
 
 %%
 'POST'(Request, Session) ->
-	?TTY("~p~n", [Session:read(activation)]),
+	?TTY(Session:read(activation)),
 	case Session:take(activation) of
 	undefined ->
 		Realm = Request:parameter("realm"), %% hidden
@@ -59,12 +58,12 @@ filter(_Request) ->  ok.
 		true ->
 			case ewok_users:activate(Realm, Username, 
 					list_to_binary(Activation), Password) of 
-			{ok, User} when is_record(User, user) -> 
-				?TTY("USER: ~p~n", [User]),
+			{ok, User} when is_record(User, ewok_user) -> 
+				?TTY({"USER", User}),
 				Session:user(User),
 				{found, [{location, ewok_http:absolute_uri("/")}]};
 			E = {error, __} ->
-				?TTY("DENIED ~p~n", [E]), 
+				?TTY({"DENIED", E}), 
 				%% do more with this later
 				unauthorized
 			end;

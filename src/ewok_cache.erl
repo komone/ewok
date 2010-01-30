@@ -13,9 +13,6 @@
 %% limitations under the License.
 
 -module(ewok_cache).
--vsn({1,0,0}).
--author('steve@simulacity.com').
-
 -include("ewok.hrl").
 
 %% Cache API
@@ -47,7 +44,7 @@ lookup(Type) ->
 lookup(Type, Key) ->
 	case lists:member(Type, ets:all()) of
 	true ->
-		case ets:lookup(Type, Key) of
+		case ewok_cache_srv:lookup(Type, Key) of
 		[R] -> R;
 		[] -> undefined 
 		end;

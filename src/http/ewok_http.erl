@@ -4,6 +4,7 @@
 -author('steve@simulacity.com').
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -export([absolute_uri/1, absolute_uri/2, get_remote_ip/2, browser_detect/1]).
 -export([url_encode/1, url_decode/1]).
@@ -86,14 +87,16 @@ browser_signatures() -> [
 ].
 
 %% API
+mimetype(Type) when is_binary(Type) ->
+	case ewok_db:lookup(ewok_mimetype, Type) of
+	undefined -> <<"application/octet-stream">>;
+	#ewok_mimetype{media=Value} -> Value;
+	Error -> Error
+	end;
 mimetype(Type) when is_atom(Type) ->
 	mimetype([$.|atom_to_list(Type)]);
 mimetype(FileExt = [$.|_]) ->
-	case ewok_cache:lookup(mimetype, FileExt) of
-	undefined -> "application/octet-stream";
-	#mimetype{media=Value} -> Value;
-	Error -> Error
-	end.	
+	mimetype(list_to_binary(FileExt)).
 %
 date() ->
 	%calendar:day_of_the_week({Y, Mo, D}),
@@ -181,6 +184,7 @@ header(authorization) ->       <<"Authorization">>;
 header(cache_control) ->       <<"Cache-Control">>;
 header(connection) ->          <<"Connection">>;
 header(content_encoding) ->    <<"Content-Encoding">>;
+header(content_disposition) -> <<"Content-Disposition">>;
 header(content_language) ->    <<"Content-Language">>;
 header(content_length) ->      <<"Content-Length">>;
 header(content_location) ->    <<"Content-Location">>;
@@ -221,56 +225,56 @@ header(www_authenticate) ->    <<"WWW-Authenticate">>;
 header(cookie) ->              <<"Cookie">>;
 header(set_cookie) ->          <<"Set-Cookie">>;
 header(origin) ->              <<"Origin">>;
-%% WebSockets
+%% WebSockets Extension
 header(WebSocket = <<"WebSocket-", _R/binary>>) -> WebSocket;
 %% 'X' Headers
 header(X = <<"X-", _R/binary>>) -> X.
 %% Don't return undefined if not found... ewok_request gets unhappy.
 
 % HTTP Status Codes
-status_code(Int) when is_integer(Int) -> Int;
-status_code(continue)                 -> 100;
-status_code(switching_protocols)      -> 101;
-status_code(ok)                       -> 200;
-status_code(created)                  -> 201;
-status_code(accepted)                 -> 202;
+status_code(Int) when is_integer(Int)      -> Int;
+status_code(continue)                      -> 100;
+status_code(switching_protocols)           -> 101;
+status_code(ok)                            -> 200;
+status_code(created)                       -> 201;
+status_code(accepted)                      -> 202;
 status_code(non_authoritative_information) -> 203;
-status_code(no_content)               -> 204;
-status_code(reset_content)            -> 205;
-status_code(partial_content)          -> 206;
-status_code(multi_status)             -> 207;
-status_code(multiple_choices)         -> 300;
-status_code(moved_permanently)        -> 301;
-status_code(found)                    -> 302;
-status_code(see_other)                -> 303;
-status_code(not_modified)             -> 304;
-status_code(use_proxy)                -> 305;
-status_code(unused)                   -> 306;
-status_code(temporary_redirect)       -> 307;
-status_code(bad_request)              -> 400;
-status_code(unauthorized)             -> 401;
-status_code(payment_required)         -> 402;
-status_code(forbidden)                -> 403;
-status_code(not_found)                -> 404;
-status_code(method_not_allowed)       -> 405;
-status_code(not_acceptable)           -> 406;
+status_code(no_content)                    -> 204;
+status_code(reset_content)                 -> 205;
+status_code(partial_content)               -> 206;
+status_code(multi_status)                  -> 207;
+status_code(multiple_choices)              -> 300;
+status_code(moved_permanently)             -> 301;
+status_code(found)                         -> 302;
+status_code(see_other)                     -> 303;
+status_code(not_modified)                  -> 304;
+status_code(use_proxy)                     -> 305;
+status_code(unused)                        -> 306;
+status_code(temporary_redirect)            -> 307;
+status_code(bad_request)                   -> 400;
+status_code(unauthorized)                  -> 401;
+status_code(payment_required)              -> 402;
+status_code(forbidden)                     -> 403;
+status_code(not_found)                     -> 404;
+status_code(method_not_allowed)            -> 405;
+status_code(not_acceptable)                -> 406;
 status_code(proxy_authentication_required) -> 407;
-status_code(request_timeout)          -> 408;
-status_code(conflict)                 -> 409;
-status_code(gone)                     -> 410;
-status_code(length_required)          -> 411;
-status_code(precondition_failed)      -> 412;
-status_code(request_entity_too_large) -> 413;
-status_code(request_uri_too_long)     -> 414;
-status_code(unsupported_media_type)   -> 415;
+status_code(request_timeout)               -> 408;
+status_code(conflict)                      -> 409;
+status_code(gone)                          -> 410;
+status_code(length_required)               -> 411;
+status_code(precondition_failed)           -> 412;
+status_code(request_entity_too_large)      -> 413;
+status_code(request_uri_too_long)          -> 414;
+status_code(unsupported_media_type)        -> 415;
 status_code(request_range_not_satisfiable) -> 416;
-status_code(expectation_failed)       -> 417;
-status_code(internal_server_error)    -> 500;
-status_code(not_implemented)          -> 501;
-status_code(bad_gateway)              -> 502;
-status_code(service_unavailable)      -> 503;
-status_code(gateway_timeout)          -> 504;
-status_code(http_version_not_supported) -> 505.
+status_code(expectation_failed)            -> 417;
+status_code(internal_server_error)         -> 500;
+status_code(not_implemented)               -> 501;
+status_code(bad_gateway)                   -> 502;
+status_code(service_unavailable)           -> 503;
+status_code(gateway_timeout)               -> 504;
+status_code(http_version_not_supported)    -> 505.
 
 % Standard HTTP Status Messages
 status_message(100) -> <<"Continue">>;

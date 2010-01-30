@@ -13,11 +13,11 @@
 %% limitations under the License.
 
 -module(ewok_cache_srv).
--vsn("1.0.0").
--author('steve@simulacity.com').
+-name("Ewok Cache Service").
+-include("ewok.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
+-export([start_link/0, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
@@ -29,17 +29,10 @@
 %% ewok_service callbacks
 %%
 start_link() -> 
-	ewok_log:log(default, service, [{?MODULE, service_info()}]),
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 %
 stop() ->
     gen_server:cast(?SERVER, stop).
-%	
-service_info() -> [ 
-	{name, "Ewok Cache Service"},
-	{version, {1,0,0}},
-	{depends, []}
-].
 
 %%
 %%% gen_server
@@ -53,7 +46,7 @@ handle_call({add, Record}, _From, State) ->
 	NewState = 
 		case lists:member(Type, State) of
 		false -> 
-			ets:new(Type, [set, named_table, protected, {keypos, 2}]),
+			%ets:new(Type, [set, named_table, protected, {keypos, 2}]),
 			[Type|State];
 		true -> 
 			State

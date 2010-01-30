@@ -1,17 +1,33 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
 %% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_request_obj, [Socket, Timeout, Method, Url, Version, Headers, MaxHeaders]).
--vsn({1,0,0}).
+-vsn("1.0.0").
 -author('steve@simulacity.com').
 
 -include("ewok.hrl").
 -include_lib("kernel/include/file.hrl").
 
--export([get_range/0, get_body_length/0, socket/0, timeout/0, max_headers/0,
+-export([get_range/0, content_length/0, socket/0, timeout/0, max_headers/0,
 	remote_ip/0, version/0, url/0, headers/0, header/1, content/0, 
 	path/0, method/0, realm/0, set_realm/1]).
--export([recv/1, recv/2, recv_body/0, recv_body/1, should_close/0]).
+-export([recv/1, recv/2, should_close/0]).
 -export([cookie/0, cookie/1, parameter/1, parameters/0]).
 -export([reset/0, websocket/0]).
+
+%% expose for test only
+-compile(export_all).
 
 %%
 -define(REALM, www_request_realm).
@@ -19,11 +35,10 @@
 -define(REMOTE_IP, www_request_ip).
 -define(COOKIE, www_request_cookie).
 -define(QUERY, www_request_query).
--define(BODY_RECEIVE, www_request_body).
--define(BODY_LENGTH, www_request_length).
--define(BODY_DATA, www_request_body).
+-define(CONTENT_LENGTH, www_request_length).
+-define(CONTENT, www_request_body).
 -define(WEB_SOCKET, www_web_socket).
--define(CACHE, [?REALM, ?PATH, ?REMOTE_IP, ?COOKIE, ?QUERY, ?BODY_LENGTH, ?BODY_DATA]).
+-define(CACHE, [?REALM, ?PATH, ?REMOTE_IP, ?COOKIE, ?QUERY, ?CONTENT_LENGTH, ?CONTENT]).
 
 % 10 second default idle timeout
 -define(IDLE_TIMEOUT, 10000).
@@ -49,9 +64,7 @@ headers() -> Headers.
 
 websocket() ->
 	case erlang:get(?WEB_SOCKET) of
-	undefined ->
-		erlang:put(?BODY_RECEIVE, true),
-		erlang:put(?WEB_SOCKET, true);
+	undefined -> erlang:put(?WEB_SOCKET, true);
 	Value -> Value
 	end.
 	
@@ -64,17 +77,54 @@ remote_ip() ->
 	IP -> IP
 	end.
 
+%%
+content_length() ->
+	case erlang:get(?CONTENT_LENGTH) of
+	undefined ->
+		Length = 
+			case header(transfer_encoding) of
+			undefined ->
+				case header(content_length) of
+				undefined -> 0;
+				Value -> list_to_integer(binary_to_list(Value))
+				end;
+			<<"chunked">> -> 
+				chunked;			
+			Unknown ->
+				{unknown_transfer_encoding, Unknown}
+			end,
+		erlang:put(?CONTENT_LENGTH, Length),
+		Length;
+	Length -> Length
+	end.
+
+%%
 content() -> 
-	case erlang:get(?BODY_DATA) of
+    case header(expect) of
+	<<"100-continue">> -> ewok_response:continue(THIS);
+	_ -> ok %% expectation failed...
+    end,
+	case erlang:get(?CONTENT) of
 	undefined -> 
-		Data = recv_body(),
-		erlang:put(?BODY_DATA, Data);
+		Body = 
+			case content_length() of
+			undefined -> <<>>;
+			X when X =:= 0 -> <<>>;
+			X when is_integer(X) -> recv(X);
+			chunked ->
+				read_chunked_body(?MAX_RECV_BODY, []);
+			_ -> {error, not_implemented}
+			end,
+		% NOTE: Is it really such a good idea to store received content
+		% in the PD? If not, where does this go...
+		put(?CONTENT, Body),
+		Body;
 	Value -> Value
 	end.
 
 %%
 set_realm(Realm) when is_atom(Realm) ->
-	%% IMPL: enforces write once to PD
+	%% IMPL: enforce write once to PD -- NOTE: for persistent connections too!
 	undefined = erlang:put(?REALM, Realm).
 %%
 realm() ->
@@ -82,18 +132,15 @@ realm() ->
 
 %%
 should_close() ->
-	Version =/= {1,1} 
+	Version =/= {1,1}
 	orelse header(connection) =:= <<"close">>
 	%% unread data left on the socket, can't safely continue
-	orelse (erlang:get(?BODY_RECEIVE) =:= undefined 
+	orelse (erlang:get(?CONTENT) =:= undefined 
 		andalso header(content_length) =/= undefined
 		andalso header(content_length) > 0).
 
 
 %% change these signatures?
-get_body_length() ->
-    erlang:get(?BODY_LENGTH).
-	
 get_range() ->
     case header(range) of
         undefined ->
@@ -109,7 +156,7 @@ path() ->
 		%% NOTE: we'd like not to retrun a 'plain' string here. However, there's 
 		%% a few dependencies we need to address before removing {return, list} 
 		%% from this call.
-		case re:split(Url, "\\?", [{parts, 2}, {return, list}]) of
+		case re:split(Url, "\\?", [{parts, 2}]) of
 		[Path, _Query] -> Path;
 		[Path] -> Path
 		end,
@@ -118,6 +165,8 @@ path() ->
 	Path -> Path
 	end.
 %
+pathlist() ->	
+	ewok_util:split(path(), <<$/>>).
 
 header(K) when is_atom(K) ->
 	header(ewok_http:header(K));
@@ -157,6 +206,7 @@ cookie() -> % [{string(), string{}}] | undefined
 		Cookie;
 	Cookie -> Cookie
 	end.
+%%
 parse_cookie(Value) ->
 	Props = [X || X <- re:split(Value, ";")],
 	Pairs = [list_to_tuple(re:split(X, "=", [])) || X <- Props],
@@ -178,7 +228,7 @@ get_query() ->
 	case erlang:get(?QUERY) of
 	undefined -> 
 		Query = parse_query(Method),
-		put(?QUERY, Query),
+		undefined = put(?QUERY, Query),
 		Query;
 	Value -> Value
 	end.
@@ -189,16 +239,15 @@ parse_query('GET') ->
 	_ -> []
 	end;
 parse_query('POST') ->
-	case header(<<"Content-Type">>) of
+	case header(content_type) of
 	<<"application/x-www-form-urlencoded">> -> 
-		case get(?BODY_DATA) of
-		undefined ->
-			case recv_body() of
-			QS when is_binary(QS) -> parse_query(QS);
-			_ -> []
-			end;
-		Value -> parse_query(Value)
+		case content() of
+		QS when is_binary(QS) -> parse_query(QS);
+		_ -> []
 		end;
+	<<"multipart/form-data", _/binary>> ->
+		%% TODO: Take boundary from this header
+		parse_multipart(content());
 	_ -> []
 	end;
 parse_query(QS) ->
@@ -207,60 +256,17 @@ parse_query(QS) ->
 	[{ewok_http:url_decode(X), ewok_http:url_decode(Y)} || {X, Y} <- Pairs].	
 
 %%
-get_content_length() ->
-    case header(<<"Transfer-Encoding">>) of
-	undefined ->
-		case header(<<"Content-Length">>) of
-		undefined -> undefined;
-		Length -> list_to_integer(binary_to_list(Length))
-		end;
-	<<"chunked">> -> chunked;
-	Unknown -> {unknown_transfer_encoding, Unknown}
-    end.
-
-%%% Deal with request content
-
-%%
 recv(Length) -> 
 	recv(Length, ?IDLE_TIMEOUT).
 %% Timeout in msec.
 recv(Length, IdleTimeout) ->
     case ewok_socket:recv(Socket, Length, IdleTimeout) of
 	{ok, Data} ->
-		put(?BODY_RECEIVE, true),
+%		put(?BODY_RECEIVE, true),
 		Data;
 	_ ->
 		exit(normal)
     end.
-
-%%
-recv_body() ->
-    recv_body(?MAX_RECV_BODY).
-%
-recv_body(MaxBody) ->
-    case header(<<"Expect">>) of
-	<<"100-continue">> -> ewok_response:continue(THIS);
-	_ -> ok %% expectation failed...
-    end,
-    Body = 
-		case get_content_length() of
-		undefined -> 
-			undefined;
-		{unknown_transfer_encoding, Unknown} ->
-			exit({unknown_transfer_encoding, Unknown});
-		chunked ->
-			read_chunked_body(MaxBody, []);
-		0 ->
-			<<>>;
-		Length when is_integer(Length), Length =< MaxBody ->
-			recv(Length);
-		Length ->
-			exit({body_too_large, Length})
-		end,
-	% NOTE: Is it really such a good idea to store received content
-	% in the PD? If not, where does this go...
-    put(?BODY_DATA, Body),
-    Body.
 
 read_chunked_body(Max, Acc) ->
     case read_chunk_length() of
@@ -313,6 +319,48 @@ read_chunk(Length) ->
     end.
 
 %% Internal API
+
+%% MULTIPART FORM-DATA
+%% Primarily file upload...
+parse_multipart(Content) ->
+	[Boundary, Rest] = re:split(Content, <<"\r\n">>, [{parts, 2}]),
+	Parts = [ewok_util:trim(X) || X <- re:split(Rest, Boundary)],
+	parse_multipart(Parts, []).
+%	
+parse_multipart([], Acc) ->
+	lists:reverse(Acc);
+parse_multipart([<<"--">>|_], Acc) ->
+	lists:reverse(Acc);
+parse_multipart([H|T], Acc) ->
+	[Prefix, Value] = re:split(H, <<"\r\n\r\n">>, [{parts, 2}]),
+	Attrs = [ewok_util:trim(X) || X <- re:split(Prefix, <<"\r\n">>)],
+	Properties = parse_multipart_headers(Attrs, []),
+	{value, {<<"name">>, Name}, Properties1} = lists:keytake(<<"name">>, 1, Properties),
+	parse_multipart(T, [{Name, {Properties1, Value}}|Acc]).
+%	
+parse_multipart_headers([], Acc) ->
+	lists:reverse(Acc);
+parse_multipart_headers([H|T], Acc) ->
+	case re:split(H, <<$:>>) of
+	[<<"Content-Disposition">>, Value] -> 
+		Params = parse_multipart_disposition(ewok_util:trim(Value)),
+		parse_multipart_headers(T, lists:append(Params, Acc));
+	[<<"Content-Type">>, Value] -> 
+		parse_multipart_headers(T, [{<<"mimetype">>, ewok_util:trim(Value)}|Acc]);
+	_ ->
+		{error, H}
+	end.
+%
+parse_multipart_disposition(Value) ->
+	[<<"form-data">> | Parts] = re:split(Value, <<$;>>),
+	Pairs = [list_to_tuple(re:split(X, "=")) || X <- Parts],
+	Pairs1 = [{ewok_util:trim(X), ewok_util:trim(Y)} || {X, Y} <- Pairs],
+	[{ewok_http:url_decode(X), ewok_http:url_decode(strip_quotes(Y))} || {X, Y} <- Pairs1].
+
+strip_quotes(X) ->
+	re:replace(X, <<$">>, <<>>, [global, {return, binary}]).
+
+%%
 parse_range_request(RawRange) when is_list(RawRange) ->
     try
         "bytes=" ++ RangeString = RawRange,

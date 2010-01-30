@@ -1,9 +1,8 @@
 %%
 -module(esp_page_handler).
--vsn({1,0,0}).
--author('steve@simulacity.com').
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 %-include("esp.hrl").
 
 -behavior(ewok_http_resource).
@@ -79,7 +78,7 @@ get_file(Path) ->
 %
 read_file(Path) ->
 	BasePath = 
-		case ewok:config({ewok, http, www_root}, ?DEFAULT_WWW_ROOT) of
+		case ewok:config({ewok, http, www_root}, ?WWW_ROOT) of
 		Root = [$., $/|_] -> filename:absname(Root);
 		Root = [$/|_] -> filename:absname([$.|Root])
 		end,

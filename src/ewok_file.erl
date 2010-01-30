@@ -1,23 +1,259 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_file).
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
+-include("ewok_system.hrl").
+-include_lib("kernel/include/file.hrl").
+-include_lib("stdlib/include/zip.hrl").
 
--export([find/2, list/2]).
-%% TEMP
+-export([path/1, parent/1, name/1, appname/1, extension/1]).
+-export([load/1, resource/2]). %, file_info/1]).
+-export([list/1, find/2, code_path/1]). 
+-export([is_directory/1, is_file/1, is_regular/1, is_link/1]).
+
 -compile(export_all).
-%% TEMP COPY: To allow compile only...
--record(file_cache, {route, path, mimetype, modified, size=0, bin=undefined}).
--record(esp_cache, {route, path, mimetype, modified, bin=undefined}).
--record(web_app, {id, path, valid=false, deployed=false}).
+
+-define(PATH_SEPARATOR, <<"[\\\\/]">>).
+-define(BIN_DIR, <<"ebin">>).
+
+%% TODO: Refactoring target
+%% BUG: <<"../..">> -> <<"..">>.
+path(Bin) when is_binary(Bin) ->
+	path([Bin]);
+path(List = [H|_]) when is_integer(H) -> % "strings"
+	path([list_to_binary(List)]);
+path(List) ->
+	{ok, CD} = file:get_cwd(),
+	Filtered = filter_paths(List, [list_to_binary(CD)]),
+	Parts = [ewok_util:split(X, ?PATH_SEPARATOR) || X <- Filtered],
+%	?TTY("~p~n", [lists:append(Parts)]),
+	make_path(lists:append(Parts), <<>>).
+
+%% @private
+%% convert "string" elements and drop elements that precede an absolute path
+filter_paths([String = [H|_]|T], Acc) when is_integer(H) ->
+	filter_paths([list_to_binary(String)|T], Acc);
+filter_paths([H = <<$/, _/binary>>|T], _Acc) ->
+	filter_paths(T, [H]);
+filter_paths([Windoze = <<_, $:, _/binary>>|T], _Acc) ->
+	filter_paths(T, [Windoze]);
+filter_paths([H|T], Acc) ->
+	filter_paths(T, [H|Acc]);
+filter_paths([], Acc) ->
+	lists:reverse(Acc).
+
+%% @private
+make_path([<<$.>>|T], <<>>) -> 
+	{ok, CD} = file:get_cwd(),
+	make_path(T, list_to_binary(CD));
+%% parent of cwd
+make_path([<<"..">>|T], <<>>) -> %%
+	{ok, Dir} = file:get_cwd(),
+	CurrentDir = ewok_util:split(Dir, ?PATH_SEPARATOR),
+	[_|Rest] = lists:reverse(CurrentDir),
+	Base = make_path(lists:reverse(Rest), <<>>),
+	make_path(T, Base);
+%% deal with windows drive labels
+make_path([Volume = <<_, $:>>|T], <<>>) ->
+	Acc = ewok_util:to_upper(Volume),
+	make_path(T, Acc);
+%% current
+make_path([<<$.>>, H|T], Acc) ->
+	make_path(T, <<Acc/binary, $/, H/binary>>);
+%% parent
+make_path([_H, <<"..">>|T], Acc) ->
+	make_path(T, Acc);
+%%
+make_path([H|T], Acc) when is_binary(H) ->
+	make_path(T, <<Acc/binary, $/, H/binary>>);
+%%
+make_path([], Acc) ->
+	Acc.
+
+%% TODO: test
+code_path(Path) ->
+	case is_regular(Path) of
+	true ->
+		case extension(Path) of
+		<<".ez">> ->
+			archive_code_path(Path);
+		_ -> 
+			Parent = ewok_file:parent(Path),
+			case ewok_file:name(Parent) of
+			?BIN_DIR ->
+				Parent;
+			_ -> 
+				undefined
+			end
+		end;
+	_ ->
+		case is_directory(Path) andalso ewok_file:name(Path) of
+		?BIN_DIR ->
+			Path;
+		_ ->
+			BeamDir = path([Path, ?BIN_DIR]),
+			case is_directory(BeamDir) of
+			true -> BeamDir;
+			false -> undefined
+			end
+		end
+	end.
+	
+%% @private
+archive_code_path(Archive) ->
+	Name = name(Archive),
+	InternalPath = <<Name/binary, $/, ?BIN_DIR/binary, $/>>,
+	{ok, Entries} = zip:list_dir(binary_to_list(Archive)),
+	EntryNames = [X || #zip_file{name=X} <- Entries],
+	case lists:member(binary_to_list(InternalPath), EntryNames) of
+	true ->
+		path([Archive, InternalPath]);
+	false ->
+		undefined
+	end.
+
+%%
+name(Path) ->
+	File = lists:last(ewok_util:split(Path, ?PATH_SEPARATOR)),
+	Ext = extension(File),
+	case re:replace(File, <<Ext/binary, $$>>, <<>>) of
+	Name when is_binary(Name) ->
+		Name;
+	[Name|_] ->
+		Name
+	end.
+
+%%
+parent(Path) ->
+	path([Path, <<"..">>]).
+	
+%
+appname(CodePath) ->
+	case name(CodePath) of
+	?BIN_DIR ->
+		Name = name(parent(CodePath)),
+		[AppName|_Version] = ewok_util:split(Name, <<$->>),
+		binary_to_atom(AppName, utf8);
+	_ ->
+		undefined
+	end.
+
+%%
+extension(Path) ->
+	File = lists:last(ewok_util:split(Path, ?PATH_SEPARATOR)),
+	case lists:reverse(ewok_util:split(File, <<"(\\.)">>)) of
+% NOTE: is this valid? i.e. are 'dot' files like .bashrc "hidden' or "anonymous" files?
+%	[_Name, <<$.>>] ->
+%		undefined; 
+	[Ext, <<$.>>|_] -> 
+		<<$., Ext/binary>>;
+	_ -> 
+		<<>>
+	end.
+
+%%
+resource(File, Route) ->
+	Info = file_info(File),
+	#ewok_file{
+		route = Route,
+		file = File,
+		mimetype = ewok_http:mimetype(extension(File)),
+		modified = ewok_http:date(Info#file_info.mtime),
+		size = Info#file_info.size,
+		bin=undefined
+	}.
+	
+%%
+load(Resource = #ewok_file{}) ->
+	Bin = load(Resource#ewok_file.file),
+	Resource#ewok_file{bin=Bin};
+%%
+load(Path) when is_binary(Path) ->
+	case is_regular(Path) of
+	true ->	
+		{ok, Bin} = file:read_file(binary_to_list(Path)),
+		Bin;
+	false ->
+		undefined
+	end.
+
+%%
+list(Path) when is_binary(Path) ->
+	case is_directory(Path) of
+	true ->
+		{ok, Files} = file:list_dir(binary_to_list(Path)),
+		[path([Path, X]) || X <- Files]; %, is_regular(X)];
+	false ->
+		{error, not_directory}
+	end.
+
+%%
+is_file(File) ->
+	is_regular(File).
+%%
+is_link(File) ->
+	is_type(File, symlink).
+%%
+is_regular(File) -> 
+	is_type(File, regular).
+%%	
+is_directory(File) ->
+	is_type(File, directory).
+
+%% @private
+is_type(File, Type) ->
+	case file_info(File) of
+	Info = #file_info{} ->
+		Info#file_info.type =:= Type;
+	_ ->
+		false
+	end.
+	
+open(Path, Opts) ->
+	file:open(binary_to_list(Path), Opts).
+
+close(Fd) ->
+	file:close(Fd).
+	
+%%
+file_info(File) when is_binary(File) ->
+	file_info(binary_to_list(File));
+file_info(File) ->
+	case file:read_file_info(File) of
+	{ok, Info} -> Info;
+	_ -> undefined
+	end.
 
 %% 
-find(_Path, _Opts) ->
-	ok.
+find(BasePath, Regex) ->
+	find(BasePath, Regex, false).
+find(BasePath, Regex, recursive) ->	
+	find(BasePath, Regex, true);
+find(BasePath, Regex, Recurse) when is_binary(BasePath) ->
+	PathString = binary_to_list(BasePath),
+	Pred = fun(F, Acc) -> [path(F)|Acc] end,
+	filelib:fold_files(PathString, Regex, Recurse, Pred, []).
 	
-%% 
-list(_Path, _Opts) ->
-	ok.
-	
+%%
+%% Internal
+%%
+
+
+%% COLLECTED CRAP
+
 %% A dog's dinner: code:all_loaded()
 %{io,"c:/ERLANG~2/lib/stdlib-1.16.2/ebin/io.beam"},
 %{erl_distribution,"C:\\ERLANG~2/lib/kernel-2.13.2/ebin/erl_distribution.beam"},
@@ -26,21 +262,8 @@ list(_Path, _Opts) ->
 %{dets_v9,"c:/ERLANG~2/lib/stdlib-1.16.2/ebin/dets_v9.beam"},
 %{ewok_tcp_srv,"d:/Erlang/apps/ewok/ebin/ewok_tcp_srv.beam"},
 
-%% collected crap
-
-%% from utest
-%%
-find_files(Path, [$.|T]) ->
-	Pattern = lists:flatten(["\\.", T, $$]),
-	filelib:fold_files(Path, Pattern, true, fun(F, Acc) -> [F|Acc] end, []);
-%
-find_files(Path, Dir) when is_list(Dir) -> 
-	FullPath = filename:join([Path, Dir]), 
-	filelib:fold_files(FullPath, ".*", false, fun(F, Acc) -> [F|Acc] end, []).
-
-
 %% full_path() -> #web_app{} | undefined
-load_path(Path) when ?is_string(Path) ->
+xload_path(Path) when ?is_string(Path) ->
 	case filelib:is_dir(Path) of 
 	true -> 
 		load_path1(Path);
@@ -53,6 +276,7 @@ load_path(Path) when ?is_string(Path) ->
 			undefined
 		end
 	end.
+
 %%
 load_path1(Path) ->
 	BeamDir = filename:join(Path, "ebin"),
@@ -70,31 +294,6 @@ load_path1(Path) ->
 	
 %% stub
 validate(_Name) -> ok.
-
-%
-read_file(Path) ->
-	BasePath = 
-		case ewok:config({ewok, http, www_root}, ?DEFAULT_WWW_ROOT) of
-		Root = [$., $/|_] -> filename:absname(Root);
-		Root = [$/|_] -> filename:absname([$.|Root])
-		end,
-	File = filename:join(BasePath, [$.|Path]), 
-	case filelib:is_regular(File) of
-	true -> 
-		{ok, Bin} = file:read_file(File),
-		%% TODO: NOTE: owing to index files two copies of indexes may be stored
-		%% under different routes e.g. both /stuff and /stuff/index.html
-		%% -- not sure what is the best solution to avoid this just yet...
-		#esp_cache{
-			route = Path,
-			path = File,
-			mimetype = ewok_http:mimetype(filename:extension(File)),
-			modified = ewok_http:date(filelib:last_modified(File)),
-			bin=Bin
-		};
-	false -> 
-		undefined
-	end.
 
 load_template(undefined, Path) -> 
 	{error, {undefined, Path}};
@@ -133,54 +332,4 @@ load_termfile(App) ->
 		end;
 	_ -> {error, {no_app_found, App}}
 	end.
-	
-%% request(), string() -> #file_cache{}
-get_file(Request, Path) ->
-	Realm = Request:realm(),
-	BasePath = 
-		case ewok:config({Realm, http, www_root}, ?DEFAULT_WWW_ROOT) of
-		Root = [$., $/|_] ->
-			filename:join(code:lib_dir(Realm), Root);
-		Root = [$/|_] -> 
-			filename:join(code:lib_dir(Realm), [$., Root])
-		end,
-	File = filename:join(BasePath, [$.|Path]), 
-	case filelib:is_dir(File) of
-	true ->
-		Index = ewok:config({Realm, http, index_file}, "index.html"),
-		get_file(Request, filename:join(Path, Index));
-	false ->
-		case filelib:is_regular(File) of
-		true -> 
-			%% TODO: NOTE: owing to index files two copies of indexes may be stored
-			%% under different routes e.g. both /stuff and /stuff/index.html
-			%% -- not sure what is the best solution to avoid this just yet...
-			#file_cache{
-				route = Request:path(),
-				path = File, 
-				mimetype = ewok_http:mimetype(filename:extension(File)),
-				modified = ewok_http:date(filelib:last_modified(File)),
-				size = filelib:file_size(File),
-				bin=undefined
-			};
-		false -> 
-			undefined
-		end
-	end.
-	
-keystore() ->
-	Path = ewok:config({ewok, identity, keystore}, "./priv/data"),
-	Dir = filename:join(code:lib_dir(ewok), Path),
-	case filelib:is_dir(Dir) of
-	true ->
-		File = filename:join(Dir, ?KEYSTORE_FILE),
-		case filelib:is_regular(File) of
-		true ->	
-			{ok, [Term]} = file:consult(File),
-			Term;
-		false ->
-			{error, no_keystore}
-		end;
-	false ->
-		{error, invalid_path}
-	end.
+

@@ -21,12 +21,9 @@
 -behaviour(ewok_http_resource).
 -export([filter/1, resource_info/0, 'GET'/2]).
 
-resource_info() -> [
-	{name, "Ewok Web Socket"}
-].
+resource_info() -> [{name, "Ewok Web Socket"}].
 
-filter(_Request) ->
-	ok.
+filter(_Request) -> ok.
 
 'GET'(Request, _Session) ->
 	Upgrade =

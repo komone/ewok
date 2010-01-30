@@ -1,13 +1,25 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
-%%
--module(ewok_scheduler_srv).
--vsn({1,0,0}).
--author('steve@simulacity.com').
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 
--include("../include/ewok.hrl").
+-module(ewok_scheduler_srv).
+-name("Ewok Scheduler Service").
+
+-include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
+-export([start_link/0, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
@@ -23,12 +35,12 @@
 %%
 %% API
 %% 
-add_task(Task) when is_record(Task, task) ->
+add_task(Task) when is_record(Task, ewok_task) ->
 	gen_server:call(?SERVER, {add_task, Task}, infinity).
 
 %%
-cancel_task(Task) when is_record(Task, task) ->
-	cancel_task(Task#task.id);
+cancel_task(Task) when is_record(Task, ewok_task) ->
+	cancel_task(Task#ewok_task.id);
 cancel_task(TaskId) when is_atom(TaskId) ->
 	gen_server:call(?SERVER, {cancel_task, TaskId}, infinity). 
 
@@ -40,16 +52,9 @@ get_tasks() ->
 %% ewok_service callbacks
 %%
 start_link() ->
-	ewok_log:log(default, service, {?MODULE, service_info()}),
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 stop() ->
     gen_server:cast(?SERVER, stop).
-%
-service_info() -> [ 
-	{name, "Ewok Scheduler Service"},
-	{version, {1,0,0}},
-	{comment, ""}
-].
 
 %%
 %% gen_server callbacks
@@ -62,7 +67,7 @@ init([]) ->
 %%
 handle_call({add_task, T}, _From, State) ->
 	Reply = 
-		case ets:member(?ETS, T#task.id) of
+		case ets:member(?ETS, T#ewok_task.id) of
 		false ->
 			T1 = convert_times(T),
 			schedule(T1);
@@ -75,8 +80,8 @@ handle_call({cancel_task, TaskId}, _From, State) ->
 	Reply = 
 		case ets:lookup(?ETS, TaskId) of
 		[Task] -> 
-			erlang:cancel_timer(Task#task.timer_ref),
-			ets:delete(?ETS, Task#task.id),
+			erlang:cancel_timer(Task#ewok_task.timer_ref),
+			ets:delete(?ETS, Task#ewok_task.id),
 			ok;
 		_ -> ok
 		end,
@@ -100,9 +105,9 @@ handle_info({exec, TaskId}, State) ->
 		{ok, Result} ->
 			notify(task_executed, Now, Task, Result),
 			case schedule(Task) of
-			T when is_record(T, task) -> T;
+			T when is_record(T, ewok_task) -> T;
 			Reason ->
-				ets:delete(?ETS, Task#task.id),
+				ets:delete(?ETS, Task#ewok_task.id),
 				notify(task_terminated, Now, Task, Reason)
 			end;
 		Error ->
@@ -126,12 +131,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 
 %% atom(), integer() -> TimerRef()
-schedule(T) when is_record(T, task) ->
+schedule(T) when is_record(T, ewok_task) ->
 	Now = unow(),
-	case calc_next(Now, T#task.start, T#task.repeat, T#task.terminate) of
+	case calc_next(Now, T#ewok_task.start, T#ewok_task.repeat, T#ewok_task.terminate) of
 	Seconds when is_integer(Seconds) ->
-		TimerRef = erlang:send_after(Seconds * 1000, self(), {exec, T#task.id}),
-		NextTask = T#task{timer_ref=TimerRef},
+		TimerRef = erlang:send_after(Seconds * 1000, self(), {exec, T#ewok_task.id}),
+		NextTask = T#ewok_task{timer_ref=TimerRef},
 		ets:insert(?ETS, NextTask), %% Update
 		NextTask;
 	Message -> Message
@@ -139,7 +144,7 @@ schedule(T) when is_record(T, task) ->
 %
 	
 %% from ewok.hrl
-%-record(task, {id, function, start=now, repeat=once, terminate=undefined, notify, timer_ref}).
+%-record(ewok_task, {id, function, start=now, repeat=once, terminate=undefined, notify, timer_ref}).
 
 %% IMPL: This is rather dense validation code! Be very careful when making changes.
 %% It aims to catch all invalid schedules at first schedule time and also detect normal exits.
@@ -195,7 +200,7 @@ calc_next(_, _, _, _) ->
 
 %
 exec_task(Task, Now) ->
-	F = Task#task.function,
+	F = Task#ewok_task.function,
 	try begin
 		Result = F(Now),
 		{ok, Result}
@@ -205,11 +210,11 @@ exec_task(Task, Now) ->
 	end.
 %
 notify(Message, Time, Task, Result) ->
-    case Task#task.notify of
+    case Task#ewok_task.notify of
 	Pid when is_pid(Pid) -> 
 		case is_process_alive(Pid) of
-		true -> Pid ! {?SERVER, Message, Time, Task#task.id, Result};
-		false -> ok %% also remove notify from task record?
+		true -> Pid ! {?SERVER, Message, Time, Task#ewok_task.id, Result};
+		false -> ok %% also remove notify from ewok_task record?
 		end;
 	_ -> ok
     end.
@@ -218,10 +223,10 @@ notify(Message, Time, Task, Result) ->
 unow() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 %%
-convert_times(T) when is_record(T, task) ->
-	T#task{
-		start=convert_time(T#task.start),
-		terminate=convert_time(T#task.terminate)
+convert_times(T) when is_record(T, ewok_task) ->
+	T#ewok_task{
+		start=convert_time(T#ewok_task.start),
+		terminate=convert_time(T#ewok_task.terminate)
 	}.
 %%
 convert_time(T) when is_integer(T) -> T;

@@ -13,62 +13,121 @@
 %% limitations under the License.
 
 -module(ewok_app).
--vsn({1,0,0}).
--author('steve@simulacity.com').
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -behaviour(application).
 -export([start/2, config_change/3, prep_stop/1, stop/1]).
 
--define(SUPERVISOR, ewok_sup).
-
 %% 
-start(Type, Args) ->	
-	ewok_logging_srv:start_link(),
+start(normal, Services) ->
+	%% force reload of ewok.app config file
+	application:unload(ewok),
+	
+	%% IMPL: Maybe use this later -- for now ignore
+    {ok, _IP} = 
+		case os:getenv("EWOK_IP") of 
+		false -> {ok, {0,0,0,0}};
+		Any -> inet_parse:address(Any) 
+		end,	
+	% Consider writing a .pid file
+	OsPid = os:getpid(),
+	
 	%% ensure boot logging is available
-	case lists:member(ewok_logging_srv, gen_event:which_handlers(error_logger)) of
-	true -> 
-		%% IMPL: note that at this time, the boot log is the default log,
-		%% we do not want any log_level filtering so we use the log call direct
-		%% throughout bootstrap.
-		ewok_log:log(default, server, ewok:ident()),
-		{ok, Host} = inet:gethostname(),
-		{ok, HostEnt} = inet:gethostbyname(Host),
-		ewok_log:log(default, server, [{node, node()}, HostEnt]),
-		ewok_log:log(default, loaded, application:loaded_applications()),
+	ok = ewok_logging_srv:start_link(),
+	
+	%%
+	ewok_log:message(?MODULE, ewok:ident()),	
+	ewok_log:message(?MODULE, [{os, os:type(), {pid, OsPid}}]),
+	{ok, Host} = inet:gethostname(),
+	{ok, HostEnt} = inet:gethostbyname(Host),
+	ewok_log:message(?MODULE, [{inet, {node, node()}, HostEnt}]),	
+	ewok_log:message(?MODULE, [{loaded, X} || X <- application:loaded_applications()]),
+	
+	%%
+	Autoinstall = ewok_config:get_env(autoinstall, true),
+	case ewok_installer:run(Autoinstall) of
+	{ok, Activation} ->
+		{ok, Datasource} = ewok_db:start(),
+		ewok_log:message(?MODULE, Datasource),
+		ewok_log:message(?MODULE, {activation, Activation}),
 		
-		Success = start_ewok(Type, Args),
-		ewok_log:log(default, bootstrap, Success),
-		Success;
-	_ -> 
-%		io:format(user, "FATAL: Boot logger failed to initialize.", []),
-		{error, boot_log_init}
+		load_mimetypes(), 
+		
+		case start_services(Services) of
+		{ok, Pid} ->
+			%% swap out and remove boot log
+			ewok_log:add_log(server),
+			ewok_log:set_default(server),
+			ewok_log:remove_log(boot),
+			
+			case ewok_config:get_env(web_app) of
+			undefined ->
+				ok;
+			WebConfig ->
+				ewok_config:load(ewok, http, WebConfig),
+				autodeploy()
+			end,
+			
+			ewok_log:message(bootstrap, Pid),
+			{ok, Pid};
+		Error ->
+			Error
+		end;
+	Error ->
+		Error
 	end.
-
 %
-config_change(_Changed, _New, _Removed) ->  
+config_change(Changed, New, Removed) -> 
+	?TTY({config_change, {changed, Changed}, {new, New}, {removed, Removed}}),
 	ok.
 %
 prep_stop(State) -> 
+	?TTY({prep_stop, State}),
 	State.
 %% 
 stop(_State) ->
+	%?TTY({state, State}),
 	ok.
-
-%%
-start_ewok(_Type, Args) ->
-	case supervisor:start_link({local, ?SUPERVISOR}, ?SUPERVISOR, Args) of
+	
+%% start_ewok(proplist()) -> {ok, pid()} | {error, Reason}
+start_services(Services) ->
+	ewok_log:message(?MODULE, {services, Services}),
+	case supervisor:start_link({local, ewok_sup}, ewok_sup, Services) of
 	{ok, Pid} ->
-		%% IMPL: By calling ewok:configure here, we avoid the need for each 
-		%% service to double-check that ewok is properly configured.
-		{ok, _NumKeys} = ewok:configure(),
-		case ewok_sup:start_services(Args) of
-		ok ->
-			ewok_log:init_server_log(),
-			ewok:autodeploy(),
-			{ok, Pid};
-		Error -> Error
-		end;
-	Other -> Other
+		{ok, Pid};
+	Error -> 
+		Error
 	end.
+	
+load_mimetypes() ->
+	F = fun (X, Y) ->
+		X1 = 
+			case X of 
+			_ when is_atom(X) -> X;
+			_ -> list_to_binary(X)
+			end, 
+		Y1 = list_to_binary(Y),
+		{ewok_mimetype, X1, Y1}
+		end,
+	Mimetypes = ewok_config:get_env(mimetypes, []),
+	Records = [F(K, V) || {K, V} <- Mimetypes],
+	ewok_db:add(Records),
+	ewok_log:message(?MODULE, [Records]).
+	
+%%
+autodeploy() ->
+	AppList = ewok:config({ewok, http, autodeploy}, []),
+	ewok_log:info({autodeploy, AppList}),
+	case whereis(ewok_deployment_srv) of
+	P when is_pid(P) ->
+		Results = [ewok_deployment_srv:deploy(App) || App <- AppList],
+		case lists:dropwhile(fun(X) -> X =:= ok end, Results) of
+		[] -> ok;
+		Errors -> ewok_log:error({autodeploy, Errors})
+		end;
+	undefined ->
+		ewok_log:error({autodeploy, {not_running, ewok_deployment_srv}})
+	end.
+	

@@ -1,16 +1,26 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
 %% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(esp_html).
 
--include("../include/esp.hrl").
+-include("ewok.hrl").
+-include("esp.hrl").
 
 -compile(export_all).
 -export([charref/1]).
 
-%% TODO: !!! html_encoding...
-%% TODO: !!! html_encoding...
-%% TODO: !!! html_encoding...
-%% TODO: !!! html_encoding...
-
+%% TODO: !!! html_encoding... & pretty printing in dev mode
 %
 page(Title, Head, Body) ->
 	xhtml([
@@ -24,19 +34,23 @@ page(Title, Head, Body) ->
 
 xhtml(Content) ->
 	[<<"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"">>,
-	<<" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n">>,
-	<<"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n">>,
+	<<" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">">>,
+	<<"<html xmlns=\"http://www.w3.org/1999/xhtml\">">>,
 	Content,
-	<<"</html>\n">>].
+	<<"</html>">>].
 
 html4(Content) ->
 	[<<"<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Strict//EN\"">>,
-	<<" \"http://www.w3.org/TR/xhtml1/DTD/html4-strict.dtd\">\n">>,
-	<<"<html>\n">>,
+	<<" \"http://www.w3.org/TR/xhtml1/DTD/html4-strict.dtd\">">>,
+	<<"<html>">>,
 	Content,
 	<<"</html>">>].
 
 %% TODO: !!! html_encode...
+text(Value) when is_binary(Value) ->
+	Value;
+text(Value) when ?is_string(Value) ->
+	list_to_binary(Value);
 text(Value) ->
 	String = io_lib:format("~p", [Value]),
 	case re:split(String, "^\\[|\\]$") of
@@ -95,8 +109,6 @@ inplace_para(R = #inplace{}) ->
 		#span{class="save", body=[R#inplace.save]},
 		#span{class="message", body=[R#inplace.message]}
 	]}.
-
-
 
 %
 table(Data) ->

@@ -4,8 +4,8 @@
 
 behaviour_info(callbacks) -> [
 	{start_link, 0},
-	{stop, 0},
-	{service_info, 0}
+	%{reload, 0}, ?
+	{stop, 0}
 ];
 
 behaviour_info(_) ->

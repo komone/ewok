@@ -13,8 +13,7 @@
 %% limitations under the License.
 
 -module(ewok_umtp).
--vsn("1.0.0").
--author('steve@simulacity.com').
+-name("Ewok UMTP Service").
 
 -include("ewok.hrl").
 -include("umtp.hrl").
@@ -25,19 +24,18 @@
 %% Stateless
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
+-export([start_link/0, stop/0]).
 -export([service/2, sendmail/1]).
 
 %-record(mail, {from, to, timestamp, body}).
 
 start_link() -> 
 	try begin
-		ewok_log:log(default, service, {?MODULE, service_info()}),
+		ewok_log:message(service, ?MODULE),
 		%% DS = ewok_data_srv:connect(default)
-		true = is_pid(whereis(ewok_cache_srv)),
 		Transport = gen_tcp, %% TEMP
 		Port = ewok:config({ewok, umtp, port}, 30),
-		SocketOpts = ewok_socket:configure(Transport, "ewok.umtp"),
+		SocketOpts = ewok_socket:configure(Transport, {ewok, umtp}),
 		MaxConnections = ewok:config("ewok.umtp.tcp.max_connections", infinity),
 		Timeout = ewok:config({ewok, umtp, timeout}, 10) * 1000,
 		
@@ -53,7 +51,7 @@ start_link() ->
 			{handler, Handler}
 		],
 		%% ?TTY("CONFIG:~n~p~n", [Configuration]),
-		ewok_log:log(default, configuration, {?MODULE, Configuration}),
+		ewok_log:message(configuration, {?MODULE, Configuration}),
 		%% Starts a TCP Server for UTP
 		{ok, Pid} = ewok_socket_srv:start_link(?MODULE, Configuration),
 		ewok_log:add_log(mail),
@@ -66,27 +64,21 @@ stop() ->
 	ewok_socket_srv:stop(?MODULE),
 	ewok_log:remove_log(mail).
 
-service_info() -> [
-	{name, "Ewok UMTP Service"},
-	{version, {1, 0, 0}},
-	{comment, ""},
-	{depends, [ewok_cache_srv]}
-].
 
 %% Callback from ewok_socket_srv, handing over a client connection
-service({Transport, Socket}, Timeout) ->
-	case Transport:recv(Socket, 0, Timeout) of
+service(Socket, Timeout) ->
+	case ewok_socket:recv(Socket, 0, Timeout) of
 	{ok, Packet} ->
 		try begin
 			Message = ewok_ubf:decode(Packet),
-			?TTY("~p~n", [Message]),
-			reply({Transport, Socket}, {reply, ok})
+			?TTY({umtp, message, Message}),
+			reply(Socket, {reply, ok})
 		end catch 
 			Error:Reason ->
-				reply({Transport, Socket}, {Error, Reason})
+				reply(Socket, {Error, Reason})
 		end;
 	{error, Reason} ->
-		?TTY("ERROR: ~p~n", [Reason])
+		?TTY({error, Reason})
 	end.
 
 reply({Transport, Socket}, Reply) ->

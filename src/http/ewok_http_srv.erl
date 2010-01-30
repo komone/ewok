@@ -13,43 +13,24 @@
 %% limitations under the License.
 
 -module(ewok_http_srv).
--vsn("1.0.0").
--author('steve@simulacity.com').
+-name("Ewok HTTP Service").
+-depends([ewok_session_srv]).
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
-
+-export([start_link/0, stop/0]).
 %% API
 -export([service/3]).
-% There will probably be a use for this API export, but
-% if no genuine use for it is actually found, then hide it.
--export([lookup_route/1]). 
--export([connections/0]).
 
--define(DEPENDS, [ewok_cache_srv, ewok_session_srv]).
-
-%%
-service_info() -> [
-	{name, "Ewok HTTP Service"},
-	{version, {1,0,0}},
-	{comment, ""},
-	{depends, ?DEPENDS}
-].
-
-%
-connections() ->
-	ewok_socket_srv:connections(?MODULE).
-	
 %%
 start_link() ->
 	try begin
-		ewok_log:log(default, service, {?MODULE, service_info()}),		
-		ewok_util:check_dependencies(?DEPENDS),
+%		ewok_util:check_dependencies(?DEPENDS),
 		
 		Transport = gen_tcp, %% TEMP
-		SocketOpts = ewok_socket:configure(Transport, "ewok.http"),
+		SocketOpts = ewok_socket:configure(Transport, {ewok, http}),
 		Port = ewok:config({ewok, http, port}, 8080),
 		MaxConnections = ewok:config({ewok, http, tcp, max_connections}, infinity),
 		
@@ -67,14 +48,14 @@ start_link() ->
 			{handler, Handler}
 		],
 		%?TTY("CONFIG:~n~p~n", [TCPConfiguration]),
-		
-		ewok_log:log(default, configuration, {?MODULE, Configuration}),
+		ewok_log:message(?MODULE, {configuration, Configuration}),
 		
 		%% Starts a TCP Server for HTTP
 		{ok, Pid} = ewok_socket_srv:start_link(?MODULE, Configuration),
 		
 		ewok_log:add_log(access),
 		ewok_log:add_log(auth),
+		ewok_log:add_log(debug),
 		{ok, Pid}
 	end catch
 	Error:Reason -> {Error, Reason}
@@ -83,6 +64,7 @@ start_link() ->
 %%	
 stop() -> 
 	ewok_socket_srv:stop(?MODULE),
+	ewok_log:remove_log(debug),
 	ewok_log:remove_log(auth),
 	ewok_log:remove_log(access).
 
@@ -168,19 +150,23 @@ get_session(Request) ->
 %% NOTE: there's a good case to invert the argument ordering as it progresses from here
 get_route(Request, Session) ->
 	case lookup_route(Request:path()) of
-	Route when is_record(Route, route) ->
-		Request:set_realm(Route#route.realm),
+	Route = #ewok_route{} ->
+		Request:set_realm(Route#ewok_route.realm),
 		get_access(Request, Session, Route);
 	_ ->
 		do_response(Request, Session, internal_server_error) %% TODO: shouldn't this be 404?
 	end.
 
 % HOW
-get_access(Request, Session, #route{handler=Module, realm=Realm, roles=Roles}) ->	
+get_access(Request, Session, #ewok_route{handler=Module, realm=Realm, roles=Roles}) ->	
 %	?TTY("REALM: ~p~n", [Request:realm()]),
 	case validate_access(Session:user(), Realm, Roles) of
 	ok -> 
-		handle_request(Request, Session, Module);
+		case catch(handle_request(Request, Session, Module)) of
+		ok -> ok;
+		{'EXIT', normal} -> ok;
+		Value -> io:format("~p~n", [Value])
+		end;
 	not_authorized ->
 		case ewok:config({Realm, http, login}) of
 		undefined -> 
@@ -265,19 +251,18 @@ do_response(Request, Session, {Status, Headers, Content}) ->
 		true -> Headers
 		end,
 	Response = {response, Code, NewHeaders, Content, false},
-%	?TTY("~p -> ~p~n", [Request:url(), Response]),
 	
 	%% and finally...
 	{ok, _HttpResponse, BytesSent} = ewok_response:reply(Request, Response),
 %	?TTY("HTTP~nREQUEST:~n~p~nRESPONSE:~n~p~n~n", [Request, HttpResponse]),
 	%%
 	{Tag, Message} = format_access_log(Request, Session, Code, BytesSent),
-	ok = ewok_log:log(access, Tag, Message),
+	ok = ewok_log:message(access, Tag, Message),
 	%%
-	cleanup(Request, Session).
+	cleanup(Request).
 
 %%
-cleanup(Request, Session) ->
+cleanup(Request) ->
 	%?TTY("~nPD STATE~n~p~n", [lists:sort(get())]),
 	case Request:should_close() of
 	true ->
@@ -289,7 +274,7 @@ cleanup(Request, Session) ->
 		%after 1000 ->
 		%	ok
 		%end,
-		?TTY("Closing ~p~n", [Request:socket()]),
+		?TTY({"Closing", Request:socket()}),
 		ewok_log:info({closed, Request:socket()}),
 		ewok_socket:close(Request:socket()),
 		exit(normal);
@@ -305,7 +290,6 @@ cleanup(Request, Session) ->
 			%% as a fixed bug in their browser, which again leaves IE as the toy.
 			Timeout = Request:timeout(), 
 			MaxHeaders = Request:max_headers(),
-			Session:reset(), %% ?? not sure we should do this...
 			Request:reset(),
 			?MODULE:service(Request:socket(), Timeout, MaxHeaders)
 		end
@@ -330,8 +314,6 @@ cookie_compare([{Tag, RequestCookie}], SessionCookie) ->
 uri_to_path({abs_path, Path}) -> 
 	Path;
 %% Detect this case to find out when/if it happens...
-%% IMPL: Ewok is not ever intended to support HTTPS. 
-%% so consider setting the Protocol match as 'http'
 uri_to_path(URI = {absoluteURI, _Protocol, _Host, _Port, Path}) ->
 	ewok_log:warn([{request_uri, URI}]),
 	Path;
@@ -347,15 +329,11 @@ uri_to_path(URI) ->
 
 %%
 lookup_route(Path) ->
-	case ewok_cache:lookup(route, Path) of
-	Route when is_record(Route, route) -> Route;
+	case ewok_db:lookup(ewok_route, Path) of
+	Route = #ewok_route{} -> Route;
 	undefined -> 
-		Parts = 
-			case re:split(Path, "/", [{return, list}, trim]) of
-			[[]|List] -> List; % ugh
-			[] -> []
-			end,
-		lookup_wildcard_route(lists:reverse(Parts));
+		PathComponents = ewok_util:split(Path, <<"/">>),
+		lookup_wildcard_route(lists:reverse(PathComponents));
 	Error -> Error
 	end.
 %% note that since ewok_file_handler is usually the default -- ALL file urls 
@@ -363,23 +341,25 @@ lookup_route(Path) ->
 %% Turning this into a gb_tree may possibly improve wildcard lookup/support for REST?
 %% Well, first, let's see if it shows up in profiling under load.
 lookup_wildcard_route(Parts = [_|T]) ->
-	Path = lists:append("/", filename:join(lists:reverse(["*"|Parts]))),
-	case ewok_cache:lookup(route, Path) of
-	Route when is_record(Route, route) -> Route;
+	case ewok_db:lookup(ewok_route, wildcard_path(Parts)) of
+	Route = #ewok_route{} -> Route;
 	undefined -> lookup_wildcard_route(T);
 	Error -> Error
 	end;
 lookup_wildcard_route([]) ->
-	case ewok_cache:lookup(route, default) of
-	Route when is_record(Route, route) -> Route;
+	case ewok_db:lookup(ewok_route, default) of
+	Route = #ewok_route{} -> Route;
 	undefined -> {error, no_handler};
 	Error -> Error
 	end.
+%
+wildcard_path(Parts) ->
+	list_to_binary([[<<$/>>, X] || X <- lists:reverse([<<$*>>|Parts])]).
 
 %% TODO: move to ewok_identity/ewok_auth... ** i.e. make pluggable
 validate_access(_, _, any) -> ok;
 validate_access(undefined, _, _) -> not_authorized;
-validate_access(#user{roles = UserRoles}, Realm, ResourceRoles) ->
+validate_access(#ewok_user{roles = UserRoles}, Realm, ResourceRoles) ->
 	Auth = lists:map(fun (R = {_, _}) -> R; (R) -> {Realm, R} end, ResourceRoles),
 	case [X || X <- UserRoles, Y <- Auth, X =:= Y] of
 	[] -> not_authorized;
@@ -390,8 +370,8 @@ validate_access(#user{roles = UserRoles}, Realm, ResourceRoles) ->
 format_access_log(Request, Session, StatusCode, BytesSent) ->
 	UserId = 
 		case Session:user() of
-		User when is_record(User, user) -> 
-			list_to_binary(io_lib:format("~p", [User#user.name]));
+		User when is_record(User, ewok_user) -> 
+			list_to_binary(io_lib:format("~p", [User#ewok_user.name]));
 		_ -> <<"{-,-}">>
 		end,
 		

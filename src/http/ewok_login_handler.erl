@@ -1,10 +1,11 @@
 %%
 -module(ewok_login_handler).
--vsn("1.0").
+-vsn("1.0.0").
 -author('steve@simulacity.com').
 
--include("../include/ewok.hrl").
--include("../include/esp.hrl").
+-include("ewok.hrl").
+-include("ewok_system.hrl").
+-include("esp.hrl").
 
 -behavior(ewok_http_resource).
 -export([filter/1, resource_info/0]).
@@ -46,16 +47,16 @@ filter(_Request) ->
 	case esp:validate([Realm, URL, Username, Password]) of
 	true ->
 		case ewok_users:login(Realm, Username, Password) of 
-		{ok, User} when is_record(User, user) -> 
+		{ok, User} when is_record(User, ewok_user) -> 
 			Session:user(User),
 			do_auth_log(Request, Session, URL),
 			{found, [{location, URL}], []};
 		E = {error, not_activated} ->
-			?TTY("DENIED ~p~n", [E]), 
+			?TTY({"DENIED", E}), 
 			%% do more with this later
 			precondition_failed;
 		E = {error, _} ->
-			?TTY("DENIED ~p~n", [E]), 
+			?TTY({"DENIED", E}), 
 			%% do more with this later
 			unauthorized
 		end;
@@ -86,8 +87,8 @@ get_form(Request, Session, Opts) ->
 do_auth_log(Request, Session, URL) ->
 	UserId = 
 		case Session:user() of
-		User when is_record(User, user) -> 
-			esp_html:text(User#user.name);
+		User when is_record(User, ewok_user) -> 
+			esp_html:text(User#ewok_user.name);
 		_ -> <<"{-,-} ">>
 		end,
 	Tag = <<"login">>,
@@ -98,4 +99,4 @@ do_auth_log(Request, Session, URL) ->
 		URL, <<" ">>,
 		ewok_http:browser_detect(Request:header(<<"User-Agent">>))
 	]),
-	ewok_log:log(auth, Tag, Line).
+	ewok_log:message(auth, Tag, Line).

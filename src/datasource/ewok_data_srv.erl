@@ -14,14 +14,14 @@
 %% limitations under the License.
 
 -module(ewok_data_srv).
--vsn("1.0.0").
--author('steve@simulacity.com').
+-name("Ewok Data Service").
+-depends([mnesia]).
 
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
+-export([start_link/0, stop/0]).
 -export([info/0, connect/0, connect/1]).
 
 -behaviour(gen_server).
@@ -32,24 +32,14 @@
 
 -define(SERVER, ?MODULE).
 
-%%
-service_info() -> [
-	{name, "Ewok Data Service"},
-	{version, {1,0,0}},
-	{depends, [mnesia]}
-].
-
 %% 
 start_link() ->
-	ewok_log:log(default, service, {?MODULE, service_info()}),
-	DefaultDS = ewok:config({ewok, datasources, default}, mnesia),
-	{Module, Args} = ewok:config({ewok, datasources, DefaultDS, mod}, ewok_mnesia_ds),
-	DS = Module:new(),
-	case DS:init(Args) of
-	Spec = #datasource{} ->
+	DS = ewok_mnesia_ds:new(),
+	case DS:init([]) of
+	{ok, Spec = #datasource{}} ->
 		gen_server:start_link({local, ?SERVER}, ?MODULE, 
 			#state{
-				default=DefaultDS, 
+				default=mnesia, 
 				ds=[Spec#datasource{name="Ewok DefaultDS", id=default}]
 			}, []);
 	Error -> 
@@ -59,8 +49,7 @@ start_link() ->
 
 %% 
 stop() ->
-    gen_server:cast(?SERVER, stop),
-	mnesia:stop().	
+    gen_server:cast(?SERVER, stop).
 
 %%
 info() ->
@@ -77,7 +66,7 @@ connect(default) ->
 connect(mnesia) ->
 	{ok, ewok_mnesia_ds:new()};
 %
-connect({postgres}) ->
+connect(postgres) ->
 	not_implemented;
 %
 connect({aws, sdb}) ->
@@ -92,7 +81,7 @@ connect({aws, sdb}) ->
 %%% gen_server
 %%
 init(Args = #state{}) ->
-    process_flag(trap_exit, true), % do we need this? *when* do we need this?
+    process_flag(trap_exit, true), % when do we need this?
     {ok, Args}.
 %
 handle_call({info}, _From, State) ->

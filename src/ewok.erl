@@ -13,52 +13,34 @@
 %% limitations under the License.
 
 -module(ewok).
--vsn({1,0,0}).
--author('steve@simulacity.com').
-
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 %% API
--export([start/0, start/1, stop/0]).
--export([ident/0]).
--export([info/1, config/1, config/2, configure/0, configure/1]).
--export([autodeploy/0, deploy/1, deploy/2, undeploy/1, undeploy/2]).
+-export([start/0, start/2, stop/0]).
+-export([ident/0, info/1]).
+-export([config/0, config/1, config/2, mimetype/1]).
+-export([deploy/1, undeploy/1]).
 
 %% NOTE: consider an "embedded" mode startup?
 
 %%
 %% API
-%% NOTE: try to make this semantically the same as application:start(ewok),
-%% but allow non-stateful pre-launch checks.
 start() ->
-	%% NOTE: validate config file here so that the user sees a clear message
-	%% in the console at start time...
-	case ewok_configuration:preload(ewok) of
-	{ok, _File, _Config} -> application:start(ewok);
-	Error -> Error
-	end.
-
-%%
-start(http) ->
-	ok;
-start(smtp) ->
-	ok;
-start(pop3) ->
-	ok;
-start(imap) ->
-	ok;
-start(amqp) ->
-	ok;
-start(ldap) ->
-	ok;
-start(dns) ->
-	ok;
-start(_) -> 
-	error.
-
+	application:start(ewok).
 %%
 stop() -> 
 	application:stop(ewok).
+
+%%
+start(http, _Port) -> ok;
+start(smtp, _Port) -> ok;
+start(pop3, _Port) -> ok;
+start(imap, _Port) -> ok;
+start(amqp, _Port) -> ok;
+start(ldap, _Port) -> ok;
+start(dns,  _Port) -> ok;
+start(_, _) -> error.
 
 %%
 ident() ->
@@ -68,18 +50,36 @@ ident() ->
 		<<" [">>, ewok_util:build_time(), <<"]">>
 	]).
 	
+%%
+config() ->
+	ewok_config:all().
+config(Key) ->
+	ewok_config:get_value(Key).
+config(Key, Default) ->
+	ewok_config:get_value(Key, Default).
+mimetype(Ext) ->
+	ewok_config:mimetype(Ext).
+
+%%
+deploy(App)->
+	ewok_deployment_srv:load(App),
+	ewok_deployment_srv:deploy(App).
+%%
+undeploy(App) ->
+	ewok_deployment_srv:undeploy(App).
+	
 % TOO: This will likely be radically revised over the course of development
 info(Key) -> 
 	case Key of
 	version -> 
-		[{Major, Minor, Patch}|_] = proplists:get_value('vsn', ?MODULE:module_info(attributes)),
+		[Version|_] = proplists:get_value('vsn', ?MODULE:module_info(attributes)),
 		{Y, Mo, D, H, M, S} = proplists:get_value(time, ?MODULE:module_info('compile')),
 		Build = calendar:datetime_to_gregorian_seconds({{Y, Mo, D}, {H, M, S}}),
-		{Major, Minor, Patch, Build};
+		{Version, Build};
 	running -> whereis(ewok_sup) =/= undefined;
 	ports -> inet:i();
-	config -> ewok_configuration:print();
-	routes -> ewok_configuration:print(route);
+	config -> ewok_config:print();
+	routes -> ewok_config:print(ewok_route);
 	webapps -> 
 		case whereis(ewok_deployment_srv) of
 		undefined -> {error, not_started};
@@ -87,9 +87,9 @@ info(Key) ->
 			{_,_,_,Apps} = ewok_deployment_srv:list(),
 			Apps
 		end;
-	users -> ewok_db:select(user);
-	auth -> ewok_db:select(auth);
-	roles -> ewok_db:select(role);
+	users -> ewok_db:select(ewok_user);
+	auth -> ewok_db:select(ewok_auth);
+	roles -> ewok_db:select(ewok_role);
 	sessions ->	 
 		case whereis(ewok_session_srv) of 	
 		undefined -> {error, not_started};
@@ -105,63 +105,8 @@ info(Key) ->
 	_ -> 
 		case code:ensure_loaded(Key) of
 		{'module', Key} ->
-			case erlang:function_exported(Key, service_info, 0) of
-			true -> Key:service_info();
-			false -> undefined
-			end;
+			Key:module_info(attributes);
 		_ -> undefined
 		end
 	end.
 
-% TODO: improve naming config/configure
-config(Property) ->
-	ewok_configuration:get_value(Property).
-%
-config(Property, Default) ->
-	ewok_configuration:get_value(Property, Default).
-%	
-configure() ->
-	configure(ewok).
-configure(App) ->
-	ewok_configuration:load(App).
-
-%%
-autodeploy() ->
-	AppList = 
-		case ewok_installer:validate() of
-		true ->
-			ewok:config({ewok, http, autodeploy}, []);
-		false ->
-			% NOTE: placeholder... not fully implemented
-			ewok:info(config),
-			ewok:info(routes),
-			[ewok_installer]
-		end,
-	ewok_log:info({autodeploy, AppList}),
-	case whereis(ewok_deployment_srv) of
-	P when is_pid(P) ->
-		Results = [ewok_deployment_srv:deploy(App) || App <- AppList],
-		case lists:dropwhile(fun(X) -> X =:= ok end, Results) of
-		[] -> ok;
-		Errors -> ewok_log:error({autodeploy, Errors})
-		end;
-	undefined ->
-		ewok_log:warn({autodeploy, {not_running, ewok_deployment_srv}})
-	end.
-
-%%
-deploy(App)->
-	deploy(App, []).
-deploy(App, Opts) when is_atom(App), is_list(Opts) ->
-	case App of
-	?MODULE -> {error, invalid_action};
-	_ -> ewok_deployment_srv:deploy(App)
-	end.
-%%
-undeploy(App) ->
-	undeploy(App, []).
-undeploy(App, Opts) when is_atom(App), is_list(Opts) ->
-	case App of
-	?MODULE -> {error, invalid_action};
-	_ -> ewok_deployment_srv:undeploy(App)
-	end.

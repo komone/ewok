@@ -17,6 +17,7 @@
 -author('steve@simulacity.com').
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 %% API
 -export([get_session/2]).

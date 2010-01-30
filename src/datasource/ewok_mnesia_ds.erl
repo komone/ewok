@@ -21,57 +21,16 @@ datasource_info() -> [
 	{version, mnesia:system_info(version)}
 ]. %% ...more!
 
-%%
-init([]) ->
-	DataDir = ewok:config({ewok, datasource, mnesia, path}, "./priv/data"),
-	DSDataDir = filename:join([code:lib_dir(ewok), DataDir, "Mnesia." ++ atom_to_list(node())]),
-	case mnesia:system_info(is_running) of
-	yes -> 
-		case mnesia:system_info(use_dir) of
-		%% ??	andalso mnesia:system_info(directory) =:= DSDataDir of 
-		%% OR Should we stop mnesia and check the install?
-		true -> get_spec(); 
-		false -> {error, {invalid_path, mnesia:system_info(directory)}}
-		end;
-	starting -> {error, {wait, starting}};
-	stopping -> {error, {wait, stopping}};
-	no -> 
-		case application:get_env(ewok, autoinstall) of
-		{ok, true} ->
-			ewok_log:info([autoinstall, {db_dir, DSDataDir}]),
-			%% NOTE: This needs to be done with utmost care...
-			case mnesia:system_info(use_dir) of
-			false -> application:set_env(mnesia, dir, DSDataDir); 
-			true -> ok
-			end,
-			case mnesia:system_info(use_dir) of
-			false ->
-				ok = filelib:ensure_dir(DSDataDir),
-				ok = mnesia:create_schema([node()]);
-			true -> ok
-			end;
-		_ -> 
-			ok
-		end,
-		case mnesia:system_info(use_dir) of
-		true ->
-			mnesia:start(),
-			mnesia:wait_for_tables(mnesia:system_info(tables), 10000),
-			get_spec();
-		false ->
-			{error, {invalid_path, mnesia:system_info(directory)}}
-		end
-	end.
-%
-get_spec() ->	
-	#datasource {
+%% TODO: Ensure mnesia is really valid/running etc.
+init(_Args) ->
+	{ok, #datasource {
 		id = mnesia,
 		name = "Mnesia",
 		mod = ?MODULE,
-		running = true,
+		running = mnesia:system_info(is_running),
 		valid = true,
 		data = [{tables, mnesia:system_info(tables)}]
-	}.
+	}}.
 
 %%
 metadata() -> 

@@ -4,8 +4,9 @@
 -author('steve@simulacity.com').
 
 -include("ewok.hrl"). 
+-include("ewok_system.hrl"). 
 -include("esp.hrl").
--export([components/0]).
+-export([components/0, dock/1]).
 -export([render/3, errorpage/3]).
 
 %%
@@ -24,7 +25,10 @@ render(Request, Session, Module) when is_atom(Module) ->
 	render(Request, Session, Spec);
 
 %%
-render(_Request, Session, Spec) ->
+render(Request, Session, Spec) ->
+	render(Request, Session, ok, Spec).
+%	
+render(_Request, Session, Status, Spec) ->
 	Title = proplists:get_value(title, Spec, <<"Ewok AS">>),
 	Dock = proplists:get_value(dock, Spec, dock(Session)),
 	Head = [
@@ -52,7 +56,7 @@ render(_Request, Session, Spec) ->
 		]}
 	],
 	%
-	esp:render(#page{title=Title, head=Head, body=Body}).
+	esp:render(Status, #page{title=Title, head=Head, body=Body}).
 
 %%
 dock(Session) ->
@@ -60,8 +64,8 @@ dock(Session) ->
 		case Session:user() of
 		undefined -> 
 			#a{href="/login", body=[<<"Log In">>]};
-		U = #user{} -> 
-			{_, Name} = U#user.name,
+		U = #ewok_user{} -> 
+			{_, Name} = U#ewok_user.name,
 			list_to_binary(Name)
 		end,
 	[#span{class="dock", body=[
@@ -88,8 +92,9 @@ errorpage(Request, Session, Status) ->
 		{content, [
 			#h1{body = Error},
 			#p{body = [<<"The following error occured when the browser tried to access this resource:">>]},
-			#h3{body = [<<"Status Code ">>, esp_html:text(Status), <<" - ">>, ewok_http:status_message(Status)]}
+			#h3{body = [<<"Status Code ">>, esp_html:text(Status), <<" - ">>, ewok_http:status_message(Status)]},
+			#p{body = [<<"Return to ">>, #a{href = "/", body = [<<"Home Page">>]}]}
 		]}
 	],
-	render(Request, Session, Spec).
+	render(Request, Session, Status, Spec).
 	

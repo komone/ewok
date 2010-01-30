@@ -16,26 +16,29 @@
 -vsn("1.0.0").
 -author('steve@simulacity.com').
 
+-include("ewok.hrl").
+
 -export([configure/2, setopts/2, controlling_process/2, sockname/2,
 	peername/1, listen/3, accept/1, send/2, recv/3, close/1]).
--include("ewok.hrl").
-%-compile(export_all).
+
 -define(READ_SIZE, 8192).
 
 %% IMPL: note that 'Transport' is the actual **module name**
-configure(gen_tcp, Prefix) -> 
-	[ ewok:config(Prefix ++ ".tcp.socket.mode", binary),
+configure(gen_tcp, Prefix) -> [ 
+	ewok:config(merge(Prefix, {tcp, socket, mode}), binary),
 	{ ip, ewok:config({ewok, ip}, {0, 0, 0, 0}) }, 
-	{ packet, ewok:config(Prefix ++ ".tcp.socket.packet", 0) },
-	{ backlog, ewok:config(Prefix ++ ".tcp.socket.backlog", 0) },
-	{ active, ewok:config(Prefix ++ ".tcp.socket.active", false) },
-	{ nodelay, ewok:config(Prefix ++ ".tcp.socket.nodelay", true) },
-	{ reuseaddr, ewok:config(Prefix ++ ".tcp.socket.reuseaddr", true) },
-	{ recbuf, ewok:config(Prefix ++ ".tcp.socket.recbuf", 8192) }];
+	{ packet, ewok:config(merge(Prefix, {tcp, socket, packet}), 0) },
+	{ backlog, ewok:config(merge(Prefix, {tcp, socket, backlog}), 0) },
+	{ active, ewok:config(merge(Prefix, {tcp, socket, active}), false) },
+	{ nodelay, ewok:config(merge(Prefix, {tcp, socket, nodelay}), true) },
+	{ reuseaddr, ewok:config(merge(Prefix, {tcp, socket, reuseaddr}), true) },
+	{ recbuf, ewok:config(merge(Prefix, {tcp, socket, recbuf}), 8192) }
+];
+
 %
 configure(ssl, Prefix) ->
 	case ewok:config(Prefix ++ ".ssl.enabled", false) of
-	true -> ssl:start(); %% not the right place for this?
+	true -> ssl:start(); %% TODO: not the right place for this
 	false -> ok
 	end,
 	[ ewok:config(Prefix ++ ".tcp.socket.mode", binary),
@@ -53,13 +56,15 @@ configure(ssl, Prefix) ->
 	%{ cacertfile, ewok:config("ewok.http.ssl.cacertfile", "./priv/ssl/cacerts.pem") },
 	{ certfile, ewok:config(Prefix ++ ".ssl.certfile", "./priv/ssl/yaws-cert.pem") }].
 
+merge(T, T1) ->
+	list_to_tuple(lists:append(tuple_to_list(T), tuple_to_list(T1))).
 
 %%
 setopts({gen_tcp, Socket}, Opts) ->
 	inet:setopts(Socket, Opts);
 setopts({ssl, Socket}, Opts) ->
 	ssl:setopts(Socket, Opts).
-%
+%%
 controlling_process({Transport, Socket}, Pid) when is_pid(Pid) ->
 	Transport:controlling_process(Socket, Pid).
 %%
@@ -95,19 +100,19 @@ accept({ssl, Socket}) ->
 %%
 recv({Transport, Socket}, Bytes, Timeout) ->
 	Transport:recv(Socket, Bytes, Timeout).
-
+	
 %%
-send(Socket, Bin) when is_binary(Bin) ->
-	ok = send_data(Socket, Bin);
 send(_, chunked) -> %% placeholder
 	ok;
+send(Socket, Bin) when is_binary(Bin) ->
+	ok = send_data(Socket, Bin);
 send(Socket, L) when is_list(L) ->
 	ok = send_data(Socket, L);
 send(Socket, {file, F}) ->
 	{ok, Fd} = file:open(F, [raw, binary]),
 	ok = send_file(Socket, Fd).
 
-%
+%%
 send_file(Socket, Fd) ->
     case file:read(Fd, ?READ_SIZE) of
 	{ok, Data} ->
@@ -117,7 +122,7 @@ send_file(Socket, Fd) ->
 		file:close(Fd),
 		ok
     end.
-%
+%%
 send_data({Transport, Socket}, Data) ->
     case Transport:send(Socket, Data) of
 	ok -> ok;

@@ -19,4 +19,4 @@
 {"priv/apps/beep/src/*", [{i, "include"}, {outdir, "priv/apps/beep/ebin"}, debug_info, strict_record_tests]}.
 {"priv/apps/admin/src/*", [{i, "include"}, {outdir, "priv/apps/admin/ebin"}, debug_info, strict_record_tests]}.
 {"priv/apps/redoc/src/*", [{i, "include"}, {outdir, "priv/apps/redoc/ebin"}, debug_info, strict_record_tests]}.
-{"priv/apps/wiki/src/*", [{i, "include"}, {outdir, "priv/apps/wiki/ebin"}, debug_info, strict_record_tests]}.
+{"priv/apps/wiki-1.0.0/src/*", [{i, "include"}, {outdir, "priv/apps/wiki-1.0.0/ebin"}, debug_info, strict_record_tests]}.

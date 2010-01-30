@@ -4,7 +4,7 @@
 %%
 -module(esp_validator).
 
--include("../include/ewok.hrl").
+-include("ewok.hrl").
 
 -compile(export_all).
 
@@ -26,6 +26,14 @@ get_validator(not_null) -> fun not_null/1;
 get_validator(_) -> error.
 
 %
-not_null(Param) -> 
-	?is_string(Param).
+not_null(<<>>) ->
+	false;
+not_null(X) when is_binary(X) ->
+	ok;
+not_null([<<>>|_]) ->
+	false;
+not_null([H|T]) when is_binary(H) ->
+	not_null(T);
+not_null([]) ->
+	ok.
 

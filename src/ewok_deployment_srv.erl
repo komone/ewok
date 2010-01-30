@@ -13,46 +13,53 @@
 % limitations under the License.
 
 -module(ewok_deployment_srv).
--vsn({1,0,0}).
--author('steve@simulacity.com').
+-name("Ewok Deployment Service").
 
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0, service_info/0]).
+-export([start_link/0, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
 	handle_info/2, terminate/2, code_change/3]).
 
--export([validate/1, load/1, unload/1, deploy/1, undeploy/1]).
+-export([validate/2, load/1, unload/1, deploy/1, undeploy/1]).
 -export([list/0, package/1]).
 
+-compile(export_all).
+
 -define(SERVER, ?MODULE).
--define(DEPENDS, [ewok_cache_srv, ewok_scheduler_srv]).
 
-%% callback: Starts the web application deployment service
 %
-% in: void()
-% out: {ok, pid()} | ignore | {error, term()}
 start_link() ->
-	ewok_log:log(default, service, {?MODULE, service_info()}),
-	ewok_util:check_dependencies(?DEPENDS),
-	Runmode = ewok:config({ewok, runmode}),
-	AppRoot = ewok:config({ewok, http, deploy_root}, ?DEFAULT_APP_ROOT),
-	ewok_log:log(default, configuration, {?MODULE, [{runmode, Runmode}, {deploy_root, AppRoot}]}),
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Runmode, AppRoot], []).
+	Runmode = ewok:config({ewok, runmode}, development),
+	AppRoot = ewok:config({ewok, http, deploy_root}, ?APP_ROOT),
+	ewok_log:message(?MODULE, {configuration, [{runmode, Runmode}, {deploy_root, AppRoot}]}),
+    
+	gen_server:start_link({local, ?SERVER}, ?MODULE, [Runmode, AppRoot], []).
 
-%% out: ok
+%
 stop() ->
     gen_server:cast(?SERVER, stop).
 	
-%% out: proplist()
-service_info() -> [
-	{name, "Ewok Deployment Service"},
-	{depends, ?DEPENDS}
-].
+%
+load(App) when is_atom(App) ->
+	gen_server:call(?SERVER, {load, App}, infinity).
+%
+unload(App) when is_atom(App) ->
+	gen_server:call(?SERVER, {unload, App}, infinity).
+%
+deploy(App) when is_atom(App) ->
+	gen_server:call(?SERVER, {deploy, App}, infinity).
+%
+undeploy(App) when is_atom(App) ->
+	gen_server:call(?SERVER, {undeploy, App}, infinity).
+
+%
+list() ->
+	gen_server:call(?SERVER, {list}, infinity).
 
 %% TODO: placeholder
 %% .ezw is a web archive containing a .web config 
@@ -64,71 +71,49 @@ package(App) when is_atom(App) ->
 	zip:create(File ++ ".ez", [File], [
 		{cwd, filename:dirname(Dir)}, 
 		{compress, all}, 
-		{uncompress,[".beam",".app",".conf"]}
+		{uncompress,[".beam",".app"]}
 	]).
 
 %%
-load(Path) when is_list(Path) ->
-	not_implemented;
-%
-load(App) when is_atom(App) ->
-	gen_server:call(?SERVER, {load, App}, infinity).
-%
-unload(App) when is_atom(App) ->
-	gen_server:call(?SERVER, {unload, App}, infinity).
-
-%
-deploy(Path) when is_list(Path) ->
-	not_implemented;
-%
-deploy(App) when is_atom(App) ->
-	gen_server:call(?SERVER, {deploy, App}, infinity).
-	
+%% gen_server callbacks 
 %%
-undeploy(App) when is_atom(App) ->
-	gen_server:call(?SERVER, {undeploy, App}, infinity).
 
-%
-list() ->
-	gen_server:call(?SERVER, {list}, infinity).
-
-
-%% section: gen_server callbacks 
-%
+%%
 init([Runmode, AppRoot]) ->
-	DeployDir = filename:join(ewok_util:appdir(), AppRoot),
-	{ok, Files} = file:list_dir(DeployDir),
-	Paths = [filename:join(DeployDir, X) || X <- Files],
-	AppList = load_paths(Paths, []),
-    {ok, #server{runmode=Runmode, path=DeployDir, apps=AppList}}.
+	DeployDir = ewok_file:path([ewok_util:appdir(), AppRoot]),
+	AppList = ewok_file:find(DeployDir, <<"\\.app$|\\.ez$">>, recursive),
+	Apps = load_paths(AppList, []),
+    {ok, #server{runmode=Runmode, path=DeployDir, apps=Apps}}.
 
 %%
 handle_call({load, App}, _From, State) -> 
-	Reply = App,
-    {reply, Reply, State};
+	{Reply, NewState} = 
+		case load_app(App) of
+		WebApp = #web_app{} ->
+			{ok, State#server{apps = lists:keystore(App, 2, State#server.apps, WebApp)}};
+		Error ->
+			{Error, State}
+		end,
+	{reply, Reply, NewState};
 %%
-handle_call({unload, App}, _From, State) -> 
-	Reply = App,
+handle_call({unload, _App}, _From, State) -> 
+	Reply = not_implemented,
     {reply, Reply, State};
 %%
 handle_call({deploy, App}, _From, State) ->
-	{Reply, NewState} = 
-		case ewok_configuration:load(App) of
-		{ok, _} ->
-			%% More TODO!!
-			case erlang:function_exported(App, init, 1) of
-			true -> App:init([]);
-			false -> ok
-			end,
-			case lists:keyfind(App, 2, State#server.apps) of
-			false -> 
-				{{error, app_not_found}, State}; %% CHANGE!!!
-			WebApp = #web_app{} ->
-				WebApp1 = WebApp#web_app{deployed = true},
-				UpdatedApps = lists:keyreplace(App, 2, State#server.apps, WebApp1),
-				UpdatedState = State#server{apps = UpdatedApps},
-				{ok, UpdatedState}
-			end
+	{Reply, NewState} =
+		case lists:keyfind(App, 2, State#server.apps) of
+		WebApp = #web_app{} when WebApp#web_app.valid =:= true ->
+			case WebApp#web_app.config of
+			undefined ->
+				{{error, {no_config, App}}, State};
+			Config ->
+				ewok_config:load(App, http, Config),
+				UpdatedApps = lists:keyreplace(App, 2, State#server.apps, WebApp#web_app{deployed = true}),
+				{ok, State#server{apps = UpdatedApps}}
+			end;
+		false ->
+			{{not_loaded, App}, State}
 		end,
 	{reply, Reply, NewState};
 %% 
@@ -136,8 +121,8 @@ handle_call({undeploy, App}, _From, State) ->
 	{Reply, NewState} = 
 		case lists:keyfind(App, 2, State#server.apps) of
 		false -> {ok, State};
-		WebApp = #web_app{} ->			
-			Result = ewok_configuration:unload(App),
+		WebApp = #web_app{} ->
+			Result = ewok_config:unload(App),
 			AppList = lists:keyreplace(WebApp#web_app.id, 2, 
 				State#server.apps, WebApp#web_app{deployed=false}),
 			{Result, State#server{apps=AppList}}
@@ -163,70 +148,70 @@ code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.	
 
 %% section: internal
-
-load_paths([H|T], Acc) ->
-	case load_path(H) of
+load_paths([Path|Rest], Acc) ->
+	case load_path(Path) of
 	App = #web_app{} ->
-		load_paths(T, [App | Acc]);
-	undefined -> % log this
-		load_paths(T, Acc)
+		case lists:keyfind(App#web_app.id, 2, Acc) of
+		false ->
+			ewok_log:message(?MODULE, {loaded, App}),
+			load_paths(Rest, [App | Acc]);
+		_ ->
+			ewok_log:message(?MODULE, {duplicate, App}),
+			?TTY({removing, App}), 
+			code:del_path(App#web_app.id), %% TODO: never load
+			load_paths(Rest, Acc)
+		end;
+	Error ->
+		ewok_log:message(?MODULE, {Error, Path}),
+		load_paths(Rest, Acc)
 	end;
 load_paths([], Acc) ->
 	lists:reverse(Acc).
 
 %% full_path() -> #web_app{} | undefined
-load_path(Path) when ?is_string(Path) ->
-	case filelib:is_dir(Path) of 
-	true -> 
-		load_path1(Path);
-	false ->
-		case filelib:is_regular(Path) 
-			andalso filename:extension(Path) =:= ?ARCHIVE_FILE_EXT of
-		true ->
-			load_path1(filename:join([Path, filename:basename(Path, ".ez")]));
-		false -> 
-			undefined
-		end
-	end.
-%%
-load_path1(Path) ->
-	BeamDir = filename:join(Path, "ebin"),
-	%?TTY("Trying: ~p~n", [Path]),
-	case filelib:wildcard("*" ++ ?CONFIG_FILE_EXT, BeamDir) of
-	[AppFile|_] ->
-		%?TTY("AppFile: ~p~n", [{AppFile, BeamDir}]),
-		AppName = list_to_atom(filename:basename(AppFile, ?CONFIG_FILE_EXT)),
-		code:add_pathz(BeamDir),
-		Valid = validate(AppName),
-		#web_app{id=AppName, path=Path, valid=Valid};
-	_ -> 
-		undefined
+load_path(Path) ->
+	case ewok_file:code_path(Path) of 
+	undefined ->
+		{error, invalid_path};
+	BeamDir -> 
+		App = ewok_file:appname(BeamDir),
+		code:add_patha(binary_to_list(BeamDir)),
+		load_app(App)
 	end.
 
-
 %%
-validate(App) when is_atom(App) ->
-	case check_behaviour(App, ewok_web_application) of
-	ok ->
-		case ewok_configuration:preload(App) of
-		{ok, _File, Config} -> 
-			Routes = [X || X = #route{} <- Config],
-			validate_routes(Routes);
-		Error -> Error
+load_app(App) ->
+	application:unload(App),
+	ok = application:load(App),
+	case application:get_env(App, web_app) of
+	{ok, Config} ->
+		case validate_routes(Config) of
+		ok ->
+			#web_app{id = App, path = code:lib_dir(App), config = Config, valid = true, deployed = false};
+		Error ->
+			Error
 		end;
-	Error -> Error
+	Error -> 
+		Error
 	end.
 	
+validate(_App, _Config) ->
+	not_implemented.
+	
 %%
-validate_routes([H = #route{}|T]) ->
-	case check_behaviour(H#route.handler, ewok_http_resource) of
+validate_routes([H = #ewok_route{}|T]) ->
+	case check_behaviour(H#ewok_route.handler, ewok_http_resource) of
 	ok ->
-		case ewok_cache:lookup(route, H#route.path) of
-		undefined -> validate_routes(T);
-		#route{} -> {error, {duplicate_route, H}}
+		case ewok_db:lookup(ewok_route, H#ewok_route.path) of
+		undefined -> 
+			validate_routes(T);
+		#ewok_route{} -> 	
+			{error, {duplicate_route, H}}
 		end;
 	Error -> Error
 	end;
+validate_routes([_H|T]) ->
+	validate_routes(T);
 validate_routes([]) ->
 	ok.
 
@@ -243,5 +228,6 @@ check_behaviour(Module, Behaviour) ->
 		[Behaviour|_] -> ok;
 		[] -> {error, {'behaviour', Behaviour}}
 		end;
-	Value -> {error, Value}
+	Error -> Error
 	end.
+	

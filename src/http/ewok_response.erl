@@ -1,7 +1,21 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
 %%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_response).
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 %-include_lib("kernel/include/file.hrl").
 
 -compile(export_all).
@@ -20,11 +34,11 @@
 %-record(response, {status, headers=[], content=[], close=false}).
 
 %% Placeholder!! 100-continue
-continue(_Request) ->
-	ok.
+continue(Request) ->
+	reply(Request, #response{status=100, headers=[], content=[], close=false}).
 
 % Plaintext response for now... soon use esp errorpage template?
-reply(Request, Response) when is_record(Response, response) ->
+reply(Request, Response = #response{}) ->
 	ContentLength = content_length(Response#response.content),
 	Headers = 
 		case proplists:get_value(content_length, Response#response.headers) of
@@ -43,7 +57,8 @@ reply(Request, Response) when is_record(Response, response) ->
 		end,
 %	?TTY("~p -> get_http_response~n~p~n", [Request:url(), Response]),
 	HttpResponse = get_http_response(Request, Response#response{headers=Headers}),
-%	?TTY("~p ->~nHttpResponse~n~p~n", [Request, HttpResponse]),
+%	?TTY("REQUEST: ~p~n~n", [{Request:method(), Request:url()}]),
+%	?TTY("RESPONSE: ~p~n~n", [HttpResponse]),
 	Socket = Request:socket(),
 	ok = send(Socket, HttpResponse),
 	case is_integer(ContentLength) andalso ContentLength > 0 of
@@ -64,6 +79,8 @@ content_length(chunked) ->
 get_http_response(Request, Response) ->
 	Code = ewok_http:status_code(Response#response.status),
 	case Code of 
+	100 ->
+		<<"HTTP/1.1 100 Continue\r\n\r\n">>;
 	101 ->
         % According to the spec, this should be hard-coded!?!?!
 		% http://tools.ietf.org/html/draft-hixie-thewebsocketprotocol
@@ -110,8 +127,8 @@ send_file(Socket, Fd) ->
 		ok
     end.
 %%
-send_data({Transport, Socket}, Data) ->
-    case Transport:send(Socket, Data) of
+send_data(Socket, Data) ->
+    case ewok_socket:send(Socket, Data) of
 	ok -> ok;
 	_ -> exit(normal) %% leaving a file open?
     end.
