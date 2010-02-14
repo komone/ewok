@@ -19,7 +19,7 @@
 -include("email.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 %% API
 -export([service/2]).
@@ -30,7 +30,7 @@
 %% test
 sendmail(From, To, Message) ->
     {ok, Host} = inet:gethostname(), 
-	{ok, Socket} = gen_tcp:connect(Host, 25, [{active, false}]),
+	{ok, Socket} = gen_tcp:connect(Host, 2525, [{active, false}]),
 	print(Socket),
 	gen_tcp:send(Socket, "EHLO simulacity.com\r\n"),
 	print(Socket),
@@ -53,7 +53,7 @@ print(Socket) ->
 
 
 %%
-start_link() ->
+start_link(_Args) ->
 	try begin
 		ewok_log:message(service, ?MODULE),
 

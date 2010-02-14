@@ -17,8 +17,8 @@
 -module(ewok_xml).
 -include("ewok.hrl").
 
--export([decode/1, encode/1]).
--compile(export_all).
+-export([decode/1, encode/1, xpath/2]).
+
 -define(XML_REGEX, <<"[\t\n\r]|(<[^>]*>)">>).
 -define(XML_DECL, <<"<?xml version=\"1.0\"?>">>).
 
@@ -28,29 +28,58 @@ decode(File) when ?is_string(File) ->
 	decode(Bin);
 decode(Bin) when is_binary(Bin) ->
 	try
-		[?XML_DECL|List] = split(Bin, ?XML_REGEX),
+		[?XML_DECL|List] = ewok_util:split(Bin, ?XML_REGEX),
 		{Root, []} = decode_elements(List, [], []),
-		{xml, [], Root}
+		{xml, [{version, {1, 0}}], Root}
 	catch
 	E:R -> {E, R}
 	end.
-
 %%
-encode({xml, [], Markup}) ->
+encode({xml, [{version, 1}], Markup}) ->
 	encode(Markup);
-encode(Term) -> 
+encode([Term]) -> 
 	try
-		list_to_binary([?XML_DECL, encode_element(Term)])
+		Result = encode_element(Term),
+		list_to_binary([?XML_DECL, Result])
 	catch
 	E:R -> {E, R}
 	end.
+	
+%%
+xpath(Xpath, {xml, _, Markup}) ->
+	Path = ewok_util:split(Xpath, <<"/">>),
+%	?TTY({path, Path}),
+	path(Path, Markup).
+%%
+path([H, <<"values()">>], Values = [{H, _Attrs, _Body}|_Rest]) ->
+	[X || {_, _, X} <- Values];
+path([H, <<"node()">>], [Element = {H, _Attrs, _Body}|_Rest]) ->
+	Element;
+path([H], [{H, _Attrs, Body}|_Rest]) ->
+%	?TTY({found, H}),
+	Body;
+path([H, <<"text()">>], [{H, _Attrs, Body}|_Rest]) ->
+	Body;
+path([H|T], [{H, _Attrs, Body}|_Rest]) ->
+%	?TTY({traverse, H}),
+	path(T, Body);
+path(Path, [{_H, _, _}|Rest]) ->
+%	?TTY({ignore, Path, H}),
+	path(Path, Rest);
+path([_|_], _) ->
+	[];
+path([], _) ->
+	[].
+
+
+%% @private
 
 %%
 decode_elements([Terminal|T], Terminal, Acc) ->
 	{lists:reverse(Acc), T};
 decode_elements([<<$<, Bin/binary>>|T], Terminal, Acc) ->
-	[Tag, Close] = split(Bin, <<"(>|/>)">>, 2),
-	[Name|Attrs] = split(Tag, <<" ">>),
+	[Tag, Close] = ewok_util:split(Bin, <<"(>|/>)">>, 2),
+	[Name|Attrs] = ewok_util:split(Tag, <<" ">>),
 	Pairs = decode_attrs(Attrs, []),
 	case Close of
 	<<"/>">> -> 
@@ -68,14 +97,16 @@ decode_elements([], _Terminal, Acc) ->
 	{lists:reverse(Acc), []}.
 %
 decode_attrs([H|T], Acc) ->
-	[Name, Value] = split(H, <<$=>>),
+	[Name, Value] = ewok_util:split(H, <<$=>>),
 	decode_attrs(T, [{make_key(Name), ewok_util:unquote(Value)}|Acc]);
 decode_attrs([], Acc) -> 
 	lists:reverse(Acc).
-	
 
 %%
+encode_element({Name, Content}) ->
+	encode_element({Name, [], Content});
 encode_element({Name, Attrs, Content}) ->
+	%?TTY({encode, Name}),
 	StartTag = [$<, makeio(Name), encode_attrs(Attrs, [])],
 	Element = 
 		case encode_content(Content, []) of
@@ -96,15 +127,6 @@ encode_content([H|T], Acc) ->
 	encode_content(T, [encode_element(H)|Acc]);
 encode_content([], Acc) ->
 	lists:reverse(Acc).
-
-
-%% "clean" splitter
-split(Bin, Regex) ->
-	split(Bin, Regex, []).
-split(Bin, Regex, Parts) when is_integer(Parts) ->
-	split(Bin, Regex, [{parts, Parts}]);
-split(Bin, Regex, Opts) ->
-	[X || X <- re:split(Bin, Regex, Opts), X =/= <<>>].
 
 %%
 make_key(Name) ->

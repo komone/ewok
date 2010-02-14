@@ -17,8 +17,8 @@
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
--export([load/3, all/0, get_value/1, get_value/2, mimetype/1, get_env/1, get_env/2]).
--export([import_file/1, import_file/2, export_file/1]).
+-export([load/3, unload/1, all/0, get_value/1, get_value/2, put_value/2, mimetype/1, get_env/1, get_env/2]).
+-export([import_file/1, import_file/2, export_file/1, load_mimetypes/0]).
 -export([print/0, print/1]).
 
 -define(CONFIG, ?MODULE).
@@ -32,6 +32,25 @@ load(App, Prefix, Terms) ->
 	%? application:unload(App),
 	Config = parse_config([{{App}, Prefix, Terms}], []),
 	ewok_db:add(Config).
+
+unload(_App) ->
+	not_implemented.
+	
+%%
+load_mimetypes() ->
+	F = fun (X, Y) ->
+		X1 = 
+			case X of 
+			_ when is_atom(X) -> X;
+			_ -> list_to_binary(X)
+			end, 
+		Y1 = list_to_binary(Y),
+		{ewok_mimetype, X1, Y1}
+		end,
+	Mimetypes = ewok_config:get_env(mimetypes, []),
+	Records = [F(K, V) || {K, V} <- Mimetypes],
+	ewok_db:add(Records),
+	ewok_log:message(?MODULE, [Records]).
 
 %%
 get_env(Key) ->
@@ -52,8 +71,10 @@ all() ->
 %
 get_value(Property) ->
 	case ewok_db:lookup(?MODULE, Property) of
-	undefined -> undefined;
-	X -> X#ewok_config.value
+	undefined -> 
+		undefined;
+	#ewok_config{value = Value} -> 
+		Value
 	end.
 %
 get_value(Property, Default) ->
@@ -61,13 +82,19 @@ get_value(Property, Default) ->
 	undefined -> 	
 		ok = ewok_db:create(#ewok_config{key = Property, value = Default}),
 		Default;
-	X -> X#ewok_config.value
+	#ewok_config{value = Value} -> 
+		Value
 	end.
-
+	
+put_value(Property, Value) ->
+	ok = ewok_db:update(#ewok_config{key = Property, value = Value}).
+	
 mimetype(Extension) ->
 	case ewok_db:lookup(ewok_mimetype, Extension) of
-	undefined -> <<"application/octet-stream">>;
-	{ewok_mimetype, Extension, Value} -> Value
+	undefined -> 
+		<<"application/octet-stream">>;
+	{ewok_mimetype, Extension, Value} -> 
+		Value
 	end.
 
 export_file(File) ->
@@ -97,24 +124,27 @@ import_file(_App, File) ->
 		Values = parse_config(Terms, []),
 		ok = ewok_db:add(Values),
 		{ok, filename:absname(File), length(Values)};
-	Error -> Error
+	Error -> 
+		Error
 	end.
 
 %%
 print() ->
 	case ewok_db:select(?CONFIG) of
-	undefined -> undefined;
 	{ok, Recs} -> 
-		[io:format(" ~p = ~p~n", [K, V]) || {?CONFIG, K, V} <- Recs],
-		{ok, length(Recs)}
+		[io:format(" ~p = ~p~n", [K, V]) || {?CONFIG, K, V} <- lists:sort(Recs)],
+		{ok, length(Recs)};
+	undefined -> 
+		undefined
 	end.
 %%	
 print(Type) -> 
 	case ewok_db:select(Type) of
-	undefined -> undefined;
 	{ok, Recs} -> 
-		[io:format(" ~p~n", [X]) || X <- Recs],
-		{ok, length(Recs)}
+		[io:format(" ~p~n", [X]) || X <- lists:sort(Recs)],
+		{ok, length(Recs)};
+	undefined -> 
+		undefined
 	end.
 
 %%
@@ -164,8 +194,10 @@ parse_properties(Parent, Id, Props) ->
 		Keys -> 
 			F = fun (X) ->
 				case proplists:get_value(X, Props) of
-				undefined -> parse_records(X, Props);
-				Value -> parse_properties(Key, X, Value)
+				undefined -> 
+					parse_records(X, Props);
+				Value -> 
+					parse_properties(Key, X, Value)
 				end
 			end,
 			[F(X) || X <- Keys]
@@ -184,5 +216,4 @@ convert_record({mimetype, default, Media}) ->
 	{ewok_mimetype, default, list_to_binary(Media)};
 convert_record({mimetype, Ext, Media}) ->
 	{ewok_mimetype, list_to_binary(Ext), list_to_binary(Media)}.
-
 

@@ -39,7 +39,7 @@ get_session(Cookie, RemoteIp) ->
 			case ets:lookup(?ETS, SessionKey) of
 			[] -> 
 				new_session(RemoteIp);
-			[Value] when is_record(Value, ewok_session) ->  
+			[#ewok_session{} = Value] ->  
 				%% NOTE: check that the IP is valid, if it isn't then return a new session
 				case Value#ewok_session.ip of
 				RemoteIp -> Value;

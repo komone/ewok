@@ -19,7 +19,7 @@
 -include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
@@ -35,11 +35,11 @@
 %%
 %% API
 %% 
-add_task(Task) when is_record(Task, ewok_task) ->
+add_task(#ewok_task{} = Task) ->
 	gen_server:call(?SERVER, {add_task, Task}, infinity).
 
 %%
-cancel_task(Task) when is_record(Task, ewok_task) ->
+cancel_task(#ewok_task{} = Task) ->
 	cancel_task(Task#ewok_task.id);
 cancel_task(TaskId) when is_atom(TaskId) ->
 	gen_server:call(?SERVER, {cancel_task, TaskId}, infinity). 
@@ -51,8 +51,8 @@ get_tasks() ->
 %%
 %% ewok_service callbacks
 %%
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(Args) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 stop() ->
     gen_server:cast(?SERVER, stop).
 
@@ -105,7 +105,8 @@ handle_info({exec, TaskId}, State) ->
 		{ok, Result} ->
 			notify(task_executed, Now, Task, Result),
 			case schedule(Task) of
-			T when is_record(T, ewok_task) -> T;
+			#ewok_task{} = T -> 
+				T;
 			Reason ->
 				ets:delete(?ETS, Task#ewok_task.id),
 				notify(task_terminated, Now, Task, Reason)
@@ -131,7 +132,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 
 %% atom(), integer() -> TimerRef()
-schedule(T) when is_record(T, ewok_task) ->
+schedule(#ewok_task{} = T) ->
 	Now = unow(),
 	case calc_next(Now, T#ewok_task.start, T#ewok_task.repeat, T#ewok_task.terminate) of
 	Seconds when is_integer(Seconds) ->
@@ -223,7 +224,7 @@ notify(Message, Time, Task, Result) ->
 unow() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 %%
-convert_times(T) when is_record(T, ewok_task) ->
+convert_times(#ewok_task{} = T) ->
 	T#ewok_task{
 		start=convert_time(T#ewok_task.start),
 		terminate=convert_time(T#ewok_task.terminate)

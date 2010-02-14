@@ -1,22 +1,40 @@
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+
 %% ewok_system.hrl
 -vsn("1.0.0").
 -author('steve@simulacity.com').
 
 %% Defaults used internally by the server on installation
 %% These may be overridden by corresponding keys in the .app env entry.
--define(APP_ROOT, <<"./priv/apps">>).
--define(WWW_ROOT, <<"./priv/www">>).
--define(WWW_INDEX_FILE, <<"index.html">>).
-
 -define(DATA_DIR, <<"./priv/data">>).
 -define(LOG_DIR, <<"./priv/log">>).
 -define(BOOT_LOG, <<"./boot.log">>).
 
+-define(APP_ROOT, <<"./priv/apps">>).
+-define(WWW_ROOT, <<"./priv/www">>).
+-define(WWW_INDEX_FILE, <<"index.html">>).
+
 -define(KEYSTORE_FILE, <<".keystore">>).
+
+-define(ADMIN_USER, {ewok, <<"admin">>}).
+-define(ADMIN_ROLE, {ewok, admin}).
 
 %% These are records that need to be shared between services but they should
 %% not be required by the API. Records required by the API are in ewok.hrl.
 -record(ewok_config, {key, value}).
+
 %% The 'task' record is the API to the scheduler
 %% Meaning: "Using this task 'id' as a reference, execute this 'function' every 'repeat' 
 %% seconds, and 'notify' this pid -- usually self() or 'undefined' -- when the task is 
@@ -39,8 +57,7 @@
 %% Auth and security... not intended for API usage. Could/should this record could be 
 %% move into ewok_system.hrl?
 -record(ewok_auth, {id, password, activation}).
-%% NOTE: The only exposure to the API currently is in the .web configuration,
-%% and so this record may be hidden/moved to ewok_system.hrl.
+
 %% The url 'path', is always relative to www root "/", and passes execution 
 %% to the module 'handler' which must implement the callbacks defined by the 
 %% behaviour 'ewok_http_resource'. The resource is always associated with a
@@ -54,11 +71,13 @@
 -record(ewok_session, {key, ip, user, data=[], started, expires, ttl, notify}).
 %%
 -record(ewok_user, {id, name, roles=[]}). %% 
--record(ewok_role, {id, info=[]}). %% Not an API - Should this could be put into system.hrl?
+%%
+-record(ewok_role, {id, info=[]}). %% 
+%%
 -record(ewok_profile, {id, attributes=[]}). %% KV store for profile attributes
-%% Could this could be put in system.hrl?
+%% 
 -record(ewok_mimetype, {ext=[], media=[]}).
-%% Could this could be put in system.hrl?
+%%
 -record(response, {status, headers=[], content=[], close=false}).
 %%
 -record(ewok_file, {route, file, mimetype, modified, size=0, bin= <<>>}).

@@ -29,11 +29,13 @@ get_validator(_) -> error.
 not_null(<<>>) ->
 	false;
 not_null(X) when is_binary(X) ->
-	ok;
+	true;
 not_null([<<>>|_]) ->
 	false;
-not_null([H|T]) when is_binary(H) ->
+not_null([[]|_]) ->
+	false;
+not_null([_|T]) ->
 	not_null(T);
 not_null([]) ->
-	ok.
+	true.
 

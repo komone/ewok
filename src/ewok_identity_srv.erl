@@ -22,25 +22,30 @@
 %% RFC-4122 <http://www.ietf.org/rfc/rfc4122.txt>
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {node, clock_seq}).
+-compile(export_all).
 
-%% TODO: These are all the same!
+%% TODO: Replace this with an id that's dynamically generated at build time?
+-define(IVEC, <<213,53,164,93,158,212,70,56,134,80,224,220,249,214,82,76>>).
+
+-record(state, {node, clock_seq, secret, keystore}).
+
+%% TODO: These are all the same!?!
 -define(UUID_DNS_NAMESPACE, <<107,167,184,16,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_URL_NAMESPACE, <<107,167,184,17,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_OID_NAMESPACE, <<107,167,184,18,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_X500_NAMESPACE, <<107,167,184,20,157,173,17,209,128,180,0,192,79,212,48,200>>).
 
 %%
-start_link() ->
+start_link(Args) ->
 	crypto:start(),
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 	
 stop() ->
     gen_server:cast(?SERVER, stop).
@@ -49,12 +54,16 @@ stop() ->
 %% uuid gen_server for generating timestamps with saved state
 %%
 init(Options) ->
+	Secret = crypto:md5(proplists:get_value(password, Options, <<>>)),
     {A1,A2,A3} = proplists:get_value(seed, Options, seed()),
     random:seed(A1, A2, A3),
     State = #state{
         node = proplists:get_value(node, Options, <<0:48>>),
-        clock_seq = random:uniform(65536)
+        clock_seq = random:uniform(65536),
+		secret = Secret,
+		keystore = load_keystore(ewok, Secret)
     },
+	?TTY({keystore, State#state.keystore}),
     {ok, State}.
 
 handle_call({new, default}, _From, State) ->
@@ -69,9 +78,22 @@ handle_call({new, sha}, _From, State) ->
 handle_call({new, md5}, _From, State) ->
     Reply = md5(dns, <<"ewok">>),
     {reply, Reply, State};
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call({password, Password}, _From, State) ->
+	Secret = crypto:md5(Password),
+	save_keystore(ewok, Secret, State#state.keystore),
+    {reply, ok, State#state{secret = Secret}};
+handle_call({keystore}, _From, State) ->
+	Keys = proplists:get_keys(State#state.keystore),
+	{reply, Keys, State};
+handle_call({keystore, Key}, _From, State) when is_atom(Key) ->
+	Value = proplists:get_value(Key, State#state.keystore),
+    {reply, Value, State};
+handle_call({keystore, Key, Value}, _From, State) when is_atom(Key) ->
+	Keystore = lists:keystore(Key, 1, State#state.keystore, {Key, Value}),
+	save_keystore(ewok, State#state.secret, Keystore),
+    {reply, ok, State#state{keystore = Keystore}};
+handle_call(_, _From, State) ->
+	{reply, undefined, State}.
 
 handle_cast(stop, State) ->
     {stop, normal, State};
@@ -152,3 +174,26 @@ format_uuid(TL, TM, THV, CSR, CSL, N, V) ->
 format_uuid(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48, _Rest/binary>>, V) ->
     <<TL:32, TM:16, ((THV band 16#0fff) bor (V bsl 12)):16, ((CSR band 16#3f) bor 16#80):8, CSL:8, N:48>>.
 
+%% TODO: Add encryption - make aes work for Erlang Binary Term Format
+keystore_path(App) ->
+	ewok_file:path([ewok_util:appdir(App), ewok_util:get_env(data_dir, ?DATA_DIR), ?KEYSTORE_FILE]).
+%%
+save_keystore(App, SecretKey, Keystore) ->
+	Path = keystore_path(App),
+	Bin = base64:encode(term_to_binary(Keystore)),
+	Cipher = ewok_crypto:encrypt(aes, SecretKey, Bin),
+	ok = ewok_file:save(Path, Cipher).
+%%
+load_keystore(App, SecretKey) ->
+	Path = keystore_path(App),
+	case ewok_file:load(Path) of
+	Bin when is_binary(Bin) ->
+		Base64 = ewok_crypto:decrypt(aes, SecretKey, Bin),
+		binary_to_term(base64:decode(Base64));
+	undefined ->
+		Keystore = [],
+		Bin = base64:encode(term_to_binary(Keystore)),
+		Cipher = ewok_crypto:encrypt(aes, SecretKey, Bin),
+		ewok_file:save(Path, Cipher),
+		Keystore
+	end.

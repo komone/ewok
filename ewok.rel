@@ -1,0 +1,9 @@
+{release, 
+	{"ewok", "Beta"},
+	{erts, "5.7.4"},
+	[{kernel, "2.13.4"},
+	 {stdlib, "1.16.4"},
+	 {crypto, "1.6.3"},
+	 {mnesia, "4.4.12"},
+	 {ewok, "1.0.0"}
+	]}.

@@ -18,12 +18,15 @@
 -include("ewok_system.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--export([start/0, stop/0, tables/0]).
+-export([stop/0, tables/0]).
 %% misc
--export([size/1, add/1, remove/1, lookup/2, select/2, create_tables/1, drop_tables/0]).
+-export([size/1, add/1, remove/1, lookup/2, select/2]).
+
+%% development mode only?
+-export([create_tables/1, create_missing/1, drop_tables/0]).
 
 -behaviour(ewok_datasource).
--export([init/1, datasource_info/0, metadata/0, metadata/1, table_info/1,
+-export([start/0, datasource_info/0, metadata/0, metadata/1, table_info/1,
 	create/1, read/1, read/2, update/1, delete/1, select/1, run/1, 
 	create_table/2, drop_table/1]).
 
@@ -70,7 +73,6 @@ connect() ->
 		data = [{tables, tables()}]}.	
 
 %% required... 
-init(_Opts) -> ok.
 datasource_info() -> [].
 metadata() -> [].
 metadata(_Key) -> [].
@@ -100,8 +102,10 @@ create(Record) when is_tuple(Record) ->
 	Key = element(2, Record),
     T = fun () -> 
 		case mnesia:wread({Table, Key}) of 
-		[] -> mnesia:write(Record);
-		_ -> {error, exists}
+		[] -> 
+			mnesia:write(Record);
+		_ -> 
+			{error, exists}
 		end
 	end,
     {atomic, Result} = mnesia:transaction(T),
@@ -110,8 +114,10 @@ create(Record) when is_tuple(Record) ->
 read(Table, Key) when is_atom(Table) ->
 	T = fun () -> mnesia:read({Table, Key}) end,
     case mnesia:transaction(T) of
-    {atomic, [Result]} -> Result;
-	_ -> undefined
+    {atomic, [Result]} -> 
+		Result;
+	_ -> 
+		undefined
 	end.
 %%	
 update(Record) when is_tuple(Record) ->
@@ -174,6 +180,12 @@ make_match(Record, _, []) ->
 %% Development and installation use only
 %% We should assume Mnesia is running
 %%
+create_missing(Tables) ->
+	Existing = tables(),
+	Missing = [Table || Table = {Name, _Fields} <- Tables, not lists:member(Name, Existing)],
+	ok = create_tables(Missing),
+	{ok, Missing}.
+	
 create_table(Table, Fields) when is_atom(Table), is_list(Fields) ->
 	{atomic, ok} = mnesia:create_table(Table, [{disc_copies, [node()]}, {attributes, Fields}]),
     ok = mnesia:wait_for_tables([Table], 10000).

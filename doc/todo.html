@@ -1,5 +1,5 @@
 <html>
-	<title>Ewok - TO DO</title>
+	<title>Ewok - TO DO </title>
 <style>
 body {
 margin: 40px;
@@ -30,14 +30,8 @@ font-size: 12pt;
 
 <h2>ewok_deployment_srv</h2>
 <ul>
-<li>*** finish load/deploy logic</li>
-<li>implement deployment for ".ez" archives -- add a "packaging" call for tpas (third-party applications)</li>
-<li>allow deployment from a path - this will entail a lot of work on code paths to avoid conflicts, but allow "free-standing" app development and (?) multiple ewok vm instances to run on one machine</li>
-</ul>
-
-<h2>ewok_installer</h2>
-<ul>
-<li>Finish up installation -- maybe can remove the module ewok_installer</li>
+<li>finish load/deploy logic</li>
+<li>complete the "packaging" call for tpas (third-party applications)</li>
 </ul>
 
 <h2>ewok_http_srv</h2>
@@ -77,8 +71,6 @@ font-size: 12pt;
 
 <h2>ewok_logging_srv</h2>
 <ul>
-<li>make this api totally bulletproof -- remember that a crash in the gen_event logger installed in error_logger can cause logging to entirely stop -- it's more robust than it was but it's not 100% yet...</li>
-<li>review the use of gen_event:add_sup_handler - currently this links to the starting process and hands over to error_logger -- i am not AT ALL certain this is a valid way to do this...</li>
 <li>use scheduled tasks for log rollover</li>
 </ul>
 
@@ -89,7 +81,6 @@ font-size: 12pt;
 
 <h2>ewok_identity_srv</h2>
 <ul>
-<li>complete gen_server for id server</li>
 <li>move realm access validation/control from ewok_http_srv into here? (or an ewok_security module?)</li>
 <li>implement a protected .keystore for datasource/eis passwords/keys (c port/driver?)</li>
 <li>make authentication pluggable</li>

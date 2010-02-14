@@ -8,7 +8,7 @@
 
 -export([absolute_uri/1, absolute_uri/2, get_remote_ip/2, browser_detect/1]).
 -export([url_encode/1, url_decode/1]).
--export([status_code/1, status_message/1, header/1]).
+-export([status/1, status_type/1, status_code/1, status_message/1, header/1]).
 -export([mimetype/1, date/0, date/1]). 
 
 -export([absolute_uri_couch/1]).
@@ -172,6 +172,147 @@ url_encode_char($[) -> "%5B";
 url_encode_char($]) -> "%5D".
 % No other characters are valid
 
+%%
+status(X) when is_integer(X) ->
+	status_type(X);
+status(X) when is_atom(X) ->
+	status_code(X).
+	
+% HTTP Status Codes
+status_type(100) -> continue;
+status_type(101) -> switching_protocols;
+status_type(200) -> ok;
+status_type(201) -> created;
+status_type(202) -> accepted;
+status_type(203) -> non_authoritative_information;
+status_type(204) -> no_content;
+status_type(205) -> reset_content;
+status_type(206) -> partial_content;
+status_type(207) -> multi_status;
+status_type(300) -> multiple_choices;
+status_type(301) -> moved_permanently;
+status_type(302) -> found;
+status_type(303) -> see_other;
+status_type(304) -> not_modified;
+status_type(305) -> use_proxy;
+status_type(306) -> unused;
+status_type(307) -> temporary_redirect;
+status_type(400) -> bad_request;
+status_type(401) -> unauthorized;
+status_type(402) -> payment_required;
+status_type(403) -> forbidden;
+status_type(404) -> not_found;
+status_type(405) -> method_not_allowed;
+status_type(406) -> not_acceptable;
+status_type(407) -> proxy_authentication_required;
+status_type(408) -> request_timeout;
+status_type(409) -> conflict;
+status_type(410) -> gone;
+status_type(411) -> length_required;
+status_type(412) -> precondition_failed;
+status_type(413) -> request_entity_too_large;
+status_type(414) -> request_uri_too_long;
+status_type(415) -> unsupported_media_type;
+status_type(416) -> request_range_not_satisfiable;
+status_type(417) -> expectation_failed;
+status_type(500) -> internal_server_error;
+status_type(501) -> not_implemented;
+status_type(502) -> bad_gateway;
+status_type(503) -> service_unavailable;
+status_type(504) -> gateway_timeout;
+status_type(505) -> http_version_not_supported;
+status_type(X) when is_integer(X) -> X.
+
+status_code(Int) when is_integer(Int)      -> Int;
+status_code(continue)                      -> 100;
+status_code(switching_protocols)           -> 101;
+status_code(ok)                            -> 200;
+status_code(created)                       -> 201;
+status_code(accepted)                      -> 202;
+status_code(non_authoritative_information) -> 203;
+status_code(no_content)                    -> 204;
+status_code(reset_content)                 -> 205;
+status_code(partial_content)               -> 206;
+status_code(multi_status)                  -> 207;
+status_code(multiple_choices)              -> 300;
+status_code(moved_permanently)             -> 301;
+status_code(found)                         -> 302;
+status_code(see_other)                     -> 303;
+status_code(not_modified)                  -> 304;
+status_code(use_proxy)                     -> 305;
+status_code(unused)                        -> 306;
+status_code(temporary_redirect)            -> 307;
+status_code(bad_request)                   -> 400;
+status_code(unauthorized)                  -> 401;
+status_code(payment_required)              -> 402;
+status_code(forbidden)                     -> 403;
+status_code(not_found)                     -> 404;
+status_code(method_not_allowed)            -> 405;
+status_code(not_acceptable)                -> 406;
+status_code(proxy_authentication_required) -> 407;
+status_code(request_timeout)               -> 408;
+status_code(conflict)                      -> 409;
+status_code(gone)                          -> 410;
+status_code(length_required)               -> 411;
+status_code(precondition_failed)           -> 412;
+status_code(request_entity_too_large)      -> 413;
+status_code(request_uri_too_long)          -> 414;
+status_code(unsupported_media_type)        -> 415;
+status_code(request_range_not_satisfiable) -> 416;
+status_code(expectation_failed)            -> 417;
+status_code(internal_server_error)         -> 500;
+status_code(not_implemented)               -> 501;
+status_code(bad_gateway)                   -> 502;
+status_code(service_unavailable)           -> 503;
+status_code(gateway_timeout)               -> 504;
+status_code(http_version_not_supported)    -> 505.
+
+% Standard HTTP Status Messages
+status_message(X) when is_atom(X) ->
+	status_message(status_code(X));
+status_message(100) -> <<"Continue">>;
+status_message(101) -> <<"Switching Protocols">>;
+status_message(200) -> <<"OK">>;
+status_message(201) -> <<"Created">>;
+status_message(202) -> <<"Accepted">>;
+status_message(203) -> <<"Non-Authoritative Information">>;
+status_message(204) -> <<"No Content">>;
+status_message(205) -> <<"Reset Content">>;
+status_message(206) -> <<"Partial Content">>;
+status_message(207) -> <<"Multi Status">>;
+status_message(300) -> <<"Multiple Choices">>;
+status_message(301) -> <<"Moved Permanently">>;
+status_message(302) -> <<"Found">>;
+status_message(303) -> <<"See Other">>;
+status_message(304) -> <<"Not Modified">>;
+status_message(305) -> <<"Use Proxy">>;
+status_message(306) -> <<"(Unused)">>;
+status_message(307) -> <<"Temporary Redirect">>;
+status_message(400) -> <<"Bad Request">>;
+status_message(401) -> <<"Unauthorized">>;
+status_message(402) -> <<"Payment Required">>;
+status_message(403) -> <<"Forbidden">>;
+status_message(404) -> <<"Not Found">>;
+status_message(405) -> <<"Method Not Allowed">>;
+status_message(406) -> <<"Not Acceptable">>;
+status_message(407) -> <<"Proxy Authentication Required">>;
+status_message(408) -> <<"Request Timeout">>;
+status_message(409) -> <<"Conflict">>;
+status_message(410) -> <<"Gone">>;
+status_message(411) -> <<"Length Required">>;
+status_message(412) -> <<"Precondition Failed">>;
+status_message(413) -> <<"Request Entity Too Large">>;
+status_message(414) -> <<"Request-URI Too Long">>;
+status_message(415) -> <<"Unsupported Media Type">>;
+status_message(416) -> <<"Requested Range Not Satisfiable">>;
+status_message(417) -> <<"Expectation Failed">>;
+status_message(500) -> <<"Internal Server Error">>;
+status_message(501) -> <<"Not Implemented">>;
+status_message(502) -> <<"Bad Gateway">>;
+status_message(503) -> <<"Service Unavailable">>;
+status_message(504) -> <<"Gateway Timeout">>;
+status_message(505) -> <<"HTTP Version Not Supported">>.
+
 % HTTP Header Names
 header(accept) ->              <<"Accept">>;
 header(accept_charset) ->      <<"Accept-Charset">>;
@@ -231,91 +372,3 @@ header(WebSocket = <<"WebSocket-", _R/binary>>) -> WebSocket;
 header(X = <<"X-", _R/binary>>) -> X.
 %% Don't return undefined if not found... ewok_request gets unhappy.
 
-% HTTP Status Codes
-status_code(Int) when is_integer(Int)      -> Int;
-status_code(continue)                      -> 100;
-status_code(switching_protocols)           -> 101;
-status_code(ok)                            -> 200;
-status_code(created)                       -> 201;
-status_code(accepted)                      -> 202;
-status_code(non_authoritative_information) -> 203;
-status_code(no_content)                    -> 204;
-status_code(reset_content)                 -> 205;
-status_code(partial_content)               -> 206;
-status_code(multi_status)                  -> 207;
-status_code(multiple_choices)              -> 300;
-status_code(moved_permanently)             -> 301;
-status_code(found)                         -> 302;
-status_code(see_other)                     -> 303;
-status_code(not_modified)                  -> 304;
-status_code(use_proxy)                     -> 305;
-status_code(unused)                        -> 306;
-status_code(temporary_redirect)            -> 307;
-status_code(bad_request)                   -> 400;
-status_code(unauthorized)                  -> 401;
-status_code(payment_required)              -> 402;
-status_code(forbidden)                     -> 403;
-status_code(not_found)                     -> 404;
-status_code(method_not_allowed)            -> 405;
-status_code(not_acceptable)                -> 406;
-status_code(proxy_authentication_required) -> 407;
-status_code(request_timeout)               -> 408;
-status_code(conflict)                      -> 409;
-status_code(gone)                          -> 410;
-status_code(length_required)               -> 411;
-status_code(precondition_failed)           -> 412;
-status_code(request_entity_too_large)      -> 413;
-status_code(request_uri_too_long)          -> 414;
-status_code(unsupported_media_type)        -> 415;
-status_code(request_range_not_satisfiable) -> 416;
-status_code(expectation_failed)            -> 417;
-status_code(internal_server_error)         -> 500;
-status_code(not_implemented)               -> 501;
-status_code(bad_gateway)                   -> 502;
-status_code(service_unavailable)           -> 503;
-status_code(gateway_timeout)               -> 504;
-status_code(http_version_not_supported)    -> 505.
-
-% Standard HTTP Status Messages
-status_message(100) -> <<"Continue">>;
-status_message(101) -> <<"Switching Protocols">>;
-status_message(200) -> <<"OK">>;
-status_message(201) -> <<"Created">>;
-status_message(202) -> <<"Accepted">>;
-status_message(203) -> <<"Non-Authoritative Information">>;
-status_message(204) -> <<"No Content">>;
-status_message(205) -> <<"Reset Content">>;
-status_message(206) -> <<"Partial Content">>;
-status_message(207) -> <<"Multi Status">>;
-status_message(300) -> <<"Multiple Choices">>;
-status_message(301) -> <<"Moved Permanently">>;
-status_message(302) -> <<"Found">>;
-status_message(303) -> <<"See Other">>;
-status_message(304) -> <<"Not Modified">>;
-status_message(305) -> <<"Use Proxy">>;
-status_message(306) -> <<"(Unused)">>;
-status_message(307) -> <<"Temporary Redirect">>;
-status_message(400) -> <<"Bad Request">>;
-status_message(401) -> <<"Unauthorized">>;
-status_message(402) -> <<"Payment Required">>;
-status_message(403) -> <<"Forbidden">>;
-status_message(404) -> <<"Not Found">>;
-status_message(405) -> <<"Method Not Allowed">>;
-status_message(406) -> <<"Not Acceptable">>;
-status_message(407) -> <<"Proxy Authentication Required">>;
-status_message(408) -> <<"Request Timeout">>;
-status_message(409) -> <<"Conflict">>;
-status_message(410) -> <<"Gone">>;
-status_message(411) -> <<"Length Required">>;
-status_message(412) -> <<"Precondition Failed">>;
-status_message(413) -> <<"Request Entity Too Large">>;
-status_message(414) -> <<"Request-URI Too Long">>;
-status_message(415) -> <<"Unsupported Media Type">>;
-status_message(416) -> <<"Requested Range Not Satisfiable">>;
-status_message(417) -> <<"Expectation Failed">>;
-status_message(500) -> <<"Internal Server Error">>;
-status_message(501) -> <<"Not Implemented">>;
-status_message(502) -> <<"Bad Gateway">>;
-status_message(503) -> <<"Service Unavailable">>;
-status_message(504) -> <<"Gateway Timeout">>;
-status_message(505) -> <<"HTTP Version Not Supported">>.

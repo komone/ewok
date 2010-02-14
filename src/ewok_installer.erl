@@ -15,15 +15,12 @@
 -module(ewok_installer).
 -name("Ewok Installer").
 
--include("ewok_system.hrl").
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 -include("esp.hrl").
 %%
 -export([validate/0, install/0, run/1]).
 
--behaviour(ewok_http_resource).
--export([filter/1, resource_info/0]).
--export(['GET'/2]).
 
 %% TODO: Perhaps have the services define the tables they require?	
 -define(TABLES, [
@@ -113,10 +110,15 @@ check_tables(Autoinstall) ->
 
 %%
 check_data(Autoinstall) ->
-	case ewok_db:select(ewok_user, {name, {ewok, "admin"}}) of
+	case ewok_db:select(ewok_user, {name, ?ADMIN_USER}) of
 	{ok, [User]} -> 
 		Auth = ewok_db:read(ewok_auth, User#ewok_user.id),
-		{ok, Auth#ewok_auth.activation};
+		case Auth#ewok_auth.password of
+		undefined ->
+			{ok, ?ADMIN_USER, Auth#ewok_auth.activation};
+		_ -> 
+			ok
+		end;
 	{ok, []} -> 
 		case Autoinstall of
 		true ->
@@ -128,38 +130,11 @@ check_data(Autoinstall) ->
 
 %%
 init_user_table() ->
-	AdminName = {ewok, "admin"},
-	AdminRole = {ewok, admin},
 	UserID = ewok_identity:random(),
 	Activation = ewok_util:hex(ewok_identity:random()),
 	%%
-	ok = ewok_db:create(#ewok_role{id=AdminRole}),
-	ok = ewok_db:create(#ewok_user{id=UserID, name=AdminName, roles=[AdminRole]}), 
+	ok = ewok_db:create(#ewok_role{id=?ADMIN_ROLE}),
+	ok = ewok_db:create(#ewok_user{id=UserID, name=?ADMIN_USER, roles=[?ADMIN_ROLE]}), 
 	ok = ewok_db:create(#ewok_auth{id=UserID, activation=Activation}),
-	{ok, {AdminName, Activation}}.
+	{ok, ?ADMIN_USER, Activation}.
 
-%%
-%% ewok_http_resource callbacks
-%%
-resource_info() -> [].
-
-%%
-filter(_Request) ->  ok.
-
-%%
-'GET'(_Request, _Session) -> 
-	case validate() of 
-	true ->
-		{ok, [{content_type, "text/plain"}], ewok_http:text(get_install_props())};
-	false ->
-		{found, [{location, "/activation"}], []}
-	end.
-
-%%
-get_install_props() ->
-	Node = node(),
-	IsRemote = (Node =/= 'nonode@nohost'),
-	UsesDb = ([Node] =:= [N || DbNode = N <- mnesia:system_info(db_nodes), DbNode =:= Node]),
-	HasDir = mnesia:system_info(directory),
-	UsesDir = mnesia:system_info(use_dir),
-	[{node, Node}, {remote, IsRemote}, {db_node, UsesDb}, {db_dir, HasDir}, {db_used, UsesDir}].

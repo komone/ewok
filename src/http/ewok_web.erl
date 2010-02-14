@@ -30,7 +30,13 @@ render(Request, Session, Spec) ->
 %	
 render(_Request, Session, Status, Spec) ->
 	Title = proplists:get_value(title, Spec, <<"Ewok AS">>),
-	Dock = proplists:get_value(dock, Spec, dock(Session)),
+	Dock = 
+		case proplists:get_value(dock, Spec) of
+		undefined ->
+			dock(Session);
+		Value ->
+			Value
+		end,
 	Head = [
 		#link{rel="icon", href="/favicon.png", type="image/png"},
 		#css{src="/css/ui-smoothness-1.7.2.css"},
@@ -52,7 +58,7 @@ render(_Request, Session, Status, Spec) ->
 		]},
 		#'div'{id="footer", body=[
 			#hr{},
-			#p{body=[<<"Copyright &copy; 2009 Simulacity.com. All Rights Reserved.">>]}
+			#p{body=[<<"Copyright &copy; 2010 Simulacity.com. All Rights Reserved.">>]}
 		]}
 	],
 	%

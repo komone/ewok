@@ -5,7 +5,7 @@
 %% Description: Definitions and records that may be used in applications
 -define(SERVER_ID, <<"Ewok/1.0 BETA (Wicket)">>).
 
--define(CONFIG_FILE_EXT, <<".config">>). % unused
+-define(CONFIG_FILE_EXT, <<".config">>). % unused...
 -define(ARCHIVE_FILE_EXT, <<".ez">>).
 
 -define(ESP_FILE_EXT, <<".esp">>).
@@ -27,10 +27,15 @@
 %% This record is not (currently) used; It is more a statement of intent and a
 %% possible semantic approach to "strings" that more closely observes genuine 
 %% engineering principles and standards. You can safely ignore this record for now.
--record(text, {bin= <<>>, charset=utf8, lang='us-en'}).
+-record(text, {bin, charset = utf8, lang = 'us-en'}).
 
 %% Ewok Session Management
 -define(EWOK_SESSION_KEY, <<"_EWOKSID">>).
--record(session, {key, ip, user, data=[], started, expires, ttl, notify}).
+-record(session, {key, ip, user, data = [], started, expires, ttl, notify}).
+
+%% "API record" used in deployment srv
+-record(route, {path, handler, realm, roles = []}).
+%% "API record" used in deployment srv
+-record(mimetype, {ext, media}).
 
 %% end %%

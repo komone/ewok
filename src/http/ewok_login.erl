@@ -52,7 +52,7 @@ do('POST', Request, Session) ->
 	ewok_log:info(io_lib:format("LOGIN ~p~n", [{Realm, Username}])),
 	%%
 	case ewok_users:login(Realm, Username, Password) of 
-	{ok, User} when is_record(User, ewok_user) -> 
+	{ok, #ewok_user{} = User} -> 
 		Session:user(User),
 		do_auth_log(Request, Session, URL),
 		{found, [{location, URL}], []};
@@ -70,7 +70,7 @@ do('POST', Request, Session) ->
 do_auth_log(Request, Session, URL) ->
 	UserId = 
 		case Session:user() of
-		User when is_record(User, ewok_user) -> 
+		#ewok_user{} = User -> 
 			list_to_binary(io_lib:format("~p", [User#ewok_user.name]));
 		_ -> <<"{-,-} ">>
 		end,

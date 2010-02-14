@@ -22,14 +22,14 @@
 -export([init/1]).
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 -export([create/1]).
 
 %%
-start_link() ->
+start_link(Args) ->
 	ewok_log:message(service, ?MODULE),
-	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+	supervisor:start_link({local, ?MODULE}, ?MODULE, Args).
 
 stop() ->
 	%% supervisor:terminate_child... all?

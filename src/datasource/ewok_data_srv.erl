@@ -21,7 +21,7 @@
 -include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 -export([info/0, connect/0, connect/1]).
 
 -behaviour(gen_server).
@@ -33,7 +33,7 @@
 -define(SERVER, ?MODULE).
 
 %% 
-start_link() ->
+start_link(_Args) ->
 	DS = ewok_mnesia_ds:new(),
 	case DS:init([]) of
 	{ok, Spec = #datasource{}} ->

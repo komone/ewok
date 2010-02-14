@@ -1,16 +1,16 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_http_srv).
 -name("Ewok HTTP Service").
@@ -20,26 +20,29 @@
 -include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
-%% API
+-export([start_link/1, start_link/2, stop/0]).
 -export([service/3]).
 
+-define(DEFAULT_HTTP_PORT, 8080).
+
 %%
-start_link() ->
+start_link([]) ->
+	start_link(ewok, ?DEFAULT_HTTP_PORT).
+%
+start_link(ServerId, Port) when is_atom(ServerId), is_integer(Port) ->
+%	ewok_util:check_dependencies(?DEPENDS)
 	try begin
-%		ewok_util:check_dependencies(?DEPENDS),
+		Transport = ewok_config:get_value({ServerId, transport}, gen_tcp),
+		SocketOpts = ewok_socket:configure(Transport, {ServerId, http}),
 		
-		Transport = gen_tcp, %% TEMP
-		SocketOpts = ewok_socket:configure(Transport, {ewok, http}),
-		Port = ewok:config({ewok, http, port}, 8080),
-		MaxConnections = ewok:config({ewok, http, tcp, max_connections}, infinity),
+		MaxConnections = ewok:config({ServerId, tcp, max_connections}, infinity),
 		
-		Timeout = ewok:config({ewok, http, request_timeout}, 30) * 1000,
-		MaxHeaders = ewok:config({ewok, http, header_limit}, 100),
+		Timeout = ewok:config({ServerId, request_timeout}, 30) * 1000,
+		MaxHeaders = ewok:config({ServerId, header_limit}, 100),
+		
 		Handler = fun(X) -> ?MODULE:service(X, Timeout, MaxHeaders) end,
 		
 		Configuration = [
-			{name, ?MODULE},
 			{transport, Transport}, %% defines use of gen_tcp or ssl module
 			{port, Port},
 			{protocol, http},
@@ -47,11 +50,12 @@ start_link() ->
 			{socket_opts, SocketOpts},
 			{handler, Handler}
 		],
-		%?TTY("CONFIG:~n~p~n", [TCPConfiguration]),
-		ewok_log:message(?MODULE, {configuration, Configuration}),
+		
+		?TTY({config, {ServerId, Configuration}}),
+		ewok_log:message(ServerId, {configuration, Configuration}),
 		
 		%% Starts a TCP Server for HTTP
-		{ok, Pid} = ewok_socket_srv:start_link(?MODULE, Configuration),
+		{ok, Pid} = ewok_socket_srv:start_link(ServerId, Configuration),
 		
 		ewok_log:add_log(access),
 		ewok_log:add_log(auth),
@@ -62,17 +66,26 @@ start_link() ->
 	end.
 
 %%	
-stop() -> 
-	ewok_socket_srv:stop(?MODULE),
-	ewok_log:remove_log(debug),
-	ewok_log:remove_log(auth),
-	ewok_log:remove_log(access).
+stop() ->
+	stop(?MODULE).
+%
+stop(ServerId) -> 
+	case is_pid(whereis(ServerId)) of
+	true ->
+		ewok_socket_srv:stop(ServerId),
+		ewok_log:remove_log(debug),
+		ewok_log:remove_log(auth),
+		ewok_log:remove_log(access);
+	false ->
+		{error, {not_started, ServerId}}
+	end.
 
 %% Callback from ewok_tcp_srv, handing over a client connection
 service(Socket, Timeout, MaxHeaders) ->
 	ok = ewok_socket:setopts(Socket, [{packet, http_bin}]),
 	case ewok_socket:recv(Socket, 0, Timeout) of
-	{ok, {http_request, Method, URI, Version}} ->
+	{ok, HttpRequest = {http_request, Method, URI, Version}} ->
+		?TTY(HttpRequest),
 		RequestLine = {Method, uri_to_path(URI), Version},
 		ok = ewok_socket:setopts(Socket, [{packet, httph_bin}]),
 		get_headers(Socket, RequestLine, [], Timeout, 0, MaxHeaders);
@@ -97,7 +110,8 @@ get_headers(Socket, RequestLine, Headers, _Timeout, MaxHeaders, MaxHeaders) ->
 %%
 get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Count, MaxHeaders) ->
 	case ewok_socket:recv(Socket, 0, Timeout) of
-	{ok, {http_header, _Integer, Name, _Reserved, Value}} ->
+	{ok, HttpHeader = {http_header, _Integer, Name, _Reserved, Value}} ->
+		?TTY(HttpHeader),
 		HeaderName =
 			case is_atom(Name) of
 			true -> atom_to_binary(Name, utf8); % would latin1 be "safer"?
@@ -110,6 +124,7 @@ get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Cou
 			end,
 		get_headers(Socket, RequestLine, [{HeaderName, Value} | Headers], Timeout, NewCount, MaxHeaders);
 	{ok, http_eoh} ->
+		?TTY(http_eoh),
 		ok = ewok_socket:setopts(Socket, [{packet, raw}]),
 		Request = ewok_request_obj:new(Socket, Timeout, Method, Path, Version, Headers, MaxHeaders),
 		get_session(Request);
@@ -180,7 +195,7 @@ get_access(Request, Session, #ewok_route{handler=Module, realm=Realm, roles=Role
 					ewok_http:absolute_uri(Request:path());
 				Value -> Value
 				end,
-			Session:save({redirect, Here}),
+			Session:save(redirect, Here),
 			%Location = ewok_http:absolute_uri(LoginPath),
 			%% NOTE: traditionally, this is 'found 302' - but 'temporary_redirect 307' may be better
 			do_response(Request, Session, {found, [{location, LoginPath}], []})
@@ -197,7 +212,7 @@ handle_request(Request, Session, Module) ->
 			case Module:filter(Request) of
 			{delegate, Handler, Options} when is_atom(Handler), is_list(Options) -> 
 				ewok_log:info([{delegated, {Handler, Options}}]),
-				Session:save({delegated, Options}),
+				Session:save(delegated, Options),
 				%% TODO: how to implement delegation Options for a handler without making
 				%% the handler's client code onerous?
 				handle_request(Request, Session, Handler);
@@ -227,7 +242,6 @@ handle_request(Request, Session, Module) ->
 			internal_server_error
 		end,
 	do_response(Request, Session, Response).
-
 %%
 do_response(Request, Session, Status) when is_atom(Status) ->
 	Code = ewok_http:status_code(Status),
@@ -240,7 +254,6 @@ do_response(Request, Session, {Status, Headers}) ->
 	do_response(Request, Session, {Status, Headers, []});
 % by this time, we should have a full response
 do_response(Request, Session, {Status, Headers, Content}) ->	
-
 	Code = ewok_http:status_code(Status),
 	%
 	ewok_session:update(Session),
@@ -250,8 +263,7 @@ do_response(Request, Session, {Status, Headers, Content}) ->
 		false -> [{set_cookie, Session:cookie()}|Headers];
 		true -> Headers
 		end,
-	Response = {response, Code, NewHeaders, Content, false},
-	
+	Response = {response, Code, NewHeaders, Content, false},	
 	%% and finally...
 	{ok, _HttpResponse, BytesSent} = ewok_response:reply(Request, Response),
 %	?TTY("HTTP~nREQUEST:~n~p~nRESPONSE:~n~p~n~n", [Request, HttpResponse]),
@@ -357,20 +369,24 @@ wildcard_path(Parts) ->
 	list_to_binary([[<<$/>>, X] || X <- lists:reverse([<<$*>>|Parts])]).
 
 %% TODO: move to ewok_identity/ewok_auth... ** i.e. make pluggable
-validate_access(_, _, any) -> ok;
-validate_access(undefined, _, _) -> not_authorized;
+validate_access(_, _, any) -> 
+	ok;
+validate_access(undefined, _, _) -> 
+	not_authorized;
 validate_access(#ewok_user{roles = UserRoles}, Realm, ResourceRoles) ->
 	Auth = lists:map(fun (R = {_, _}) -> R; (R) -> {Realm, R} end, ResourceRoles),
 	case [X || X <- UserRoles, Y <- Auth, X =:= Y] of
-	[] -> not_authorized;
-	_ -> ok
+	[] -> 
+		not_authorized;
+	_ -> 
+		ok
 	end.
 
 %% TODO: Move this later on. To...?
 format_access_log(Request, Session, StatusCode, BytesSent) ->
 	UserId = 
 		case Session:user() of
-		User when is_record(User, ewok_user) -> 
+		#ewok_user{} = User -> 
 			list_to_binary(io_lib:format("~p", [User#ewok_user.name]));
 		_ -> <<"{-,-}">>
 		end,

@@ -105,7 +105,7 @@ spec(configuration) ->
 %% 
 spec(applications) -> 
 	#server{apps=Apps} = ewok_deployment_srv:list(),
-	?TTY(Apps),
+	%?TTY(Apps),
 	F = fun (X) ->
 		{Icon, Actions} = 
 			case X#web_app.deployed of

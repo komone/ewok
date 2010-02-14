@@ -27,7 +27,7 @@
 %% option for file:open (currently at lines 194, 226) - at least in production mode
 
 -behaviour(ewok_service). %%?
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 -behaviour(gen_event).
 -export([code_change/3, handle_call/2, handle_event/2, handle_info/2, init/1, terminate/2]).
@@ -38,7 +38,7 @@
 -compile(export_all).
 
 %%
-start_link() ->
+start_link(_Args) ->
     application:load(ewok),
     LogDir = ewok_util:get_env(log_dir, ?LOG_DIR),
     BootLog = ewok_util:get_env(boot_log, ?BOOT_LOG),

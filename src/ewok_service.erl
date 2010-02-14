@@ -3,8 +3,7 @@
 -export([behaviour_info/1]).
 
 behaviour_info(callbacks) -> [
-	{start_link, 0},
-	%{reload, 0}, ?
+	{start_link, 1},
 	{stop, 0}
 ];
 

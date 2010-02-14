@@ -4,7 +4,7 @@
 	{modules, [
 		ewok, ewok_app, ewok_cache, ewok_cache_srv, ewok_config, ewok_data_srv,
 		ewok_db, ewok_deployment_srv, ewok_http_srv, ewok_identity, ewok_log, 
-		ewok_scheduler_srv, ewok_session_srv, ewok_sup, ewok_tcp_srv, 
+		ewok_scheduler_srv, ewok_session_srv, ewok_sup, ewok_socket_srv, 
 		ewok_util, ewok_workflow_sup, ewok_smtp_srv 
 	]},
 	{registered, [
@@ -31,13 +31,13 @@
 		ewok_session_srv,
 %		ewok_workflow_sup,
 		ewok_deployment_srv,
-		ewok_http_srv
-%		ewok_smtp_srv,
-%		ewok_umtp
+		{ewok_http_srv, 8080}
+%		{ewok_smtp_srv, 25},
+%		{ewok_umtp, 30}
 	]}},
 	%% 
 	{env, [
-		{autoinstall, true}, %% move into server term?
+		{autoinstall, true}, %
 		{runmode, development},
 		{autodeploy, [admin]},
 %		{server, [
@@ -53,12 +53,12 @@
 %			{data_dir, "./priv/data"}
 %		]},
 		{web_app, [
-			{app_path, "/"}, % used for static file urls
+			{app_path, "/"}, % used for static file urls?
 			
 			%% realm-based role... this probably shouldn't be in here at all
 			{login, "/login"}, 
 			
-			{www_root, "./priv/www"},
+			{doc_root, "./priv/www"},
 			{template_root, "./priv/esp"},
 			{index_file, "index.html"},
 			
@@ -75,8 +75,9 @@
 			{route, "/registration", ewok_registration_handler, ewok, any},
 			{route, "/websocket", ewok_websocket_handler, ewok, any}
 		]},
+		
+		%% maybe move to a seperate def file...
 		{mimetypes, [
-			%% maybe move to a seperate def file... or as a separate term
 			{default, "application/x-octet-stream"},
 			{".bmp",  "image/bmp"},
 			{".bz2",  "application/x-bzip2"},

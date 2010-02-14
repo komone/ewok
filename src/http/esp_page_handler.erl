@@ -34,7 +34,7 @@ filter(Request) ->
 %%
 'GET'(Request, Session) ->
 	case get_file(Request:path()) of 
-	File when is_record(File, esp_cache) ->
+	#esp_cache = File ->
 		Spec = esp:parse_template(File#esp_cache.bin),
 		%?TTY("SPEC: ~p~n", [Spec]),
 		case esp:render_page(Spec, ?MODULE, Request, Session) of
@@ -63,10 +63,12 @@ get_file(Path) ->
 	undefined ->
 		File = read_file(Path),
 		case File of
-		_ when is_record(File, esp_cache) -> %% maybe cache...
+		#esp_cache{} -> %% maybe cache...
 			case ewok:config({ewok, runmode}) of
-			production -> ewok_cache:add(File);
-			_ -> ok
+			production -> 
+				ewok_cache:add(File);
+			_ -> 
+				ok
 			end;
 		undefined -> 
 			undefined
@@ -78,7 +80,7 @@ get_file(Path) ->
 %
 read_file(Path) ->
 	BasePath = 
-		case ewok:config({ewok, http, www_root}, ?WWW_ROOT) of
+		case ewok:config({ewok, http, doc_root}, ?WWW_ROOT) of
 		Root = [$., $/|_] -> filename:absname(Root);
 		Root = [$/|_] -> filename:absname([$.|Root])
 		end,

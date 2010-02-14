@@ -192,7 +192,7 @@ web_application() -> {ewok, [
 		%% realm-based role... this probably shouldn't be in here at all
 		{login, "/login"}, 
 		
-		{www_root, "./priv/www"},
+		{doc_root, "./priv/www"},
 		{template_root, "./priv/esp"},
 		{index_file, "index.html"},
 		

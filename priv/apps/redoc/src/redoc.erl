@@ -2,6 +2,8 @@
 -vsn("1.0").
 -author('steve@simulacity.com').
 
+-include_lib("ewok/include/ewok.hrl").
+
 -behaviour(ewok_web_application).
 -export([application_info/0]).
 
@@ -16,24 +18,24 @@ run() ->
 	run(ewok_util:appdir()).
 	
 run(AppPath) ->
-	DocPath = filename:join(AppPath, "doc"),
-	BeamPath = filename:join(AppPath, "ebin"),
-	case filelib:is_dir(AppPath) of
+	DocPath = ewok_file:path([AppPath, "doc"]),
+	BeamPath =  ewok_file:code_path(AppPath),
+	case ewok_file:is_directory(BeamPath) of
 	true ->
-		case filelib:is_dir(DocPath) of 
-		false -> ok = file:make_dir(DocPath);
+		case ewok_file:is_directory(DocPath) of 
+		false -> ok = file:make_dir(binary_to_list(DocPath));
 		true -> ok
 		end,
-		BeamList = filelib:wildcard("*.beam", BeamPath),
+		BeamList = ewok_file:find(BeamPath, <<".\.beam$">>),
 		Html = generate_files(BeamList, DocPath, []),
-		File = filename:join(DocPath, "api.html"),
-		{file:write_file(File, Html), File};
+		File = ewok_file:path([DocPath, "api.html"]),
+		{file:write_file(binary_to_list(File), Html), File};
 	false ->
 		{error, not_found}
 	end.
 
 generate_files([H|T], DocPath, Acc) ->
-	Module = list_to_atom(filename:basename(H, ".beam")),
+	Module = binary_to_atom(ewok_file:name(H), utf8),
 	Exports = lists:sort([X || X = {F, _} <- Module:module_info(exports), F =/= module_info]),
 	Attrs = Module:module_info(attributes),
 	Vsn = proplists:get_value('vsn', Attrs),

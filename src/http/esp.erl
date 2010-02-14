@@ -18,10 +18,12 @@
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
--compile(export_all).
+%-compile(export_all).
 %% API
--export([render/4, render_page/4, parse_template/1]).
+-export([render/1, render/2, render/4]).
+%-export([render_page/4, parse_template/1]).
 -export([add_dir/1, refresh/0, get_template/1]).
+-export([validate/1, validate/2]).
 
 -define(ESP_REGEX, "(<%|%>)").
 -define(ESP_DECOMMENT, "<%--.*--%>\n?"). %% NOTE! use dotall option for re:
@@ -51,7 +53,7 @@ render(Status, Page = #page{}) ->
 		], 
 		{Status, Headers, Markup}
 	end catch
-	Error:Reason ->
+	_Error:Reason ->
 		{internal_server_error, [], Reason}
 	end.
 %% 
@@ -95,8 +97,10 @@ render_page(Spec, Module, Request, Session, AllowInclude)  ->
 				esp_html:text(Session:started());
 			{session, user, []} ->
 				case Session:user() of
-				User when is_record(User, ewok_user) -> User#ewok_user.name;
-				_ -> <<"undefined">>
+				#ewok_user{} = User -> 
+					User#ewok_user.name;
+				_ -> 
+					<<"undefined">>
 				end;
 			{session, data, []} ->
 				esp_html:text(Session:data());
@@ -214,7 +218,7 @@ refresh() ->
 %%
 get_template(Path) ->
 	case ewok_cache:lookup(template, Path) of
-	T when is_record(T, template) -> 
+	#template{} = T -> 
 		T;
 	undefined ->
 		TemplateRoot = ewok:config({ewok, http, template_root}),

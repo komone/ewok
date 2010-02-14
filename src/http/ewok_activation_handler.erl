@@ -30,7 +30,7 @@ filter(_Request) ->  ok.
 
 %%
 'POST'(Request, Session) ->
-	?TTY(Session:read(activation)),
+	%?TTY(Session:read(activation)),
 	case Session:take(activation) of
 	undefined ->
 		Realm = Request:parameter("realm"), %% hidden
@@ -41,7 +41,7 @@ filter(_Request) ->  ok.
 			PageSpec = 
 				case ewok_users:exists(Realm, Username) of
 				true -> 
-					Session:save({activation, {Realm, Username, Activation}}),
+					Session:save(activation, {Realm, Username, Activation}),
 					page2(Request, Username);
 				false ->
 					page3()
@@ -58,7 +58,7 @@ filter(_Request) ->  ok.
 		true ->
 			case ewok_users:activate(Realm, Username, 
 					list_to_binary(Activation), Password) of 
-			{ok, User} when is_record(User, ewok_user) -> 
+			{ok, #ewok_user{} = User} -> 
 				?TTY({"USER", User}),
 				Session:user(User),
 				{found, [{location, ewok_http:absolute_uri("/")}]};

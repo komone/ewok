@@ -11,7 +11,7 @@ login(Domain, Username, Password) ->
 	try begin
 		Domain1 = list_to_existing_atom(Domain),
 		case ewok_db:select(ewok_user, {name, {Domain1, Username}}) of
-		{ok, [User]} when is_record(User, ewok_user) ->
+		{ok, [#ewok_user{} = User]} ->
 			Auth = ewok_db:read(ewok_auth, User#ewok_user.id),
 			case Auth#ewok_auth.password of
 			Digest when is_binary(Digest) ->
@@ -37,7 +37,7 @@ exists(Realm, Username) ->
 	try begin
 		Realm1 = list_to_existing_atom(Realm),
 		case ewok_db:select(ewok_user, {name, {Realm1, Username}}) of
-		{ok, [User]} when is_record(User, ewok_user) ->
+		{ok, [#ewok_user{}]} ->
 			true;
 		_ -> false
 		end
@@ -52,9 +52,9 @@ activate(Realm, Username, Activation, Password) when is_list(Realm) ->
 activate(Realm, Username, Activation, Password) ->
 	try begin
 		case ewok_db:select(ewok_user, {name, {Realm, Username}}) of
-		{ok, [User]} when is_record(User, ewok_user) ->
+		{ok, [#ewok_user{} = User]} ->
 			case ewok_db:read(ewok_auth, User#ewok_user.id) of
-			Auth when is_record(Auth, ewok_auth) ->
+			#ewok_auth{} = Auth ->
 				case Auth#ewok_auth.activation of
 				Activation ->
 					Digest = crypto:sha(Password),

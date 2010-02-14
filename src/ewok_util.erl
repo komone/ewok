@@ -20,8 +20,8 @@
 -export([check_dependencies/1, tcp_ports/0]).
 -export([timestamp/0, timestamp/1, unow/0, utime/0, unix_time/0]).
 -export([build_number/0, build_time/0]).
--export([trim/1, split/2, unquote/1, is_upper/1, to_upper/1, is_lower/1, to_lower/1]).
--export([to_binary/1, hex/1, unhex/1]).
+-export([trim/1, split/2, split/3, unquote/1, is_upper/1, to_upper/1, is_lower/1, to_lower/1]).
+-export([to_binary/1, hex/1, unhex/1, hexint/1]).
 -export([ftime/1, ftime/2]).
 
 -define(UNIX_TIME_ZERO, 62167219200).
@@ -108,8 +108,13 @@ trim(S) ->
 	S.
 
 %%
-split(Bin, Regex) -> 
-	[X || X <- re:split(Bin, Regex), X =/= <<>>].
+split(Bin, Regex) ->
+	split(Bin, Regex, []).
+split(Bin, Regex, Parts) when is_integer(Parts) ->
+	split(Bin, Regex, [{parts, Parts}]);
+split(Bin, Regex, Opts) ->
+	[X || X <- re:split(Bin, Regex, Opts), X =/= <<>>].	
+
 
 %%
 unquote(Bin) ->
@@ -185,6 +190,14 @@ hex(<<>>, Acc) ->
 % @private
 hexdigit(D) when D >= 0, D =< 9 -> $0 + D;
 hexdigit(D) when D >= 10, D =< 16 -> $a + D - 10.
+
+
+hexint(Bin) when is_binary(Bin) ->
+	hexint(Bin, 0).
+hexint(<<A, Rest/binary>>, Acc) ->
+	hexint(Rest, unhexdigit(A) + Acc * 16);
+hexint(<<>>, Acc) ->
+	Acc.
 
 unhex(Bin) when is_binary(Bin) ->
 	unhex(Bin, <<>>).

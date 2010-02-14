@@ -17,12 +17,10 @@
 -include("ewok_system.hrl").
 
 %% API
--export([start/0, start/2, stop/0]).
--export([ident/0, info/1]).
--export([config/0, config/1, config/2, mimetype/1]).
+-export([start/0, start/1, start/2, stop/0]).
+-export([ident/0, password/1, keystore/0, keystore/2, info/0, info/1]).
+-export([config/0, config/1, config/2]).
 -export([deploy/1, undeploy/1]).
-
-%% NOTE: consider an "embedded" mode startup?
 
 %%
 %% API
@@ -32,6 +30,9 @@ start() ->
 stop() -> 
 	application:stop(ewok).
 
+%% NOTE: consider an "embedded" mode startup?
+start(App) when is_atom(App) ->
+	not_implemented.
 %%
 start(http, _Port) -> ok;
 start(smtp, _Port) -> ok;
@@ -49,7 +50,18 @@ ident() ->
 		<<" build#">>, ewok_util:build_number(), 
 		<<" [">>, ewok_util:build_time(), <<"]">>
 	]).
+
+password(P) when is_list(P) ->
+	password(list_to_binary(P));
+password(P) when is_binary(P) ->
+	ewok_identity:password(P).
+
+keystore() ->
+	ewok_identity:keystore().
 	
+keystore(Key, Value) when is_atom(Key), is_binary(Value) ->
+	ewok_identity:keystore(Key, Value).
+
 %%
 config() ->
 	ewok_config:all().
@@ -57,9 +69,7 @@ config(Key) ->
 	ewok_config:get_value(Key).
 config(Key, Default) ->
 	ewok_config:get_value(Key, Default).
-mimetype(Ext) ->
-	ewok_config:mimetype(Ext).
-
+	
 %%
 deploy(App)->
 	ewok_deployment_srv:load(App),
@@ -69,6 +79,9 @@ undeploy(App) ->
 	ewok_deployment_srv:undeploy(App).
 	
 % TOO: This will likely be radically revised over the course of development
+info() ->
+	[version, running, ports, config, routes, webapps, 
+		users, auth, roles, sessions, tasks, {'module'}].
 info(Key) -> 
 	case Key of
 	version -> 

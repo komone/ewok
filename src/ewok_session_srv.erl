@@ -13,7 +13,6 @@
 %% limitations under the License.
 
 -module(ewok_session_srv). 
-
 -name("Ewok Session Service").
 -depends([ewok_cache_srv, ewok_scheduler_srv]).
 
@@ -21,7 +20,7 @@
 -include("ewok_system.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
@@ -37,9 +36,9 @@
 %%
 %% ewok_service Callbacks
 %%
-start_link() ->
+start_link(Args) ->
 	ewok_util:check_dependencies(?DEPENDS),
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 stop() ->
     gen_server:cast(?SERVER, stop).
 
@@ -111,7 +110,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% internal functions
 
 %%% TODO: should this be changed to use ewok_scheduler?
-schedule_timeout(State) when is_record(State, state) ->
+schedule_timeout(#state{} = State) ->
     erlang:send_after(State#state.force_flush, self(), scheduled_timeout).
 
 %%
@@ -137,8 +136,10 @@ cleanup(Now, Key) ->
     end.
 
 %
-notify(S, Type) when is_record(S, ewok_session) ->
+notify(#state{} = S, Type) ->
     case S#ewok_session.notify of
-	undefined -> ok;
-	Pid -> Pid ! {session_end, Type, S#ewok_session.key}
+	undefined -> 
+		ok;
+	Pid -> 
+		Pid ! {session_end, Type, S#ewok_session.key}
     end.

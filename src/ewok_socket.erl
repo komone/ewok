@@ -1,16 +1,16 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_socket).
 -vsn("1.0.0").
@@ -18,7 +18,7 @@
 
 -include("ewok.hrl").
 
--export([configure/2, setopts/2, controlling_process/2, sockname/2,
+-export([configure/2, connect/4, setopts/2, controlling_process/2, sockname/2,
 	peername/1, listen/3, accept/1, send/2, recv/3, close/1]).
 
 -define(READ_SIZE, 8192).
@@ -56,8 +56,19 @@ configure(ssl, Prefix) ->
 	%{ cacertfile, ewok:config("ewok.http.ssl.cacertfile", "./priv/ssl/cacerts.pem") },
 	{ certfile, ewok:config(Prefix ++ ".ssl.certfile", "./priv/ssl/yaws-cert.pem") }].
 
+% @private
 merge(T, T1) ->
 	list_to_tuple(lists:append(tuple_to_list(T), tuple_to_list(T1))).
+
+
+%%
+connect(Transport, Host, Port, Options) when is_binary(Host) ->
+	connect(Transport, binary_to_list(Host), Port, Options);
+connect(Transport, Host, Port, Options) when is_binary(Port) ->
+	Number = list_to_integer(binary_to_list(Port)),
+	connect(Transport, Host, Number, Options);
+connect(Transport, Host, Port, Options) ->
+    Transport:connect(Host, Port, Options).
 
 %%
 setopts({gen_tcp, Socket}, Opts) ->
@@ -102,7 +113,7 @@ recv({Transport, Socket}, Bytes, Timeout) ->
 	Transport:recv(Socket, Bytes, Timeout).
 	
 %%
-send(_, chunked) -> %% placeholder
+send(_, chunked) -> %% placeholder: http only
 	ok;
 send(Socket, Bin) when is_binary(Bin) ->
 	ok = send_data(Socket, Bin);

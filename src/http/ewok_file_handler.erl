@@ -33,10 +33,9 @@
 %%
 %% Resource Callbacks
 %%
-resource_info() ->
-	{resource_info, [
-		{description, "Serves static files from www_root"}
-	]}.
+resource_info() -> [
+	{description, "Serves static files from www_root"}
+].
 	
 %% This filter includes delegation to the ESP file interceptor
 filter(Request) ->
@@ -89,7 +88,7 @@ get_file(Request) ->
 %%
 get_file(Realm, Path) ->
 	AppDir = ewok_util:appdir(Realm),
-	AppPath = ewok:config({Realm, http, www_root}, ?WWW_ROOT),
+	AppPath = ewok:config({Realm, http, doc_root}, ?WWW_ROOT),
 	FilePath = ewok_file:path([AppDir, AppPath, <<$., Path/binary>>]),
 	File = 
 		case ewok_file:is_directory(FilePath) of

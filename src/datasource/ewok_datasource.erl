@@ -1,7 +1,6 @@
 %%
 -module(ewok_datasource).
--vsn({1,0,0}).
--author('steve@simulacity.com').
+-include("ewok_system.hrl").
 
 -export([behaviour_info/1]). 
 
@@ -9,7 +8,7 @@ behaviour_info(callbacks) -> [
 	{datasource_info, 0},
 	{metadata, 1},
 	{table_info, 1},
-	{init, 1},
+%	{start, 1},
 	{create, 1},
 	{read, 1},
 	{update, 1},

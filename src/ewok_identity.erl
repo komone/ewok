@@ -17,13 +17,11 @@
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
--export([id/0, id/1, key/0, uuid/0, timestamp/0, keystore/0]).
--export([random/0]). %% temporary
+-export([id/0, id/1, key/0, uuid/0, timestamp/0]).
+-export([random/0, password/1, keystore/0, keystore/1, keystore/2]). %% temporary
 
 -define(SERVER, ewok_identity_srv).
 
-%% TODO: Replace this with an id that's dynamically generated at build time
--define(IVEC, <<213,53,164,93,158,212,70,56,134,80,224,220,249,214,82,76>>).
 
 %% API
 %%
@@ -57,13 +55,15 @@ uuid() ->
 	<<A:64, $-, B:32, $-, C:32, $-, D:32, $-, E:96>>.
 
 %%
+password(Password) when is_binary(Password) ->
+	gen_server:call(?SERVER, {password, Password}).	
+
 keystore() ->
-	Path = ewok:config({ewok, identity, keystore}, ?DATA_DIR),
-	File = ewok_file:path([code:lib_dir(ewok), Path, ?KEYSTORE_FILE]),
-	case ewok_file:is_regular(File) of
-	true ->	
-		{ok, Term} = file:consult(binary_to_list(File)),
-		Term;
-	false ->
-		{error, no_keystore}
-	end.
+	gen_server:call(?SERVER, {keystore}).
+%%
+keystore(Key) ->
+	gen_server:call(?SERVER, {keystore, Key}).
+%%
+keystore(Key, Value) ->
+	gen_server:call(?SERVER, {keystore, Key, Value}).
+

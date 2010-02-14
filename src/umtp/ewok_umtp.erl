@@ -24,12 +24,12 @@
 %% Stateless
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 -export([service/2, sendmail/1]).
 
 %-record(mail, {from, to, timestamp, body}).
 
-start_link() -> 
+start_link(_Args) -> 
 	try begin
 		ewok_log:message(service, ?MODULE),
 		%% DS = ewok_data_srv:connect(default)

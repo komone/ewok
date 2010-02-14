@@ -13,7 +13,7 @@
 			{doc_root, "./priv/www"},
 			{template_root, "./priv/esp"},
 			{roles, [admin, user]},
-			{route, "/wiki/*", wiki_web, any, any}
+			{route, "/wiki/*", wiki, any, any}
 		]}
 	]}
 ]}.

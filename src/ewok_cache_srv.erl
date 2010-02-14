@@ -17,7 +17,7 @@
 -include("ewok.hrl").
 
 -behaviour(ewok_service).
--export([start_link/0, stop/0]).
+-export([start_link/1, stop/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, 
@@ -28,8 +28,8 @@
 %%
 %% ewok_service callbacks
 %%
-start_link() -> 
-	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(Args) -> 
+	gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 %
 stop() ->
     gen_server:cast(?SERVER, stop).

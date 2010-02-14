@@ -1,12 +1,10 @@
 %%  
--module(ewok_sdb_ds, []).
--vsn({1,0,0}).
--author('steve@simulacity.com').
+-module(ewok_sdb_ds).
 
 -include("ewok.hrl").
 
 -behaviour(ewok_datasource).
--export([init/1, datasource_info/0, metadata/1, table_info/1,
+-export([datasource_info/0, metadata/1, table_info/1,
 	create/1, read/1, update/1, delete/1, select/1, run/1, 
 	create_table/2, drop_table/1]).
 
@@ -16,10 +14,6 @@
 datasource_info() -> [
  {name, "Amazon Simple DB"}
 ]. %% ...more!
-
-%%
-init([]) ->
-	ok.
 
 %%
 metadata(_Key) ->

@@ -5,7 +5,7 @@
 
 -export([init/2, reset/0, value/0]).
 -export([key/0, ip/0, user/0, data/0, started/0, expires/0, ttl/0, cookie/0]).
--export([user/1, read/1, read/2, save/1, take/1]).
+-export([user/1, read/1, read/2, save/2, take/1]).
 
 %% IMPORTANT NOTE: This rather unusual (and dangerous) design simplifies the API considerably.
 %% It relies on the fact that a particular session is only ever updated by a single process...
@@ -35,17 +35,17 @@ reset() -> [erase(Value) || Value <- [?USER, ?DATA]].
 user() -> get(?USER).
 %
 user(User) ->
-	put(?USER, User),
+	%% only allow this to be set once...?
+	undefined = put(?USER, User),
+	%put(?USER, User),
 	ok.
-	%% or only allow this to be set once... is this correct?
-	% undefined = put(?USER, User).
 
 %
 data() -> get(?DATA).
 
 %
-save(Data = {Key, _}) ->
-	put(?DATA, lists:keystore(Key, 1, data(), Data)),
+save(Key, Value) ->
+	put(?DATA, lists:keystore(Key, 1, data(), {Key, Value})),
 	ok.
 %
 read(Key, Default) ->
