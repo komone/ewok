@@ -12,7 +12,7 @@
 		ewok_cache_srv,
 		ewok_data_srv,
 		ewok_deployment_srv,
-%		ewok_geoip_srv, % no longer...!
+		% ewok_geoip_srv, % no longer...!
 		ewok_http_srv,
 		ewok_scheduler_srv,
 		ewok_session_srv,
@@ -29,29 +29,34 @@
 		ewok_cache_srv, % non-transactional utility cache
 		ewok_data_srv, % external datasources
 		ewok_session_srv,
-%		ewok_workflow_sup,
+		% ewok_workflow_sup,
 		ewok_deployment_srv,
 		{ewok_http_srv, 8080}
-%		{ewok_smtp_srv, 25},
-%		{ewok_umtp, 30}
+		% {ewok_smtp_srv, 25},
+		% {ewok_umtp, 30}
 	]}},
 	%% 
+	{applications, [kernel, stdlib]},
+	%% 
 	{env, [
-		{autoinstall, true}, %
 		{runmode, development},
+		{autoinstall, true}, 
 		{autodeploy, [admin]},
-%		{server, [
-%			{ip, any},
-%			{hostname, "localhost"}, %% unused
-%			{runmode, development},
+		
+		%{server, [
+		%	{ip, any},
+		%	{hostname, "localhost"}, %% unused
+		%	{runmode, development},
 		%% attempt to correctly install ewok when the application is 
 		%% started, if the install doesn't validate. If this is 'false'
 		%% then the call ewok:install() must be made before running the
 		%% application server.
-%			{boot_log, "./boot.log"}, 
-%			{log_dir, "./priv/log"},
-%			{data_dir, "./priv/data"}
-%		]},
+		%	{boot_log, "./boot.log"}, 
+		%	{log_dir, "./priv/log"},
+		%	{data_dir, "./priv/data"}
+		% ]},
+		
+		%% This needs to be cut down, or perhaps removed entirely.
 		{web_app, [
 			{app_path, "/"}, % used for static file urls?
 			
@@ -112,6 +117,5 @@
 			{".z",    "application/x-compress"},
 			{".zip",  "application/zip"}
 		]}
-	]},
-	{applications, [kernel, stdlib]} 
+	]}
 ]}.

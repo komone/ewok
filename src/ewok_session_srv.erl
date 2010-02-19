@@ -1,16 +1,16 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_session_srv). 
 -name("Ewok Session Service").
@@ -26,13 +26,12 @@
 -export([init/1, handle_call/3, handle_cast/2, 
 	handle_info/2, terminate/2, code_change/3]).
 
-
 -record(state, {default_ttl, flush_interval, force_flush}).
 
 -define(SERVER, ?MODULE).
 -define(ETS, ?MODULE).
-
 -define(DEPENDS, [ewok_data_srv, ewok_identity_srv]).
+
 %%
 %% ewok_service Callbacks
 %%
@@ -42,17 +41,16 @@ start_link(Args) ->
 stop() ->
     gen_server:cast(?SERVER, stop).
 
-
 %%
 %% gen_server Callbacks
 %%
 init([]) ->
     ets:new(?ETS, [set, named_table, public, {keypos, 2}]),
-	TTL = ewok:config({ewok, http, session, timeout}, 1800),
-	IdleTimeout = ewok:config({ewok, http, session, flush, interval}, 120) * 1000,
-	ForceTimeout = ewok:config({ewok, http, session, flush, force}, 3600) * 1000,
+	TTL = ewok_config:get_value({ewok, http, session, timeout}, 1800),
+	IdleTimeout = ewok_config:get_value({ewok, http, session, flush, interval}, 120) * 1000,
+	ForceTimeout = ewok_config:get_value({ewok, http, session, flush, force}, 3600) * 1000,
 	State = #state{default_ttl=TTL, flush_interval=IdleTimeout, force_flush=ForceTimeout},
-%	?TTY("~p: ~p~n", [?MODULE, State]),
+	% ?TTY({?MODULE, State}),
     schedule_timeout(State),
     {ok, State, State#state.flush_interval}.
 
@@ -102,23 +100,23 @@ handle_info(scheduled_timeout, State) ->
 terminate(_Reason, _State) ->
     ok.
 	
-%
+%%
 code_change(_OldVsn, State, _Extra) -> 
 	{ok, State}.	
 
-%%
 %%% internal functions
 
 %%% TODO: should this be changed to use ewok_scheduler?
-schedule_timeout(#state{} = State) ->
-    erlang:send_after(State#state.force_flush, self(), scheduled_timeout).
+schedule_timeout(#state{force_flush = ForceFlush}) ->
+    erlang:send_after(ForceFlush, self(), scheduled_timeout).
 
 %%
 cleanup() -> 
 	cleanup(ewok_util:unow(), ets:first(?ETS)).
-%
+%%
 cleanup(_, '$end_of_table') -> 
 	ok;
+%
 cleanup(Now, Key) ->
     case ets:lookup(?ETS, Key) of
 	[Session] ->
@@ -135,11 +133,11 @@ cleanup(Now, Key) ->
 		cleanup(Now, ets:next(?ETS, Key))
     end.
 
-%
-notify(#state{} = S, Type) ->
-    case S#ewok_session.notify of
-	undefined -> 
-		ok;
-	Pid -> 
-		Pid ! {session_end, Type, S#ewok_session.key}
-    end.
+%%
+notify(#ewok_session{notify = Pid, key = SessionKey}, Type) ->
+    try 
+		Pid ! {session_end, Type, SessionKey}
+	catch
+	_:_ ->
+		ewok_log:warn({notify_failed, Pid, SessionKey})
+	end.

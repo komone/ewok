@@ -14,7 +14,7 @@
 
 -module(ewok_http_srv).
 -name("Ewok HTTP Service").
--depends([ewok_session_srv]).
+-depends([ewok_db, ewok_session_srv]).
 
 -include("ewok.hrl").
 -include("ewok_system.hrl").
@@ -35,10 +35,10 @@ start_link(ServerId, Port) when is_atom(ServerId), is_integer(Port) ->
 		Transport = ewok_config:get_value({ServerId, transport}, gen_tcp),
 		SocketOpts = ewok_socket:configure(Transport, {ServerId, http}),
 		
-		MaxConnections = ewok:config({ServerId, tcp, max_connections}, infinity),
+		MaxConnections = ewok_config:get_value({ServerId, tcp, max_connections}, infinity),
 		
-		Timeout = ewok:config({ServerId, request_timeout}, 30) * 1000,
-		MaxHeaders = ewok:config({ServerId, header_limit}, 100),
+		Timeout = ewok_config:get_value({ServerId, request_timeout}, 30) * 1000,
+		MaxHeaders = ewok_config:get_value({ServerId, header_limit}, 100),
 		
 		Handler = fun(X) -> ?MODULE:service(X, Timeout, MaxHeaders) end,
 		
@@ -51,7 +51,7 @@ start_link(ServerId, Port) when is_atom(ServerId), is_integer(Port) ->
 			{handler, Handler}
 		],
 		
-		?TTY({config, {ServerId, Configuration}}),
+%		?TTY({config, {ServerId, Configuration}}),
 		ewok_log:message(ServerId, {configuration, Configuration}),
 		
 		%% Starts a TCP Server for HTTP
@@ -84,8 +84,8 @@ stop(ServerId) ->
 service(Socket, Timeout, MaxHeaders) ->
 	ok = ewok_socket:setopts(Socket, [{packet, http_bin}]),
 	case ewok_socket:recv(Socket, 0, Timeout) of
-	{ok, HttpRequest = {http_request, Method, URI, Version}} ->
-		?TTY(HttpRequest),
+	{ok, {http_request, Method, URI, Version}} ->
+%		?TTY(HttpRequest),
 		RequestLine = {Method, uri_to_path(URI), Version},
 		ok = ewok_socket:setopts(Socket, [{packet, httph_bin}]),
 		get_headers(Socket, RequestLine, [], Timeout, 0, MaxHeaders);
@@ -110,8 +110,8 @@ get_headers(Socket, RequestLine, Headers, _Timeout, MaxHeaders, MaxHeaders) ->
 %%
 get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Count, MaxHeaders) ->
 	case ewok_socket:recv(Socket, 0, Timeout) of
-	{ok, HttpHeader = {http_header, _Integer, Name, _Reserved, Value}} ->
-		?TTY(HttpHeader),
+	{ok, {http_header, _Integer, Name, _Reserved, Value}} ->
+%		?TTY(HttpHeader),
 		HeaderName =
 			case is_atom(Name) of
 			true -> atom_to_binary(Name, utf8); % would latin1 be "safer"?
@@ -124,7 +124,7 @@ get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Cou
 			end,
 		get_headers(Socket, RequestLine, [{HeaderName, Value} | Headers], Timeout, NewCount, MaxHeaders);
 	{ok, http_eoh} ->
-		?TTY(http_eoh),
+%		?TTY(http_eoh),
 		ok = ewok_socket:setopts(Socket, [{packet, raw}]),
 		Request = ewok_request_obj:new(Socket, Timeout, Method, Path, Version, Headers, MaxHeaders),
 		get_session(Request);

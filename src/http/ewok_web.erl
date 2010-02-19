@@ -1,11 +1,12 @@
 %%
 -module(ewok_web).
--vsn({1,0,0}).
+-vsn("1.0.0").
 -author('steve@simulacity.com').
 
 -include("ewok.hrl"). 
 -include("ewok_system.hrl"). 
 -include("esp.hrl").
+
 -export([components/0, dock/1]).
 -export([render/3, errorpage/3]).
 
@@ -72,7 +73,7 @@ dock(Session) ->
 			#a{href="/login", body=[<<"Log In">>]};
 		U = #ewok_user{} -> 
 			{_, Name} = U#ewok_user.name,
-			list_to_binary(Name)
+			Name
 		end,
 	[#span{class="dock", body=[
 		Username, 

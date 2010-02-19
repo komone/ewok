@@ -16,6 +16,7 @@
 -name("Ewok UMTP Service").
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 -include("umtp.hrl").
 
 %% Universal Message Transfer Protocol

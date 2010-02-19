@@ -25,36 +25,36 @@
 
 %% IMPL: note that 'Transport' is the actual **module name**
 configure(gen_tcp, Prefix) -> [ 
-	ewok:config(merge(Prefix, {tcp, socket, mode}), binary),
-	{ ip, ewok:config({ewok, ip}, {0, 0, 0, 0}) }, 
-	{ packet, ewok:config(merge(Prefix, {tcp, socket, packet}), 0) },
-	{ backlog, ewok:config(merge(Prefix, {tcp, socket, backlog}), 0) },
-	{ active, ewok:config(merge(Prefix, {tcp, socket, active}), false) },
-	{ nodelay, ewok:config(merge(Prefix, {tcp, socket, nodelay}), true) },
-	{ reuseaddr, ewok:config(merge(Prefix, {tcp, socket, reuseaddr}), true) },
-	{ recbuf, ewok:config(merge(Prefix, {tcp, socket, recbuf}), 8192) }
+	ewok_config:get_value(merge(Prefix, {tcp, socket, mode}), binary),
+	{ ip, ewok_config:get_value({ewok, ip}, {0, 0, 0, 0}) }, 
+	{ packet, ewok_config:get_value(merge(Prefix, {tcp, socket, packet}), 0) },
+	{ backlog, ewok_config:get_value(merge(Prefix, {tcp, socket, backlog}), 0) },
+	{ active, ewok_config:get_value(merge(Prefix, {tcp, socket, active}), false) },
+	{ nodelay, ewok_config:get_value(merge(Prefix, {tcp, socket, nodelay}), true) },
+	{ reuseaddr, ewok_config:get_value(merge(Prefix, {tcp, socket, reuseaddr}), true) },
+	{ recbuf, ewok_config:get_value(merge(Prefix, {tcp, socket, recbuf}), 8192) }
 ];
 
 %
 configure(ssl, Prefix) ->
-	case ewok:config(Prefix ++ ".ssl.enabled", false) of
+	case ewok_config:get_value(Prefix ++ ".ssl.enabled", false) of
 	true -> ssl:start(); %% TODO: not the right place for this
 	false -> ok
 	end,
-	[ ewok:config(Prefix ++ ".tcp.socket.mode", binary),
-	{ ip, ewok:config({ewok, ip}, {0, 0, 0, 0}) }, 
-	{ packet, ewok:config(Prefix ++ ".tcp.socket.packet", 0) },
-	{ backlog, ewok:config(Prefix ++ ".tcp.socket.backlog", 0) },
-	{ active, ewok:config(Prefix ++ ".tcp.socket.active", false) },
-	{ nodelay, ewok:config(Prefix ++ ".tcp.socket.nodelay", true) },
-	{ reuseaddr, ewok:config(Prefix ++ ".tcp.socket.reuseaddr", true) },
+	[ ewok_config:get_value(Prefix ++ ".tcp.socket.mode", binary),
+	{ ip, ewok_config:get_value({ewok, ip}, {0, 0, 0, 0}) }, 
+	{ packet, ewok_config:get_value(Prefix ++ ".tcp.socket.packet", 0) },
+	{ backlog, ewok_config:get_value(Prefix ++ ".tcp.socket.backlog", 0) },
+	{ active, ewok_config:get_value(Prefix ++ ".tcp.socket.active", false) },
+	{ nodelay, ewok_config:get_value(Prefix ++ ".tcp.socket.nodelay", true) },
+	{ reuseaddr, ewok_config:get_value(Prefix ++ ".tcp.socket.reuseaddr", true) },
 	{ ssl_impl, new }, %% NOTE: ONLY SUPPORT NEW_SSL 
-	{ verify, ewok:config(Prefix ++ ".ssl.verify", 0) },
-	{ depth, ewok:config(Prefix ++ ".ssl.depth", 1) },
-	%{ password, ewok:config("ewok.http.ssl.password", undefined) }, %% TODO: ONLY SET if keyfile is protected
-	{ keyfile, ewok:config(Prefix ++ ".ssl.keyfile", "./priv/ssl/yaws-key.pem") },
-	%{ cacertfile, ewok:config("ewok.http.ssl.cacertfile", "./priv/ssl/cacerts.pem") },
-	{ certfile, ewok:config(Prefix ++ ".ssl.certfile", "./priv/ssl/yaws-cert.pem") }].
+	{ verify, ewok_config:get_value(Prefix ++ ".ssl.verify", 0) },
+	{ depth, ewok_config:get_value(Prefix ++ ".ssl.depth", 1) },
+	%{ password, ewok_config:get_value("ewok.http.ssl.password", undefined) }, %% TODO: ONLY SET if keyfile is protected
+	{ keyfile, ewok_config:get_value(Prefix ++ ".ssl.keyfile", "./priv/ssl/yaws-key.pem") },
+	%{ cacertfile, ewok_config:get_value("ewok.http.ssl.cacertfile", "./priv/ssl/cacerts.pem") },
+	{ certfile, ewok_config:get_value(Prefix ++ ".ssl.certfile", "./priv/ssl/yaws-cert.pem") }].
 
 % @private
 merge(T, T1) ->

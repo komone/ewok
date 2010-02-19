@@ -13,7 +13,7 @@
 			{doc_root, "./priv/www"},
 			{template_root, "./priv/esp"},
 			{roles, [admin]}
-			%{route, "/doc", redoc_handler, any, any}
+			{route, "/doc", redoc_handler, any, any}
 		]}
 	]}
 ]}.

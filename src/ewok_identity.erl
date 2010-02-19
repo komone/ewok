@@ -29,15 +29,15 @@ timestamp() ->
     gen_server:call(?SERVER, timestamp).
 
 random() ->
-	{A1, A2, A3} = now(),
-	random:seed(A1, A2, A3),
-    <<
-        (random:uniform(4294967296) - 1):32,
-        (random:uniform(4294967296) - 1):32,
-        (random:uniform(4294967296) - 1):32,
-        (random:uniform(4294967296) - 1):32
-    >>.	
-
+	case is_pid(whereis(?SERVER)) of
+	true ->
+		id();
+	false ->
+		{A1, A2, A3} = now(),
+		random:seed(A1, A2, A3),
+		ewok_identity_srv:random()
+	end.
+	
 %%
 id() ->  id(default).
 %
@@ -57,7 +57,7 @@ uuid() ->
 %%
 password(Password) when is_binary(Password) ->
 	gen_server:call(?SERVER, {password, Password}).	
-
+%%
 keystore() ->
 	gen_server:call(?SERVER, {keystore}).
 %%

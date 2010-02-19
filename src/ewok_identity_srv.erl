@@ -18,11 +18,8 @@
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
-%% TODO: Thoroughly review the RFC and this implementation.
-%% RFC-4122 <http://www.ietf.org/rfc/rfc4122.txt>
-
 -behaviour(ewok_service).
--export([start_link/1, stop/0]).
+-export([start_link/1, stop/0, random/0]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -41,6 +38,9 @@
 -define(UUID_URL_NAMESPACE, <<107,167,184,17,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_OID_NAMESPACE, <<107,167,184,18,157,173,17,209,128,180,0,192,79,212,48,200>>).
 -define(UUID_X500_NAMESPACE, <<107,167,184,20,157,173,17,209,128,180,0,192,79,212,48,200>>).
+
+%% TODO: Thoroughly review the RFC and this implementation.
+%% RFC-4122 <http://www.ietf.org/rfc/rfc4122.txt>
 
 %%
 start_link(Args) ->
@@ -63,7 +63,7 @@ init(Options) ->
 		secret = Secret,
 		keystore = load_keystore(ewok, Secret)
     },
-	?TTY({keystore, State#state.keystore}),
+%	?TTY({keystore, State#state.keystore}),
     {ok, State}.
 
 handle_call({new, default}, _From, State) ->
@@ -110,8 +110,7 @@ terminate(_Reason, _State) ->
     ewok_log:info("uuid server stopped"),
     ok.
 
-%% FROM YAWS
-%% pretty good seed, but non portable
+%% FROM YAWS "pretty good seed, but non portable"
 seed() ->
 	try begin
 		URandom = os:cmd("dd if=/dev/urandom ibs=12 count=1 2>/dev/null"),

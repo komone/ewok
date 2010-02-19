@@ -22,23 +22,34 @@ li {
 padding: 4px;
 font-size: 12pt;
 }
-
+.small {
+	font-size:9pt;
+	padding: 4px;
+	border:solid 1px #ddd;
+}
 </style>
 <body>
-<h1>Ewok - Current Hit List</h1>
+<h1>Ewok 1.0/Wicket - Current Hit List</h1>
+<p class="small">Feb 18th 2010</p>
 <p>In general, these items are listed somewhat in order of priority...</p>
+
+<h2>ewok_installer</h2>
+<ul>
+<li>deploy web module as #web_app</li>
+</ul>
 
 <h2>ewok_deployment_srv</h2>
 <ul>
-<li>finish load/deploy logic</li>
+<li>finish load/deploy logic (mostly done)</li>
 <li>complete the "packaging" call for tpas (third-party applications)</li>
 </ul>
 
-<h2>ewok_http_srv</h2>
+<h2>ewok_admin (application)</h2>
 <ul>
-<li>verify support for HTTP/1.0 in the codebase (main reason? NginX upstream / proxy-pass)</li>
+<li>Ajaxify the app</li>
+<li>complete general admin tasks for the admin web interface</li>
+<li>add development functionality to the admin web interface</li>
 </ul>
-
 
 <h2>esp</h2>
 <ul>
@@ -51,18 +62,33 @@ font-size: 12pt;
 <li>define and implement ewok.js... should very likely use the Observer/Event Handler pattern (but beware crappy ids littering the html.</li>
 <li>define and implement ubf.js, which will be an UBF codec implementation for javascript.</li>
 </ul>
+
 <h2>esp_html</h2>
 <ul>
 <li>provide a pretty-printer for html that would be used in development mode</li>
 </ul>
 
-<h2>ewok_admin (application)</h2>
+<h2>ewok_http_srv</h2>
 <ul>
-<li>Ajaxify the app</li>
-<li>complete general admin tasks for the admin web interface</li>
-<li>add development functionality to the admin web interface</li>
+<li>verify support for HTTP/1.0 in the codebase (main reason? NginX upstream / proxy-pass)</li>
 </ul>
 
+<h2>ewok_sdb</h2>
+<ul>
+<li>add query by attributes</li>
+<li>add datasource interface/gen_server</li>
+<li>update to latest AWS interface version</li>
+</ul>
+
+<h2>ewok_app</h2>
+<ul>
+<li>allow an "embedded" mode</li>
+</ul>
+
+<h2>ewok_sup</h2>
+<ul>
+<li>correctly register service instances by tcp port, e.g. ewok_http_srv_8080</li>
+</ul>
 
 <h2>ewok_session_srv</h2>
 <ul>
@@ -82,15 +108,14 @@ font-size: 12pt;
 <h2>ewok_identity_srv</h2>
 <ul>
 <li>move realm access validation/control from ewok_http_srv into here? (or an ewok_security module?)</li>
-<li>implement a protected .keystore for datasource/eis passwords/keys (c port/driver?)</li>
 <li>make authentication pluggable</li>
 </ul>
+
 <h2>general</h2>
 <ul>
 <li>move service APIs to own modules to clarify purpose improve the API naming and "protect" the underlying gen_servers from application developers (partly done)</li>
-<li>consistently handle strings as binaries *throughout* the codebase</li>
+<li>consistently handle strings as binaries *throughout* the codebase (nearly done)</li>
 <li>review logging throughout the codebase</li>
-<li>Finish up installation -- maybe can remove ewok_installer</li>
 </ul>
 
 <h2>ewok_uws</h2>
@@ -101,7 +126,7 @@ font-size: 12pt;
 
 <h2>ewok_request_obj</h2>
 <ul>
-<li>chunked/multipart transfer</li>
+<li>chunked/multipart transfer (ref ewok_http_client impl of transfer-encoding)</li>
 </ul>
 
 <h2>ewok_response</h2>
@@ -112,16 +137,18 @@ font-size: 12pt;
 
 <h2>ewok_mail</h2>
 <ul>
-<li>create an smtp client for outgoing mail</li>
+<li>improve smtp client for outgoing mail</li>
+</ul>
+
+<h2>ewok_http_client</h2>
+<ul>
+<li>improve http client to add post, range requests</li>
 </ul>
 
 <h2>ewok_data_srv</h2>
 <ul>
 <li>consider how best to provide pooled connections (where necessary)</li>
 <li>figure out "generic metadata" access via ewok_datasource interface</li>
-<li>convert erlaws into an ewok datasource</li>
-<li>implement ewok_http_client for AWS</li>
-<li>update erlaws to use latest sdb api and signatures (keep this as a REST API - avoid/ignore SDB WS?!)</li>
 </ul>
 
 <h2>ewok_geoip_srv</h2>
@@ -136,14 +163,13 @@ font-size: 12pt;
 <h2>...and documentation</h2>
 <p>installation/deployment; overview and design (UML process, seq, deployment diags); administration guide; tutorials; examples; downstream http server configuration examples for NginX and Apache; 'redoc' api documentation/reference</p>
 
-<h2>Ewok/1.1 (Teebo)</h2>
+<h2>Ewok 1.1/Teebo</h2>
 <ul>
-<li>Consider an "embedded" mode</li>
 <li>Consider a modified "ewgi" web app interface (the offered ewgi i/f isn't mature enough)</li>
 <li>Add support for distributed deployment (this... sounds... HARD)</li>
 <li>Add SNMP traps/support</li>
 <li>implement city-level lookup for geoip</li>
-<li>add riak datasource</li>
+<li>add riak/osmos datasource</li>
 <li>add couchdb datasource</li>
 <li>add postgresql datasource</li>
 <li>add mysql datasource</li>

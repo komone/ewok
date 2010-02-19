@@ -34,7 +34,7 @@ filter(Request) ->
 %%
 'GET'(Request, Session) ->
 	case get_file(Request:path()) of 
-	#esp_cache = File ->
+	#esp_cache{} = File ->
 		Spec = esp:parse_template(File#esp_cache.bin),
 		%?TTY("SPEC: ~p~n", [Spec]),
 		case esp:render_page(Spec, ?MODULE, Request, Session) of

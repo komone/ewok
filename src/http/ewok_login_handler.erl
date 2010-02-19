@@ -38,12 +38,12 @@ filter(_Request) ->
 
 %%
 'POST'(Request, Session) ->
-	Realm = Request:parameter("realm"), %% hidden
-	URL = Request:parameter("authorize"), %% hidden
-	Username = Request:parameter("username"),
-	Password = Request:parameter("password"),
+	Realm = Request:parameter(<<"realm">>), %% hidden
+	URL = Request:parameter(<<"authorize">>), %% hidden
+	Username = Request:parameter(<<"username">>),
+	Password = Request:parameter(<<"password">>),
 	%%	
-	%?TTY("LOGIN ~p~n", [{Realm, Username}]),
+	%%?TTY({login, Realm, Username, Password, URL}),
 	case esp:validate([Realm, URL, Username, Password]) of
 	true ->
 		case ewok_users:login(Realm, Username, Password) of 

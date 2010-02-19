@@ -34,8 +34,8 @@
 
 %%
 start_link(Args) ->
-	Runmode = ewok:config({ewok, runmode}, development),
-	AppRoot = ewok:config({ewok, http, deploy_root}, ?APP_ROOT),
+	Runmode = ewok_config:get_value({ewok, runmode}, development),
+	AppRoot = ewok_config:get_value({ewok, http, deploy_root}, ?APP_ROOT),
 	ewok_log:message(?MODULE, {configuration, [{runmode, Runmode}, {deploy_root, AppRoot}]}),
     
 	gen_server:start_link({local, ?SERVER}, ?MODULE, [Runmode, AppRoot | Args], []).

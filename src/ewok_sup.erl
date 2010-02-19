@@ -13,24 +13,19 @@
 % limitations under the License.
 
 -module(ewok_sup).
--vsn("1.0.0").
--author('steve@simulacity.com').
-
 -name("Ewok AS Supervisor").
 -depends([kernel, stdlib]).
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -behaviour(supervisor).
 -export([init/1]).
 
-%% TODO: ewok_sup is actually a 'fake' service...
-%% TODO: remove "upgrade" and figure out how to do it better
+%% TODO: ewok_sup is actually a 'fake' service
 -export([start_services/1, upgrade/0]).
 
-%%
 %% supervisor callback
-%%
 init(Args) ->
 	ChildSpecs = [childspec(Service) || Service <- Args],
 	case supervisor:check_childspecs(ChildSpecs) of
@@ -39,6 +34,7 @@ init(Args) ->
 	Error -> 
 		Error
 	end.
+
 %%
 start_services([Child|Rest]) ->
 	ewok_log:message(?MODULE, [{starting, Child}]),
@@ -53,9 +49,8 @@ start_services([Child|Rest]) ->
 start_services([]) ->
 	ok.
 	
-%% TODO: Review all of these options on a per-service basis after
+%% TODO: Review these options on a per-service basis after
 %% performance tests. For now, just set reasonable defaults.
-
 %%
 childspec(Module) when is_atom(Module) ->
 	% code:ensure_loaded(Other), erlang:function_exported(Other, start_link, 0)..,?
@@ -76,6 +71,6 @@ server_name(Type, Port) when is_atom(Type), is_integer(Port) ->
 	ServerName = lists:append([atom_to_list(Type), "_", integer_to_list(Port)]),
 	list_to_atom(ServerName).
 	
-%% what to do here? appup?
+%% TODO: what to do here? appup?
 upgrade() -> 
-	ok.
+	not_implemented.

@@ -16,6 +16,7 @@
 -name("Ewok SMTP Service").
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 -include("email.hrl").
 
 -behaviour(ewok_service).

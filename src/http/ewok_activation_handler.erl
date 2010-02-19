@@ -33,9 +33,9 @@ filter(_Request) ->  ok.
 	%?TTY(Session:read(activation)),
 	case Session:take(activation) of
 	undefined ->
-		Realm = Request:parameter("realm"), %% hidden
-		Username = Request:parameter("username"),
-		Activation = Request:parameter("activation"),
+		Realm = Request:parameter(<<"realm">>), %% hidden
+		Username = Request:parameter(<<"username">>),
+		Activation = Request:parameter(<<"activation">>),
 		case esp:validate([Realm, Username, Activation], not_null) of
 		true -> 
 			PageSpec = 
@@ -51,13 +51,13 @@ filter(_Request) ->  ok.
 			'GET'(Request, Session)
 		end;
 	{activation, {Realm, Username, Activation}} ->
-		Password = Request:parameter("password"),
-		Password2 = Request:parameter("password2"),
+		Password = Request:parameter(<<"password">>),
+		Password2 = Request:parameter(<<"password2">>),
 		case esp:validate([Password, Password2], not_null) 
 			andalso Password =:= Password2 of
 		true ->
 			case ewok_users:activate(Realm, Username, 
-					list_to_binary(Activation), Password) of 
+					Activation, Password) of 
 			{ok, #ewok_user{} = User} -> 
 				?TTY({"USER", User}),
 				Session:user(User),

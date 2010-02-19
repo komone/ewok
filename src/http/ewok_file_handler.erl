@@ -73,7 +73,7 @@ filter(Request) ->
 get_file(Request) ->
 	Realm = Request:realm(),
 	Path = Request:path(),
-	case ewok:config({ewok, runmode}) of
+	case ewok_config:get_value({ewok, runmode}) of
 	development ->
 		get_file(Realm, Path);
 	production ->
@@ -88,12 +88,12 @@ get_file(Request) ->
 %%
 get_file(Realm, Path) ->
 	AppDir = ewok_util:appdir(Realm),
-	AppPath = ewok:config({Realm, http, doc_root}, ?WWW_ROOT),
+	AppPath = ewok_config:get_value({Realm, http, doc_root}, ?WWW_ROOT),
 	FilePath = ewok_file:path([AppDir, AppPath, <<$., Path/binary>>]),
 	File = 
 		case ewok_file:is_directory(FilePath) of
 		true ->
-			IndexFile = ewok:config({Realm, http, index_file}, ?WWW_INDEX_FILE),
+			IndexFile = ewok_config:get_value({Realm, http, index_file}, ?WWW_INDEX_FILE),
 			ewok_file:path([FilePath, IndexFile]);
 		false -> 
 			FilePath
@@ -107,7 +107,7 @@ get_file(Realm, Path) ->
 	
 %%
 cache_file(Realm, Path) ->
-	MaxFileSize = ewok:config({ewok, http, cache, max_file_size}, infinity),
+	MaxFileSize = ewok_config:get_value({ewok, http, cache, max_file_size}, infinity),
 	case get_file(Realm, Path) of
 	File = #ewok_file{} when File#ewok_file.size =< MaxFileSize ->
 		{ok, Binary} = file:read_file(File#ewok_file.route),

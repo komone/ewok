@@ -9,7 +9,7 @@
 %%
 login(Domain, Username, Password) ->
 	try begin
-		Domain1 = list_to_existing_atom(Domain),
+		Domain1 = binary_to_existing_atom(Domain, utf8),
 		case ewok_db:select(ewok_user, {name, {Domain1, Username}}) of
 		{ok, [#ewok_user{} = User]} ->
 			Auth = ewok_db:read(ewok_auth, User#ewok_user.id),
@@ -35,7 +35,7 @@ login(Domain, Username, Password) ->
 %%
 exists(Realm, Username) ->
 	try begin
-		Realm1 = list_to_existing_atom(Realm),
+		Realm1 = binary_to_existing_atom(Realm, utf8),
 		case ewok_db:select(ewok_user, {name, {Realm1, Username}}) of
 		{ok, [#ewok_user{}]} ->
 			true;
@@ -47,8 +47,8 @@ exists(Realm, Username) ->
 	end.
 
 %%
-activate(Realm, Username, Activation, Password) when is_list(Realm) ->
-	activate(list_to_existing_atom(Realm), Username, Activation, Password);
+activate(Realm, Username, Activation, Password) when is_binary(Realm) ->
+	activate(binary_to_existing_atom(Realm, utf8), Username, Activation, Password);
 activate(Realm, Username, Activation, Password) ->
 	try begin
 		case ewok_db:select(ewok_user, {name, {Realm, Username}}) of
@@ -75,8 +75,8 @@ activate(Realm, Username, Activation, Password) ->
 	end.
 
 %%
-create_user(Realm, Username, Password) when is_list(Realm) ->
-	create_user(list_to_existing_atom(Realm), Username, Password);
+create_user(Realm, Username, Password) when is_binary(Realm) ->
+	create_user(binary_to_existing_atom(Realm, utf8), Username, Password);
 create_user(Realm, Username, Password) ->
 	try begin
 		case ewok_db:select(ewok_user, {name, {Realm, Username}}) of
@@ -95,8 +95,8 @@ create_user(Realm, Username, Password) ->
 			{error, no_domain}
 	end.	
 %%
-create_user(Domain, Username) when is_list(Domain) ->
-	create_user(list_to_existing_atom(Domain), Username);
+create_user(Domain, Username) when is_binary(Domain) ->
+	create_user(binary_to_existing_atom(Domain, utf8), Username);
 create_user(Domain, Username) ->
 	try begin
 		case ewok_db:select(ewok_user, {Domain, Username}) of

@@ -13,15 +13,14 @@
 %% limitations under the License.
 
 -module(ewok_request_obj, [Socket, Timeout, Method, Url, Version, Headers, MaxHeaders]).
--vsn("1.0.0").
--author('steve@simulacity.com').
 
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 -include_lib("kernel/include/file.hrl").
 
--export([get_range/0, content_length/0, socket/0, timeout/0, max_headers/0,
-	remote_ip/0, version/0, url/0, headers/0, header/1, content/0, 
-	path/0, method/0, realm/0, set_realm/1]).
+-export([get_range/0, content_length/0, socket/0, timeout/0, 
+	max_headers/0, remote_ip/0, version/0, url/0, headers/0, 
+	header/1, content/0, path/0, method/0, realm/0, set_realm/1]).
 -export([recv/1, recv/2, should_close/0]).
 -export([cookie/0, cookie/1, parameter/1, parameters/0]).
 -export([reset/0, websocket/0]).
@@ -54,20 +53,22 @@
 reset() ->
     [erase(K) || K <- ?CACHE].
 	
-socket() -> Socket.
-timeout() -> Timeout.
+socket()      -> Socket.
+timeout()     -> Timeout.
+version()     -> Version.
+url()         -> Url.
+method()      -> Method.
+headers()     -> Headers.
 max_headers() -> MaxHeaders.
-version() -> Version.
-url() -> Url.
-method() -> Method.
-headers() -> Headers.
 
+%%
 websocket() ->
 	case erlang:get(?WEB_SOCKET) of
 	undefined -> erlang:put(?WEB_SOCKET, true);
 	Value -> Value
 	end.
 	
+%%
 remote_ip() ->
 	case erlang:get(?REMOTE_IP) of
 	undefined ->
@@ -77,7 +78,7 @@ remote_ip() ->
 	IP -> IP
 	end.
 
-%%
+%% @private
 content_length() ->
 	case erlang:get(?CONTENT_LENGTH) of
 	undefined ->
@@ -156,7 +157,7 @@ path() ->
 		%% NOTE: we'd like not to retrun a 'plain' string here. However, there's 
 		%% a few dependencies we need to address before removing {return, list} 
 		%% from this call.
-		case re:split(Url, "\\?", [{parts, 2}]) of
+		case re:split(Url, <<"\\?">>, [{parts, 2}]) of
 		[Path, _Query] -> Path;
 		[Path] -> Path
 		end,
@@ -218,6 +219,7 @@ parameter(Key) when is_list(Key) ->
 	undefined -> undefined;
 	Value -> binary_to_list(Value)
 	end;
+%
 parameter(Key) when is_binary(Key) ->
 	proplists:get_value(Key, get_query()).
 %
@@ -357,6 +359,7 @@ parse_multipart_disposition(Value) ->
 	Pairs1 = [{ewok_util:trim(X), ewok_util:trim(Y)} || {X, Y} <- Pairs],
 	[{ewok_http:url_decode(X), ewok_http:url_decode(strip_quotes(Y))} || {X, Y} <- Pairs1].
 
+%
 strip_quotes(X) ->
 	re:replace(X, <<$">>, <<>>, [global, {return, binary}]).
 

@@ -11,8 +11,8 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-
 -module(ewok).
+
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
@@ -33,7 +33,7 @@ stop() ->
 %% NOTE: consider an "embedded" mode startup?
 start(App) when is_atom(App) ->
 	not_implemented.
-%%
+%% Placeholders
 start(http, _Port) -> ok;
 start(smtp, _Port) -> ok;
 start(pop3, _Port) -> ok;
@@ -51,25 +51,39 @@ ident() ->
 		<<" [">>, ewok_util:build_time(), <<"]">>
 	]).
 
+%% remove...
 password(P) when is_list(P) ->
 	password(list_to_binary(P));
 password(P) when is_binary(P) ->
 	ewok_identity:password(P).
 
+%%
 keystore() ->
-	ewok_identity:keystore().
-	
+	case is_pid(whereis(ewok_identity_srv)) of
+	true ->
+		ewok_identity:keystore();
+	false ->
+		not_running
+	end.
+%%
 keystore(Key, Value) when is_atom(Key), is_binary(Value) ->
-	ewok_identity:keystore(Key, Value).
+	case is_pid(whereis(ewok_identity_srv)) of
+	true ->
+		ewok_identity:keystore(Key, Value);
+	false ->
+		not_running
+	end.
 
 %%
 config() ->
 	ewok_config:all().
+	
 config(Key) ->
 	ewok_config:get_value(Key).
+	
 config(Key, Default) ->
 	ewok_config:get_value(Key, Default).
-	
+
 %%
 deploy(App)->
 	ewok_deployment_srv:load(App),
@@ -78,10 +92,11 @@ deploy(App)->
 undeploy(App) ->
 	ewok_deployment_srv:undeploy(App).
 	
-% TOO: This will likely be radically revised over the course of development
+%% reminder
 info() ->
 	[version, running, ports, config, routes, webapps, 
 		users, auth, roles, sessions, tasks, {'module'}].
+% TODO: This will likely be radically revised over the course of development
 info(Key) -> 
 	case Key of
 	version -> 

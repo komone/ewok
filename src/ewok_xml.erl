@@ -22,6 +22,9 @@
 -define(XML_REGEX, <<"[\t\n\r]|(<[^>]*>)">>).
 -define(XML_DECL, <<"<?xml version=\"1.0\"?>">>).
 
+%% unused
+-record(element, {tag, attrs, body}).
+
 %%
 decode(File) when ?is_string(File) ->
 	{ok, Bin} = file:read_file(File),
@@ -55,10 +58,10 @@ path([H, <<"values()">>], Values = [{H, _Attrs, _Body}|_Rest]) ->
 	[X || {_, _, X} <- Values];
 path([H, <<"node()">>], [Element = {H, _Attrs, _Body}|_Rest]) ->
 	Element;
+path([H, <<"text()">>], [{H, _Attrs, Body}|_Rest]) ->
+	Body;
 path([H], [{H, _Attrs, Body}|_Rest]) ->
 %	?TTY({found, H}),
-	Body;
-path([H, <<"text()">>], [{H, _Attrs, Body}|_Rest]) ->
 	Body;
 path([H|T], [{H, _Attrs, Body}|_Rest]) ->
 %	?TTY({traverse, H}),
@@ -70,7 +73,6 @@ path([_|_], _) ->
 	[];
 path([], _) ->
 	[].
-
 
 %% @private
 

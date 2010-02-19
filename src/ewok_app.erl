@@ -1,5 +1,5 @@
 %% Copyright 2010 Steve Davis <steve@simulacity.com>
-%
+% 
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
 % You may obtain a copy of the License at
@@ -50,7 +50,7 @@ start(normal, Services) ->
 	Autoinstall = ewok_config:get_env(autoinstall, true),
 	case ewok_installer:run(Autoinstall) of
 	ok ->
-		start_server(Services, true);
+		start_server(Services, true); % make the boolean arg more obviously "is_activated"
 	{ok, AdminUser, Activation} ->
 		ewok_log:message(?MODULE, {activation, AdminUser, Activation}),
 		io:format(user, "~p~n", [{AdminUser, Activation}]),
@@ -58,16 +58,6 @@ start(normal, Services) ->
 	Error ->
 		Error
 	end.
-%% 
-config_change(Changed, New, Removed) -> 
-	?TTY({config_change, {changed, Changed}, {new, New}, {removed, Removed}}),
-	ok.
-%% 
-prep_stop(State) ->
-	State.
-%% 
-stop(_State) ->
-	ok.
 
 %% @private
 start_server(Services, Activated) ->
@@ -95,7 +85,6 @@ start_server(Services, Activated) ->
 	end.
 
 %% TODO: here we should really treat the default ewok web config as a deployable web_app
-%
 deploy_web(false) ->
 	Installer = 
 		#web_app {
@@ -110,10 +99,11 @@ deploy_web(false) ->
 		},
 	ewok_deployment_srv:load(Installer),
 	ewok_deployment_srv:deploy(ewok_installer);
-%
+
+%%
 deploy_web(true) ->
 	% TODO: Remove this temporary hack and undeploy the installer instead
-	ok = ewok_db:delete({ewok_route,<<"/">>,ewok_installer_web,ewok,any}),
+	ok = ewok_db:delete({ewok_route, <<"/">>, ewok_installer_web, ewok, any}),
 	
 	case ewok_config:get_env(web_app) of
 	undefined ->
@@ -137,3 +127,16 @@ deploy_web(true) ->
 	undefined ->
 		ewok_log:error({autodeploy, {not_running, ewok_deployment_srv}})
 	end.
+	
+%% 
+config_change(Changed, New, Removed) -> 
+	?TTY({config_change, {changed, Changed}, {new, New}, {removed, Removed}}),
+	ok.
+	
+%% 
+prep_stop(State) ->
+	State.
+
+%% 
+stop(_State) ->
+	ok.

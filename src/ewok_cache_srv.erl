@@ -15,6 +15,7 @@
 -module(ewok_cache_srv).
 -name("Ewok Cache Service").
 -include("ewok.hrl").
+-include("ewok_system.hrl").
 
 -behaviour(ewok_service).
 -export([start_link/1, stop/0]).

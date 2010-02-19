@@ -1,3 +1,17 @@
+%% Copyright 2009 Steve Davis <steve@simulacity.com>
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_installer_web).
 -name("Ewok Installer Activation").
 
@@ -32,8 +46,8 @@ filter(_Request) ->  ok.
 'POST'(Request, Session) ->
 	case Session:read(activation) of
 	undefined ->
-		Realm = Request:parameter("realm"),
-		Username = Request:parameter("username"),
+		Realm = Request:parameter(<<"realm">>),
+		Username = Request:parameter(<<"username">>),
 		Activation = Request:parameter(<<"activation">>),
 		case esp_validator:not_null([Realm, Username, Activation]) of
 		false ->
@@ -49,7 +63,7 @@ filter(_Request) ->  ok.
 		true -> 
 			case Password =:= Password2 of
 			true ->
-				%?TTY({params, Realm, Username, Activation, Password}),
+				?TTY({params, Realm, Username, Activation, Password}),
 				Session:take(activation),
 				case ewok_users:activate(Realm, Username, Activation, Password) of 
 				{ok, #ewok_user{} = User} ->
@@ -57,7 +71,10 @@ filter(_Request) ->  ok.
 					Session:user(User),
 					%% Activated == true, so...
 					
+					% TODO: Reconsider this, we should not
+					% be calling back into ewok_app
 					ewok_app:deploy_web(true),
+					
 					{found, [{location, ewok_http:absolute_uri("/")}]};
 				E = {error, _} ->
 					?TTY({"DENIED", E}), 
