@@ -1,8 +1,8 @@
 % -*- mode: erlang -*-
 
 %% Build third party source
-{"src3p/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
-{"src3p/*/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/extern/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/extern/*/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 
 %% Compile behaviour definitions first
 {"src/ewok_service.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
