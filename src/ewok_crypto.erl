@@ -13,21 +13,21 @@
 % limitations under the License.
 
 -module(ewok_crypto).
--export([encrypt/3, decrypt/3]).
--export([test/0]).
+-include("ewok.hrl").
 
+-export([start/0, sign/3, encrypt/3, decrypt/3]).
+
+%% AES
 -define(IVEC, <<213,53,164,93,158,212,70,56,134,80,224,220,249,214,82,76>>).
-
-% #define DELTA 0x9e3779b9
+% XXTEA
 -define(DELTA, 16#9E3779B9).
+% HMAC SHA-256
+-define(SHA_BLOCKSIZE, 64).
 
-%% 
-test() ->
-	Key = ewok_identity:random(),
-	Cipher = encrypt(aes, Key, <<"Arbow">>),
-    Plaintext = decrypt(aes, Key, Cipher),
-	{Cipher, Plaintext}.
-
+%%
+start() ->
+	crypto:start().
+	
 %%
 encrypt(xxtea, Key, Plaintext) ->
 	cbtea_encode(Plaintext, binary_to_list(Key));
@@ -35,18 +35,23 @@ encrypt(aes, <<Key:16/binary>>, Bin) ->
 	list_to_binary(aes_encode(Bin, Key, [])). 
 
 %% 
-decrypt(xxtea, Ciphertext, Key) ->	
+decrypt(xxtea, Key, Ciphertext) ->	
 	cbtea_decode(Ciphertext, binary_to_list(Key));
 decrypt(aes, Key, Bin) ->
 	try 
 		Value = aes_decode(Bin, Key, []),
-		[Text] = ewok_util:split(list_to_binary(Value), <<"\\x">>),
+		[Text] = ewok_text:split(list_to_binary(Value), <<"\\x">>),
 		Text
 	catch
 	_:_ -> 
 		{error, invalid_key}
 	end.
+%%
+sign(hmac256, Key, Data) ->
+	hmac256(Key, Data).
 
+%% AES CFB
+%% @private
 aes_encode(<<>>, _Key, Acc) ->
 	lists:reverse(Acc);
 aes_encode(<<Block:16/binary, Rest/binary>>, Key, Acc) ->
@@ -57,7 +62,7 @@ aes_encode(Rest, Key, Acc) ->
 	Block = <<Rest/binary, Pad/binary>>,
 	Cipher = crypto:aes_cfb_128_encrypt(?IVEC, Key, Block),
 	lists:reverse([Cipher|Acc]).
-
+%% @private
 aes_decode(<<>>, _Key, Acc) ->
 	lists:reverse(Acc);
 aes_decode(<<Block:16/binary, Rest/binary>>, Key, Acc) ->
@@ -65,14 +70,37 @@ aes_decode(<<Block:16/binary, Rest/binary>>, Key, Acc) ->
 	aes_decode(Rest, Key, [Cipher|Acc]).
 
 
+%% @private
+% Passes HMAC test vectors at http://www.rfc-archive.org/getrfc.php?rfc=4231
+hmac256(Key, Data) when is_binary(Key), is_binary(Data) ->
+	HashKey = 
+		case ?SHA_BLOCKSIZE - size(Key) of
+		X when X < 0 ->
+			KeyDigest = sha2:hexdigest256(Key),
+			Pad = ?SHA_BLOCKSIZE - size(KeyDigest),
+			<<KeyDigest/binary, 0:(Pad * 8)>>;
+		X when X > 0 ->
+			<<Key/binary, 0:(X * 8)>>;
+		X when X =:= 0 ->
+			Key
+		end,
+	IPad = list_to_binary(lists:duplicate(?SHA_BLOCKSIZE, 16#36)),
+	OPad = list_to_binary(lists:duplicate(?SHA_BLOCKSIZE, 16#5c)),
+	%% H(K XOR opad, H(K XOR ipad, text))
+	H1 = sha2:hexdigest256(<<(crypto:exor(HashKey, IPad))/binary, Data/binary>>),
+	sha2:hexdigest256(<<(crypto:exor(HashKey, OPad))/binary, H1/binary>>).
+
+
+%% XXTEA
 % #define MX ((z >> 5 ^ y << 2) + (y >> 3 ^ z << 4)) ^ ((sum ^ y) + (k[(p & 3) ^ e] ^ z));
+%% @private
 mix(K, Z, Y, Sum, P) ->
 	X1 = (Z bsr 5) band 16#07FFFFFF bxor (Y bsl 2),
 	X2 = (Y bsr 3) band 16#1FFFFFFF bxor (Z bsl 4),
 	X3 = lists:nth((P band 3 bxor (Sum bsr 2) band 3) + 1, K),
 	int32(X1 + X2) bxor int32((Sum bxor Y) + (X3 bxor Z)).
 		
-%%
+%% @private
 cbtea_encode(Plaintext, Key) ->
 	Value = binary_to_list(Plaintext),
 	Rounds = 6 + trunc(52 / length(Value)),
@@ -119,6 +147,7 @@ int32(Num) ->
         false -> Int
     end.
 	
+%% @private
 cbtea_decode(Ciphertext, Key) ->
 	Value = binary_to_int32_list(Ciphertext, []),
 	Rounds = 6 + trunc(52 / length(Value)),

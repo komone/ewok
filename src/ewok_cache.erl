@@ -20,6 +20,9 @@
 
 -define(SERVER, ewok_cache_srv).
 
+%% This is a semi-valid guard used instead of is_record/2 since runtime type isn't known.
+-define(is_record(X), is_tuple(X) andalso is_atom(element(1, X)) andalso size(X) > 1).
+
 %
 add(Records) when is_list(Records) ->
 	X = [add(X) || X <- Records],

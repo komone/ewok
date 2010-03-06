@@ -11,6 +11,10 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
+
+%% @doc Ewok AS: The 'Enterprise Wok'.
+%% @author Steve Davis <steve@simulacity.com>
+%% @copyright 2008-2010 Steve Davis. All Rights Reserved.
 -module(ewok).
 
 -include("ewok.hrl").
@@ -18,7 +22,7 @@
 
 %% API
 -export([start/0, start/1, start/2, stop/0]).
--export([ident/0, password/1, keystore/0, keystore/2, info/0, info/1]).
+-export([ident/0, password/1, keystore/0, keystore/2, info/0, info/1, api/1]).
 -export([config/0, config/1, config/2]).
 -export([deploy/1, undeploy/1]).
 
@@ -76,7 +80,9 @@ keystore(Key, Value) when is_atom(Key), is_binary(Value) ->
 
 %%
 config() ->
-	ewok_config:all().
+	Config = ewok_config:all(),
+	io:format(user, "~p~n", [lists:sort(Config)]),
+	{ok, length(Config)}.
 	
 config(Key) ->
 	ewok_config:get_value(Key).
@@ -92,6 +98,22 @@ deploy(App)->
 undeploy(App) ->
 	ewok_deployment_srv:undeploy(App).
 	
+%%
+api(Module) ->
+	case code:ensure_loaded(Module) of
+	{'module', Module} ->
+		Exports = Module:module_info(exports),
+		Behaviours = [
+			X:behaviour_info(callbacks) 
+			|| {behaviour, [X]} 
+			<- Module:module_info(attributes)],
+		%?TTY({behaviour_funs, Behaviours}),
+		Elide = [{module_info, 0}, {module_info, 1} | lists:flatten(Behaviours)],
+		[X || X <- Exports, lists:member(X, Elide) =:= false];
+	_ -> undefined
+	end.
+	
+
 %% reminder
 info() ->
 	[version, running, ports, config, routes, webapps, 

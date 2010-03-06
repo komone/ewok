@@ -17,7 +17,12 @@ filter(_Request) ->
 
 %%
 'GET'(_Request, _Session) ->
-	Html = <<"<html><head><title>Exercise 1</title></head>
-		<body><h1>Exercise 1</h1><p>First things first!</p></body></html>">>,
+	Html = <<
+		"<html>",
+		"<head><title>Exercise 1</title></head>",
+		"<body><h1>Exercise 1</h1>",
+		"<p>First things first!</p></body>",
+		"</html>"
+	>>,
 	{ok, [{content_type, <<"text/html">>}], Html}.
 	

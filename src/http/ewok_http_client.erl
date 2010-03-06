@@ -1,5 +1,5 @@
 %% Copyright 2010 Steve Davis <steve@simulacity.com>
-%
+% 
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
 % You may obtain a copy of the License at
@@ -71,6 +71,7 @@ request(Method, Url, _Headers, _Body) when is_atom(Method) ->
 	Request = list_to_binary([RequestLine, headers(Host, Port), ?NEWLINE]),
     {ok, Socket} = ewok_socket:connect(Transport, Host, Port, [binary, {active, false}, {packet, 0}]),
 	ewok_socket:send({Transport, Socket}, Request),
+%	?TTY({request, Request}),
 	response({Transport, Socket}, Method).
 	
 %%
@@ -89,22 +90,22 @@ response(Socket, Method) ->
 
 %%
 parse_response(Packet) ->
-	[StatusLine, Rest] = ewok_util:split(Packet, ?NEWLINE, 2),
-	[_Protocol, StatusCode, _Message] = ewok_util:split(StatusLine, <<$ >>, 3),
+	[StatusLine, Rest] = ewok_text:split(Packet, ?NEWLINE, 2),
+	[_Protocol, StatusCode, _Message] = ewok_text:split(StatusLine, <<$ >>, 3),
 	Status = ewok_http:status(list_to_integer(binary_to_list(StatusCode))),
-	case ewok_util:split(Rest, <<"\r\n\r\n">>, 2) of
+	case ewok_text:split(Rest, <<"\r\n\r\n">>, 2) of
 	[HeaderLines, Body] -> 
 		ok;
 	[HeaderLines] -> 
 		Body = <<>>
 	end,
-	Headers = [parse_header(X) || X <- ewok_util:split(HeaderLines, ?NEWLINE)],
+	Headers = [parse_header(X) || X <- ewok_text:split(HeaderLines, ?NEWLINE)],
 	{Status, Headers, Body}.
 
 %%
 parse_header(Header) ->
-	[K, V] = ewok_util:split(Header, <<$:>>, 2),
-	{ewok_util:trim(K), ewok_util:trim(V)}.
+	[K, V] = ewok_text:split(Header, <<$:>>, 2),
+	{ewok_text:trim(K), ewok_text:trim(V)}.
 
 %%
 read_content(Socket, Headers, Content) ->
@@ -133,11 +134,11 @@ read_content(Socket, Headers, Content) ->
 read_chunked_content(_Socket, ?NEWLINE, Acc) ->
 	{ok, lists:reverse(Acc)};
 read_chunked_content(Socket, Packet, Acc) ->
-%	?TTY(ewok_util:split(Packet, ?NEWLINE, 3)),
-	[ChunkSize|Part] = ewok_util:split(Packet, ?NEWLINE, 3),
+%	?TTY(ewok_text:split(Packet, ?NEWLINE, 3)),
+	[ChunkSize|Part] = ewok_text:split(Packet, ?NEWLINE, 3),
 	Chunk = list_to_binary(Part),
-	[Hex|_] = ewok_util:split(ChunkSize, <<$;>>, 2),
-	Size = ewok_util:hexint(Hex),
+	[Hex|_] = ewok_text:split(ChunkSize, <<$;>>, 2),
+	Size = ewok_text:hex2int(Hex),
 %	?TTY({Size, size(Chunk)}),
 	case {Size, size(Chunk)} of 
 	{0, _} ->
@@ -160,7 +161,7 @@ read_chunked_content(Socket, Packet, Acc) ->
 
 %%
 parse_url(Url) ->
-	case ewok_util:split(Url, <<"//|(:)|(/.*)">>) of
+	case ewok_text:split(Url, <<"//|(:)|(/.*)">>) of
 	[Protocol, <<$:>>, Host] ->
 		Port = port(Protocol, <<>>),
 		Resource = <<$/>>;

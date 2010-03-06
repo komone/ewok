@@ -28,28 +28,6 @@
 
 -compile(export_all).
 
-%% test
-sendmail(From, To, Message) ->
-    {ok, Host} = inet:gethostname(), 
-	{ok, Socket} = gen_tcp:connect(Host, 2525, [{active, false}]),
-	print(Socket),
-	gen_tcp:send(Socket, "EHLO simulacity.com\r\n"),
-	print(Socket),
-	gen_tcp:send(Socket, "MAIL FROM:" ++ From ++ "\r\n"),
-	print(Socket),
-	gen_tcp:send(Socket, "RCPT TO:" ++ To ++ "\r\n"),
-	print(Socket),
-	gen_tcp:send(Socket, "DATA\r\n"),
-	print(Socket),	
-	gen_tcp:send(Socket, Message ++ "\r\n.\r\n"),
-	print(Socket),
-	gen_tcp:send(Socket, "QUIT\r\n"),
-	print(Socket),
-	gen_tcp:close(Socket).
-
-print(Socket) ->
-	{ok, Packet} = gen_tcp:recv(Socket, 0),
-	io:format(Packet).
 
 
 
@@ -88,10 +66,10 @@ start_link(_Args) ->
 
 %%	
 stop() -> 
-	ewok_tcp_srv:stop(?MODULE),
+	ewok_socket_srv:stop(?MODULE),
 	ewok_log:remove_log(mail).
 
-%% Callback from ewok_tcp_srv, handing over a client connection
+%% Callback from ewok_socket_srv, handing over a client connection
 service(Socket, Timeout) ->
 	{ok, Session, Reply} = ewok_smtpd_session:create(),
 	?TTY({"FSM", Session}),
@@ -102,7 +80,7 @@ service(Socket, Timeout) ->
 read_request({Transport, Socket}, Session, Timeout, Acc) ->
 	case Transport:recv(Socket, 0, Timeout) of
 	{ok, Packet} ->
-		Parts = re:split(Packet, <<"(\r\n)">>),
+		Parts = ewok_text:split(Packet, <<"(\r\n)">>),
 		case process_request({Transport, Socket}, Session, Parts, Acc) of
 		{ok, Acc1} -> read_request({Transport, Socket}, Session, Timeout, Acc1);
 		close ->
@@ -133,8 +111,8 @@ process_request(_Connection, _Session, [], Acc) ->
 %
 handle_request(Session, Request) ->
 	ewok_log:message(mail, session, Request),
-	[Verb|Args] = re:split(Request, <<$ >>, [{parts, 2}]),
-	R = case ewok_smtp:command(ewok_util:to_upper(Verb)) of
+	[Verb|Args] = ewok_text:split(Request, <<$ >>, 2),
+	R = case ewok_smtp:command(ewok_text:to_upper(Verb)) of
 		undefined -> {undefined, Request};
 		Command -> {Command, Args}
 		end,

@@ -1,3 +1,17 @@
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+
 -module(ewok_default).
 
 -compile(export_all).
@@ -7,106 +21,117 @@
 % all size values are in bytes
 config() -> [
 	{{server, ip}, any},
-	{{server, hostname}, "localhost"}, %% unused
+	{{server, hostname}, <<"localhost">>}, %% unused
 	{{server, runmode}, development},
-		
-	{{identity, keystore}, "./priv/data/.keystore"},
-	{{identity, password}, "password"},
-	
-	{tasks, []}, % no conf as yet
-	
-	{{datasource, default}, mnesia}, % no other option offered for now (and maybe never)
-	{{datasource, mnesia, mod}, ewok_mnesia_ds}, %%
-	{{datasource, mnesia, args}, []},
-	{{datasource, mnesia, path}, "./priv/data"},
-	{{datasource, riak, mod}, riak_ds},
-	{{datasource, riak, args}, []},
-	{{datasource, couchdb, mod}, couchdb_ds},
-	{{datasource, couchdb, args}, []},
-	{{datasource, postgresql, mod}, postgresql_ds},
-	{{datasource, postgresql, args}, []},
-	{{datasource, mysql, mod}, mysql_ds},
-	{{datasource, mysql, args}, []},
-
-	{{datasource, aws_sdb, mod}, aws_sdb_ds}, 
-	{{datasource, aws_sdb, args}, []},
-	{{datasource, aws_sdb, args}, []},
-	%% NOTE: sample keys from Amazon - move to .keystore later
-	{{datasource, aws_sdb, sdb_access_key}, "022QF06E7MXBSH9DHM02"}, 
-	{{datasource, aws_sdb, sdb_secret_key}, "kWcrlUX5JEDGM/LtmEENI/aVmYvHNif5zB+d9+ct"},
-	
-	{{queue, default}, rabbitmq}, % no other option offered for now (and maybe never)
-	{{queue, rabbitmq, data_path}, "./priv/data"},
-	{{queue, rabbitmq, url}, "amqp://localhost"},
-	{{queue, rabbitmq, port}, 5432},
-	{{queue, rabbitmq, user}, "admin"},
-	{{queue, rabbitmq, password}, "password"},
-	
-	{{umtp, port}, 30},
-	{{umtp, request_timeout}, 10},
-	{{umtp, tcp, max_connections}, 2048},
-	{{umtp, tcp, socket, mode}, binary},
-	{{umtp, tcp, socket, reuseaddr}, true},
-	{{umtp, tcp, socket, packet}, 0}, % don't think this is exactly the same as 'raw'
-	{{umtp, tcp, socket, active}, false},
-	{{umtp, tcp, socket, recbuf}, 8192},
-	{{umtp, tcp, socket, backlog}, 30},
-	{{umtp, tcp, socket, nodelay}, true},
-	{ssl, [
-		{enabled, false},
-		{verify, 0}, %% for now, direct representation of SSL opts
-		{depth, 1}, %% for now, direct representation of SSL opts
-		{password, ""}, %% you should ONLY set this if key.pem is pw protected
-		{keyfile, "./priv/ssl/key.pem"},
-		{certfile, "./priv/ssl/cert.pem"},
-		{cacertfile, "./priv/ssl/cacerts.pem"}
+	{{identity, [
+		{keystore, <<"./priv/data/.keystore">>},
+		{password, <<"password">>}
 	]},	
-	
-	{{smtp, port}, 25},
-	{{smtp, request_timeout}, 30},
-	{{smtp, tcp, max_connections}, 20},
-	{{smtp, tcp, socket, mode}, binary},
-	{{smtp, tcp, socket, reuseaddr}, true},
-	{{smtp, tcp, socket, packet}, 0}, % don't think this is exactly the same as 'raw'
-	{{smtp, tcp, socket, active}, false},
-	{{smtp, tcp, socket, recbuf}, 8192},
-	{{smtp, tcp, socket, backlog}, 0},
-	{{smtp, tcp, socket, nodelay}, true},
-	{ssl, [
-		{enabled, false},
-		{verify, 0}, %% for now, direct representation of SSL opts
-		{depth, 1}, %% for now, direct representation of SSL opts
-		{password, ""}, %% you should ONLY set this if key.pem is pw protected
-		{keyfile, "./priv/ssl/key.pem"},
-		{certfile, "./priv/ssl/cert.pem"},
-		{cacertfile, "./priv/ssl/cacerts.pem"}
+	{tasks, []}, % no conf as yet
+	{{datasource, default}, mnesia}, % no other option offered for now (and maybe never)
+	{{datasource, mnesia}, [
+		{mod, ewok_mnesia_ds}, %%
+		{args, []},
+		{path}, <<"./priv/data">>}
 	]},
-	
-	{{http, port}, 8080},
-	{{http, tcp, max_connections}, 2048},
-	{{http, tcp, socket, mode}, binary},
-	{{http, tcp, socket, reuseaddr}, true},
-	{{http, tcp, socket, packet}, 0}, % don't think this is exactly the same as 'raw'
-	{{http, tcp, socket, active}, false},
-	{{http, tcp, socket, backlog}, 30},
-	{{http, tcp, socket, recbuf}, 8192},
-	{{http, tcp, socket, nodelay}, true},
-	
-	{ssl, [
-		{enabled, false},
-		{verify, 0}, %% for now, direct representation of SSL opts
-		{depth, 1}, %% for now, direct representation of SSL opts
-		{password, ""}, %% you should ONLY set this if key.pem is pw protected
-		{keyfile, "./priv/ssl/key.pem"},
-		{certfile, "./priv/ssl/cert.pem"},
-		{cacertfile, "./priv/ssl/cacerts.pem"}
+	{{datasource, riak}, [
+		{mod, riak_ds},
+		{args, []}
 	]},
-		
+	{{datasource, couchdb}, [
+		{mod, couchdb_ds},
+		{args, []}
+	]},
+	{{datasource, postgresql}, [
+		{mod, postgresql_ds},
+		{args, []}
+	]},
+	{{datasource, mysql}, [
+		{mod, mysql_ds},
+		{args, []}
+	]},
+	{{datasource, aws_sdb}, [
+		{mod, aws_sdb_ds}, 
+		{args, []},
+		%% NOTE: sample keys from Amazon - move to .keystore later
+		{sdb_access_key, <<"022QF06E7MXBSH9DHM02">>}, 
+		{sdb_secret_key, <<"kWcrlUX5JEDGM/LtmEENI/aVmYvHNif5zB+d9+ct">>}
+	]},
+	{{queue, default}, rabbitmq}, % no other option offered for now (and maybe never)
+	{{queue, rabbitmq}, [
+		{data_path, <<"./priv/data">>},
+		{url, <<"amqp://localhost">>},
+		{port, 5432},
+		{user, <<"admin">>},
+		{password, <<"password">>}
+	]},
+	{{umtp, socket}, [
+		{port, 30},
+		{request_timeout, 10},
+		{max_connections, 2048},
+		{mode, binary},
+		{reuseaddr, true},
+		{packet, 0}, % don't think this is exactly the same as 'raw'
+		{active, false},
+		{recbuf, 8192},
+		{backlog, 30},
+		{nodelay, true},
+		{ssl, [
+			{enabled, false},
+			{verify, 0}, %% for now, direct representation of SSL opts
+			{depth, 1}, %% for now, direct representation of SSL opts
+			{password, <<"">>}, %% you should ONLY set this if key.pem is pw protected
+			{keyfile, <<"./priv/ssl/key.pem">>},
+			{certfile, <<"./priv/ssl/cert.pem">>},
+			{cacertfile, <<"./priv/ssl/cacerts.pem">>}
+		]}
+	]},
+	{{smtp, socket}, [
+		{port, 25},
+		{request_timeout, 30},
+		{max_connections, 20},
+		{mode, binary},
+		{reuseaddr, true},
+		{packet, 0}, % don't think this is exactly the same as 'raw'
+		{active, false},
+		{recbuf, 8192},
+		{backlog, 0},
+		{nodelay, true},
+		{ssl, [
+			{enabled, false},
+			{verify, 0}, %% for now, direct representation of SSL opts
+			{depth, 1}, %% for now, direct representation of SSL opts
+			{password, <<"">>}, %% you should ONLY set this if key.pem is pw protected
+			{keyfile, <<"./priv/ssl/key.pem">>},
+			{certfile, <<"./priv/ssl/cert.pem">>},
+			{cacertfile, <<"./priv/ssl/cacerts.pem">>}
+		]}
+	]},
+	{{http, socket}, [
+		{port, 8080},
+		{max_connections, 2048},
+		{mode, binary},
+		{reuseaddr, true},
+		{packet, 0}, % don't think this is exactly the same as 'raw'
+		{active, false},
+		{backlog, 30},
+		{recbuf, 8192},
+		{nodelay, true},
+		{ssl, [
+			{enabled, false},
+			{verify, 0}, %% for now, direct representation of SSL opts
+			{depth, 1}, %% for now, direct representation of SSL opts
+			{password, ""}, %% you should ONLY set this if key.pem is pw protected
+			{keyfile, "./priv/ssl/key.pem"},
+			{certfile, "./priv/ssl/cert.pem"},
+			{cacertfile, "./priv/ssl/cacerts.pem"}
+		]}
+	]},
 	{{http, header_limit}, 100}, %% 'infinity' turns off...
 	{{http, request_timeout}, 30},
 	{{http, deploy_root}, "./priv/apps"},
 	{{http, autodeploy}, [ewok_admin]},
-		
+	
 	%% Cache is used in production mode to cache static files
 	%% and their file information for response headers --
 	%% the idea is to reduce file handles used by the system
@@ -160,7 +185,7 @@ log() -> [
 	%% TODO: if this is moved to http, log then there's a dependency
 	%% to be accounted for in create_log in ewok_logging_srv
 	{{log, level}, info},
-	{{log, path}, "./priv/log"},
+	{{log, path}, <<"./priv/log">>},
 	
 	{{log, access, enable}, true},
 	{{log, access, rollover}, infinity},
@@ -187,26 +212,26 @@ log() -> [
 %% ...or perhaps be used *only* for installation.
 web_application() -> {ewok, [
 	{http, [
-		{app_path, "/"}, % is this ever necessary ???
+		{app_path, <<"/">>}, % is this ever necessary ???
 		
 		%% realm-based role... this probably shouldn't be in here at all
-		{login, "/login"}, 
+		{login, <<"/login">>}, 
 		
-		{doc_root, "./priv/www"},
-		{template_root, "./priv/esp"},
-		{index_file, "index.html"},
+		{doc_root, <<"./priv/www">>},
+		{template_root, <<"./priv/esp">>},
+		{index_file, <<"index.html">>},
 		
 		{roles, []},
 		
 		{route, default, ewok_file_handler, ewok, any},
-		{route, "/", ewok_home, ewok, any},
-		{route, "/app/login", ewok_world, ewok, any},
-		{route, "/cgi-bin/login.cgi", ewok_world, ewok, any},
-		{route, "/home", ewok_home, ewok, any},
-		{route, "/ajax", ewok_print_handler, ewok, any},
-		{route, "/login", ewok_login_handler, ewok, any},
-		{route, "/activation", ewok_activation_handler, ewok, any},
-		{route, "/registration", ewok_registration_handler, ewok, any},
-		{route, "/websocket", ewok_websocket_handler, ewok, any}
+		{route, <<"/">>, ewok_home, ewok, any},
+		{route, <<"/app/login">>, ewok_world, ewok, any},
+		{route, <<"/cgi-bin/login.cgi">>, ewok_world, ewok, any},
+		{route, <<"/home">>, ewok_home, ewok, any},
+		{route, <<"/ajax">>, ewok_print_handler, ewok, any},
+		{route, <<"/login">>, ewok_login_handler, ewok, any},
+		{route, <<"/activation">>, ewok_activation_handler, ewok, any},
+		{route, <<"/registration">>, ewok_registration_handler, ewok, any},
+		{route, <<"/websocket">>, ewok_websocket_handler, ewok, any}
 	]}	
 ]}.

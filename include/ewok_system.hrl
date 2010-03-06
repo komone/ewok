@@ -31,6 +31,9 @@
 -define(ADMIN_USER, {ewok, <<"admin">>}).
 -define(ADMIN_ROLE, {ewok, admin}).
 
+-define(EWOK_SESSION_KEY, <<"_EWOKSID">>).
+
+
 %% These are records that need to be shared between services but they should
 %% not be required by the API. Records required by the API are in ewok.hrl.
 -record(ewok_config, {key, value}).
@@ -53,9 +56,8 @@
 %%
 -record(workflow, {id, name, workitems=[]}).
 %% TODO: a 'task' record for workflow would conflict with the scheduler's task record
--record(workitem, {id, name, roles, more}). 
-%% Auth and security... not intended for API usage. Could/should this record could be 
-%% move into ewok_system.hrl?
+-record(workitem, {id, name, roles, payload}). 
+%% Auth and security... not intended for API usage. 
 -record(ewok_auth, {id, password, activation}).
 
 %% The url 'path', is always relative to www root "/", and passes execution 

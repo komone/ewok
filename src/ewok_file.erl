@@ -39,11 +39,11 @@
 -include_lib("kernel/include/file.hrl").
 -include_lib("stdlib/include/zip.hrl").
 
--export([open/2, close/1]).
+-export([open/2, close/1, filename/1]).
 -export([path/1, parent/1, name/1, appname/1, extension/1]).
 -export([load/1, save/2, resource/2]). %, file_info/1]).
 -export([list/1, code_path/1]). 
--export([is_directory/1, is_file/1, is_regular/1, is_link/1]).
+-export([is_directory/1, is_file/1, is_regular/1, is_link/1, modified/1]).
 -export([file_info/1, find/2, find/3]).
 
 -define(PATH_SEPARATOR, <<"[\\\\/]">>).
@@ -58,7 +58,7 @@ path(List = [H|_]) when is_integer(H) -> % "strings"
 path(List) ->
 	{ok, CD} = file:get_cwd(),
 	Filtered = filter_paths(List, [list_to_binary(CD)]),
-	Parts = [ewok_util:split(X, ?PATH_SEPARATOR) || X <- Filtered],
+	Parts = [ewok_text:split(X, ?PATH_SEPARATOR) || X <- Filtered],
 %	?TTY("~p~n", [lists:append(Parts)]),
 	make_path(lists:append(Parts), <<>>).
 
@@ -82,13 +82,13 @@ make_path([<<$.>>|T], <<>>) ->
 % parent of cwd
 make_path([<<"..">>|T], <<>>) -> %%
 	{ok, Dir} = file:get_cwd(),
-	CurrentDir = ewok_util:split(Dir, ?PATH_SEPARATOR),
+	CurrentDir = ewok_text:split(Dir, ?PATH_SEPARATOR),
 	[_|Rest] = lists:reverse(CurrentDir),
 	Base = make_path(lists:reverse(Rest), <<>>),
 	make_path(T, Base);
 % deal with windows drive labels
 make_path([Volume = <<_, $:>>|T], <<>>) ->
-	Acc = ewok_util:to_upper(Volume),
+	Acc = ewok_text:to_upper(Volume),
 	make_path(T, Acc);
 % current
 make_path([<<$.>>, H|T], Acc) ->
@@ -103,6 +103,7 @@ make_path([H|T], Acc) when is_binary(H) ->
 make_path([], Acc) ->
 	Acc.
 
+	
 %% TODO: test
 code_path(Path) ->
 	case is_regular(Path) of
@@ -111,8 +112,8 @@ code_path(Path) ->
 		<<".ez">> ->
 			archive_code_path(Path);
 		_ -> 
-			Parent = ewok_file:parent(Path),
-			case ewok_file:name(Parent) of
+			Parent = parent(Path),
+			case name(Parent) of
 			?BIN_DIR ->
 				Parent;
 			_ -> 
@@ -120,7 +121,7 @@ code_path(Path) ->
 			end
 		end;
 	_ ->
-		case is_directory(Path) andalso ewok_file:name(Path) of
+		case is_directory(Path) andalso name(Path) of
 		?BIN_DIR ->
 			Path;
 		_ ->
@@ -144,10 +145,13 @@ archive_code_path(Archive) ->
 	false ->
 		undefined
 	end.
-
+	
+%%
+filename(Path) ->
+	lists:last(ewok_text:split(Path, ?PATH_SEPARATOR)).
 %%
 name(Path) ->
-	File = lists:last(ewok_util:split(Path, ?PATH_SEPARATOR)),
+	File = lists:last(ewok_text:split(Path, ?PATH_SEPARATOR)),
 	Ext = extension(File),
 	case re:replace(File, <<Ext/binary, $$>>, <<>>) of
 	Name when is_binary(Name) ->
@@ -165,7 +169,7 @@ appname(CodePath) ->
 	case name(CodePath) of
 	?BIN_DIR ->
 		Name = name(parent(CodePath)),
-		[AppName|_Version] = ewok_util:split(Name, <<$->>),
+		[AppName|_Version] = ewok_text:split(Name, <<$->>),
 		binary_to_atom(AppName, utf8);
 	_ ->
 		undefined
@@ -173,8 +177,8 @@ appname(CodePath) ->
 
 %%
 extension(Path) ->
-	File = lists:last(ewok_util:split(Path, ?PATH_SEPARATOR)),
-	case lists:reverse(ewok_util:split(File, <<"(\\.)">>)) of
+	File = lists:last(ewok_text:split(Path, ?PATH_SEPARATOR)),
+	case lists:reverse(ewok_text:split(File, <<"(\\.)">>)) of
 % NOTE: is this valid? i.e. are 'dot' files like .bashrc "hidden' or "anonymous" files?
 %	[_Name, <<$.>>] ->
 %		undefined; 
@@ -243,6 +247,11 @@ is_type(File, Type) ->
 	_ ->
 		false
 	end.
+	
+%% Temp...?
+modified(File) ->
+	Info = file_info(File),
+	Info#file_info.mtime.
 	
 %%	
 open(Path, Opts) ->

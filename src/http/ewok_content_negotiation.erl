@@ -2,7 +2,7 @@
 -module(ewok_content_negotiation).
 -export([compute_rsva/2, parse_accept_field/1, match_media_type/2]).
 
-%% YAWS !!!!!!!!!!!!!!!!!!!!!!!!!!
+%% FROM YAWS !!!
 %-include("../include/yaws_api.hrl").
 -record(arg, {
           clisock,        %% the socket leading to the peer client

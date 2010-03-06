@@ -1,18 +1,21 @@
-%%%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
-%% NOTE: Because I can never remember how to use xmerl
+%% NOTE: Because I can never remember how to use xmerl and do not need
+%% a full DOM representation in 90% of practical circumstances for this 
+%% document markup language which has found its way, incorrectly, into 
+%% data processing.
 %% TODO: Improve scope/validation
 -module(ewok_xml).
 -include("ewok.hrl").
@@ -23,7 +26,7 @@
 -define(XML_DECL, <<"<?xml version=\"1.0\"?>">>).
 
 %% unused
--record(element, {tag, attrs, body}).
+% -record(element, {tag, attrs, body}).
 
 %%
 decode(File) when ?is_string(File) ->
@@ -31,7 +34,7 @@ decode(File) when ?is_string(File) ->
 	decode(Bin);
 decode(Bin) when is_binary(Bin) ->
 	try
-		[?XML_DECL|List] = ewok_util:split(Bin, ?XML_REGEX),
+		[?XML_DECL|List] = ewok_text:split(Bin, ?XML_REGEX),
 		{Root, []} = decode_elements(List, [], []),
 		{xml, [{version, {1, 0}}], Root}
 	catch
@@ -50,7 +53,7 @@ encode([Term]) ->
 	
 %%
 xpath(Xpath, {xml, _, Markup}) ->
-	Path = ewok_util:split(Xpath, <<"/">>),
+	Path = ewok_text:split(Xpath, <<"/">>),
 %	?TTY({path, Path}),
 	path(Path, Markup).
 %%
@@ -80,8 +83,8 @@ path([], _) ->
 decode_elements([Terminal|T], Terminal, Acc) ->
 	{lists:reverse(Acc), T};
 decode_elements([<<$<, Bin/binary>>|T], Terminal, Acc) ->
-	[Tag, Close] = ewok_util:split(Bin, <<"(>|/>)">>, 2),
-	[Name|Attrs] = ewok_util:split(Tag, <<" ">>),
+	[Tag, Close] = ewok_text:split(Bin, <<"(>|/>)">>, 2),
+	[Name|Attrs] = ewok_text:split(Tag, <<" ">>),
 	Pairs = decode_attrs(Attrs, []),
 	case Close of
 	<<"/>">> -> 
@@ -94,13 +97,18 @@ decode_elements([<<$<, Bin/binary>>|T], Terminal, Acc) ->
 		decode_elements(Rest, Terminal, [{Name, Pairs, Body}|Acc])
 	end;
 decode_elements([H|T], Terminal, Acc) ->
-	decode_elements(T, Terminal, [H|Acc]);
+	case ewok_text:trim(H) of %% remove whitespace -- make optional?
+	<<>> ->
+		decode_elements(T, Terminal, Acc);
+	Value ->
+		decode_elements(T, Terminal, [Value|Acc])
+	end;
 decode_elements([], _Terminal, Acc) ->
 	{lists:reverse(Acc), []}.
-%
+%%
 decode_attrs([H|T], Acc) ->
-	[Name, Value] = ewok_util:split(H, <<$=>>),
-	decode_attrs(T, [{make_key(Name), ewok_util:unquote(Value)}|Acc]);
+	[Name, Value] = ewok_text:split(H, <<$=>>),
+	decode_attrs(T, [{make_key(Name), ewok_text:unquote(Value)}|Acc]);
 decode_attrs([], Acc) -> 
 	lists:reverse(Acc).
 
@@ -139,7 +147,7 @@ make_key(Name) ->
 		Name
 	end.
 
-%%
+%% use ewok_text:value/1 ?
 makeio(X) when is_integer(X) -> makeio(integer_to_list(X));
 makeio(X) when is_float(X)   -> makeio(float_to_list(X));
 makeio(X) when is_atom(X)    -> atom_to_binary(X, utf8);

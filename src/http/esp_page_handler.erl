@@ -1,4 +1,17 @@
-%%
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+
 -module(esp_page_handler).
 
 -include("ewok.hrl").
@@ -25,7 +38,7 @@ resource_info() ->
 	
 %%
 filter(Request) ->
-	case filename:extension(Request:path()) of
+	case ewok_file:extension(Request:path()) of
 	?ESP_FILE_EXT -> ok;
 	_ -> % is this the right thing to do??
 		bad_request 
@@ -78,24 +91,21 @@ get_file(Path) ->
 		File
 	end.
 %
-read_file(Path) ->
-	BasePath = 
-		case ewok:config({ewok, http, doc_root}, ?WWW_ROOT) of
-		Root = [$., $/|_] -> filename:absname(Root);
-		Root = [$/|_] -> filename:absname([$.|Root])
-		end,
-	File = filename:join(BasePath, [$.|Path]), 
-	case filelib:is_regular(File) of
+read_file(<<$/, Path/binary>>) ->
+	Dir = ewok:config({ewok, http, doc_root}, ?WWW_ROOT),
+	File = ewok_file:path([Dir, Path]), 
+%	?TTY({?MODULE, Dir, Path, File}),
+	case ewok_file:is_regular(File) of
 	true -> 
-		{ok, Bin} = file:read_file(File),
+		Bin = ewok_file:load(File),
 		%% TODO: NOTE: owing to index files two copies of indexes may be stored
 		%% under different routes e.g. both /stuff and /stuff/index.html
 		%% -- not sure what is the best solution to avoid this just yet...
 		#esp_cache{
 			route = Path,
 			path = File,
-			mimetype = ewok_http:mimetype(filename:extension(File)),
-			modified = ewok_http:date(filelib:last_modified(File)),
+			mimetype = ewok_http:mimetype(ewok_file:extension(File)),
+			modified = ewok_http:date(ewok_file:modified(File)),
 			bin=Bin
 		};
 	false -> 

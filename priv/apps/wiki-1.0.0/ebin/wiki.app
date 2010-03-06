@@ -5,8 +5,7 @@
 		wiki
 	]},
 	{registered, []},	
-	%% 
-	{mod, {wiki, []}},
+	%% {mod, {wiki, []}},
 	{env, [
 		{web_app, [
 			{app_path, "/doc"}, %%

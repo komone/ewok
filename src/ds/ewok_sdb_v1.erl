@@ -12,11 +12,11 @@
 % See the License for the specific language governing permissions and
 % limitations under the License.
 
--module(ewok_sdb).
+-module(ewok_sdb_v1).
 -include("ewok.hrl").
 
-%% TEMPORARILY
--include_lib("keystore/include/aws.hrl").
+-define(AWS_SDB_ACCESS_KEY, <<"">>).
+-define(AWS_SDB_SECRET_KEY, <<"">>).
 
 -export([list_domains/0, list_domains/1, create_domain/1, delete_domain/1,
 	get_attributes/2, put_attributes/3, delete_attributes/3,
@@ -27,6 +27,7 @@
 
 -define(AWS_SDB_HOST, <<"sdb.amazonaws.com">>).
 -define(AWS_SDB_VERSION, <<"2007-11-07">>).
+
 -define(KEY_SIZE, 36).
 -define(SECURE, false).
 
@@ -260,6 +261,7 @@ request(Action, Params) ->
 	],
 	StringToSign = 
 		list_to_binary([<<Param/binary, Value/binary>> || {Param, Value} <- lists:sort(fun comparator/2, AllParams)]),
+	?TTY({string_to_sign, StringToSign}),
     Signature = 
 		base64:encode(crypto:sha_mac(?AWS_SDB_SECRET_KEY, StringToSign)),
     FinalParams = AllParams ++ [{<<"Signature">>, Signature}],
@@ -274,7 +276,7 @@ request(Action, Params) ->
 	
 %%
 comparator({X, _}, {Y, _}) ->
-	ewok_util:to_lower(X) =< ewok_util:to_lower(Y).
+	ewok_text:to_lower(X) =< ewok_text:to_lower(Y).
 
 %%
 make_querystring([{K, V}], Acc) -> 

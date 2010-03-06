@@ -84,7 +84,7 @@ spec(routes) ->
 
 %% 
 spec(configuration) ->
-	Config = ewok:config(),
+	Config = ewok_config:all(),
 	Format = fun ({K, V}) -> [ 
 		esp_html:text(K),
 		#input{value = esp_html:text(V)}

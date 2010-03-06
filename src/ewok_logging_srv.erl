@@ -295,8 +295,8 @@ write_messages(_, _, []) ->
 
 %%
 write_message(Fd, Type, Message) -> %%
-    Tag = ewok_util:to_binary(Type),
-    Line = ewok_util:to_binary(Message),
+    Tag = ewok_text:value(Type),
+    Line = ewok_text:value(Message),
     % HACK placeholder
     Line1 = re:replace(Line, "[ \t\r\n]+", " ", [global]),
     Log = list_to_binary([ewok_util:timestamp(), <<" [">>, Tag, <<"] ">>, Line1, <<$\n>>]),

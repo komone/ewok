@@ -17,11 +17,9 @@
 -include("ewok.hrl").
 
 -export([appdir/0, appdir/1, get_env/1, get_env/2, ensure_started/1]).
--export([check_dependencies/1, tcp_ports/0]).
+-export([mergeopts/2, check_dependencies/1, tcp_ports/0]).
 -export([timestamp/0, timestamp/1, unow/0, utime/0, unix_time/0]).
 -export([build_number/0, build_time/0]).
--export([trim/1, split/2, split/3, unquote/1, is_upper/1, to_upper/1, is_lower/1, to_lower/1]).
--export([to_binary/1, hex/1, unhex/1, hexint/1]).
 -export([ftime/1, ftime/2]).
 
 -define(UNIX_TIME_ZERO, 62167219200).
@@ -54,7 +52,12 @@ get_env(App, Key, Default) when is_atom(Key) ->
 	undefined -> 
 		Default
 	end.
-	
+
+%% @credit Will Glozer
+mergeopts(Options, Defaults) ->
+    Options2 = lists:ukeysort(1, proplists:unfold(Options)),
+    proplists:normalize(lists:ukeymerge(1, Options2, Defaults), []).
+
 %%
 ensure_started(Apps) when is_list(Apps) ->
 	lists:foldl(fun(X, Acc) -> [ensure_started(X)|Acc] end, [], Apps);
@@ -74,7 +77,7 @@ check_dependencies(Depends) ->
 	[] -> 
 		ok;
 	NotRunning -> 
-		erlang:error(dependency, NotRunning)
+		throw({depends, NotRunning})
 	end.
 
 %% 
@@ -94,122 +97,9 @@ build_time() ->
 	timestamp(build()).
 %%
 build() ->
-	code:ensure_loaded(ewok),
-	{Y, Mo, D, H, M, S} = proplists:get_value(time, ewok:module_info('compile')),
+	{'module', Module} = code:ensure_loaded(ewok),
+	{Y, Mo, D, H, M, S} = proplists:get_value(time, Module:module_info('compile')),
 	{{Y, Mo, D}, {H, M, S}}.
-
-%%
-trim(S) when ?is_string(S) ->
-	string:strip(S);
-trim(S) when is_binary(S) -> 
-	% @credit Seth Falcon
-	re:replace(S, <<"^\\s+|\\s+$">>, <<"">>, [{return, binary}, global]);
-trim(S) -> 
-	S.
-
-%%
-split(Bin, Regex) ->
-	split(Bin, Regex, []).
-split(Bin, Regex, Parts) when is_integer(Parts) ->
-	split(Bin, Regex, [{parts, Parts}]);
-split(Bin, Regex, Opts) ->
-	[X || X <- re:split(Bin, Regex, Opts), X =/= <<>>].	
-
-
-%%
-unquote(Bin) ->
-	re:replace(Bin, <<"^\"|\"$">>, <<"">>, [{return, binary}, global]).
-
-to_binary(X) when is_binary(X) -> X;
-to_binary(X) when is_atom(X) -> atom_to_binary(X, utf8);
-to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
-to_binary(X) when is_float(X) -> list_to_binary(float_to_list(X));
-to_binary(X) when is_tuple(X) -> io_lib:format("~p", [X]);
-to_binary(X) when ?is_string(X) -> list_to_binary(X);
-to_binary(X) -> io_lib:format("~p", [X]).
-
-%%
-is_upper(<<C>>) -> is_upper(C);
-is_upper([C]) -> is_upper(C);
-is_upper(C) when C >= $A, C =< $Z -> true;
-is_upper(C) when C >= 16#C0, C =< 16#D6 -> true;
-is_upper(C) when C >= 16#D8, C =< 16#DE -> true;
-is_upper(_) -> false.
-
-%% 
-to_upper(C) when is_integer(C) -> to_upper(<<C>>);
-to_upper(S) when ?is_string(S) -> string:to_upper(S);
-to_upper(B) when is_binary(B) -> bin_to_upper(B, <<>>);
-to_upper(S) -> S.
-% @private
-bin_to_upper(<<C, Rest/binary>>, Acc) ->
-	U = uppercase(C),
-	bin_to_upper(Rest, <<Acc/binary, U>>);
-bin_to_upper(<<>>, Acc) ->
-	Acc.
-%% IMPL: Latin1
-uppercase(C) when C >= $a, C =< $z -> C - 32;
-uppercase(C) when C >= 16#E0, C =< 16#F6 -> C - 32;
-uppercase(C) when C >= 16#F8, C =< 16#FE -> C - 32;
-uppercase(C) -> C.
-
-%% 
-is_lower(<<C>>) -> is_lower(C);
-is_lower([C]) -> is_lower(C);
-is_lower(C) when C >= $a, C =< $z -> true;
-is_lower(C) when C >= 16#E0, C =< 16#F6 -> true;
-is_lower(C) when C >= 16#F8, C =< 16#FE -> true;
-is_lower(_) -> false.
-	
-%%
-to_lower(C) when is_integer(C) -> lowercase(C);
-to_lower(S) when ?is_string(S) -> string:to_lower(S);
-to_lower(B) when is_binary(B) -> bin_to_lower(B, <<>>);
-to_lower(V) -> V.
-% @private
-bin_to_lower(<<C, Rest/binary>>, Acc) ->
-	C1 = lowercase(C),
-	bin_to_lower(Rest, <<Acc/binary, C1>>);
-bin_to_lower(<<>>, Acc) ->
-	Acc.
-	
-lowercase(C) when C >= $A, C =< $Z -> C + 32;
-lowercase(C) when C >= 16#C0, C =< 16#D6 -> C + 32;
-lowercase(C) when C >= 16#D8, C =< 16#DE -> C + 32;
-lowercase(C) -> C.
-
-%%
-hex(Bin) when is_binary(Bin) ->
-	hex(Bin, <<>>).
-hex(<<A:4, B:4, Rest/binary>>, Acc) ->
-	U = hexdigit(A),
-	L = hexdigit(B),
-	hex(Rest, <<Acc/binary, U, L>>);
-hex(<<>>, Acc) ->
-	Acc.
-% @private
-hexdigit(D) when D >= 0, D =< 9 -> $0 + D;
-hexdigit(D) when D >= 10, D =< 16 -> $a + D - 10.
-
-
-hexint(Bin) when is_binary(Bin) ->
-	hexint(Bin, 0).
-hexint(<<A, Rest/binary>>, Acc) ->
-	hexint(Rest, unhexdigit(A) + Acc * 16);
-hexint(<<>>, Acc) ->
-	Acc.
-
-unhex(Bin) when is_binary(Bin) ->
-	unhex(Bin, <<>>).
-unhex(<<A, B, Rest/binary>>, Acc) ->
-	I = unhexdigit(A) * 16 + unhexdigit(B),
-	unhex(Rest, <<Acc/binary, I>>);
-unhex(<<>>, Acc) ->
-	Acc.
-% @private
-unhexdigit(H) when H >= $0, H =< $9 -> H - $0;
-unhexdigit(H) when H >= $a, H =< $f -> H - $a + 10;
-unhexdigit(H) when H >= $A, H =< $F -> H - $A + 10.
 
 %% possibly make an ewok_date module
 utime() ->

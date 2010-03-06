@@ -6,7 +6,7 @@
 		ewok_admin_web 
 	]},
 	{registered, []},
-	{mod, {ewok_admin, []}},
+	%% {mod, {ewok_admin, []}},
 	{env, [
 		{web_app, [
 			{name, "Ewok Web Admin"},

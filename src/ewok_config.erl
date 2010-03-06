@@ -47,7 +47,7 @@ load_mimetypes() ->
 		Y1 = list_to_binary(Y),
 		{ewok_mimetype, X1, Y1}
 		end,
-	Mimetypes = ewok_config:get_env(mimetypes, []),
+	Mimetypes = get_env(mimetypes, []),
 	Records = [F(K, V) || {K, V} <- Mimetypes],
 	ewok_db:add(Records),
 	ewok_log:message(?MODULE, [Records]).

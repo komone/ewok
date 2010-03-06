@@ -12,9 +12,10 @@
 		ewok_cache_srv,
 		ewok_data_srv,
 		ewok_deployment_srv,
-		% ewok_geoip_srv, % no longer...!
+		ewok_geoip,
 		ewok_http_srv,
 		ewok_scheduler_srv,
+		ewok_sdb,
 		ewok_session_srv,
 		ewok_smtp_srv,
 		ewok_umtp,
@@ -28,9 +29,11 @@
 		ewok_scheduler_srv,
 		ewok_cache_srv, % non-transactional utility cache
 		ewok_data_srv, % external datasources
+		ewok_sdb,
 		ewok_session_srv,
 		% ewok_workflow_sup,
 		ewok_deployment_srv,
+		ewok_geoip,
 		{ewok_http_srv, 8080}
 		% {ewok_smtp_srv, 25},
 		% {ewok_umtp, 30}
@@ -42,7 +45,7 @@
 		{runmode, development},
 		{autoinstall, true}, 
 		{autodeploy, [admin]},
-		
+		{geoip, [{data_file, "./priv/data/geoip/GeoLiteCity.dat.gz"}]},
 		%{server, [
 		%	{ip, any},
 		%	{hostname, "localhost"}, %% unused

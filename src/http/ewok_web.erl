@@ -1,7 +1,18 @@
+%%%% Copyright 2010 Steve Davis <steve@simulacity.com>
 %%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%% 
+%% http://www.apache.org/licenses/LICENSE-2.0
+%% 
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
 -module(ewok_web).
--vsn("1.0.0").
--author('steve@simulacity.com').
 
 -include("ewok.hrl"). 
 -include("ewok_system.hrl"). 
@@ -48,6 +59,8 @@ render(_Request, Session, Status, Spec) ->
 		#script{src="/esp-1.0.0.js"},
 		proplists:get_value(head, Spec, [])
 	],
+	{Y, _, _} = date(),
+	Year = ewok_text:value(Y),
 	Body = [
 		#'div'{id="top", body=[
 			#img{id="logo", src="/images/ewok-logo.png"},
@@ -59,7 +72,7 @@ render(_Request, Session, Status, Spec) ->
 		]},
 		#'div'{id="footer", body=[
 			#hr{},
-			#p{body=[<<"Copyright &copy; 2010 Simulacity.com. All Rights Reserved.">>]}
+			#p{body=[<<"Copyright &copy; 2008-">>, Year, <<" Simulacity.com. All Rights Reserved.">>]}
 		]}
 	],
 	%

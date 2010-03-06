@@ -39,7 +39,7 @@ filter(_Request) -> ok.
 					[<<"headers()">>, esp_html:text(Request:headers())],
 					[<<"header(user_agent)">>, esp_html:text(Request:header(user_agent))],
 					[<<"parameters()">>, esp_html:text(Request:parameters())],
-					[<<"parameter(<<\"foo\">>)">>, esp_html:text(Request:parameter(<<"foo">>))],
+					[esp_html:text(<<"parameter(<<\"foo\">>)">>), esp_html:text(Request:parameter("foo"))],
 					[<<"parameter(\"foo\")">>, esp_html:text(Request:parameter("foo"))]
 				]},
 			#br{},

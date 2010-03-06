@@ -46,7 +46,7 @@ install() ->
 %% @private
 run(Autoinstall) ->
 	DataDir = ewok_util:get_env(data_dir, ?DATA_DIR),
-	EwokDir = ewok_file:path([ewok_util:appdir(), DataDir, "Ewok." ++ atom_to_list(node())]),
+	EwokDir = ewok_file:path([ewok_util:appdir(), DataDir, "mnesia/Ewok." ++ atom_to_list(node())]),
 	
 	MnesiaRunning = mnesia:system_info(is_running),
 	MnesiaUseDir = mnesia:system_info(use_dir),
@@ -131,7 +131,7 @@ check_data(Autoinstall) ->
 %%
 init_user_table() ->
 	UserID = ewok_identity:random(),
-	Activation = ewok_util:hex(ewok_identity:random()),
+	Activation = ewok_text:hex(ewok_identity:random()),
 	%%
 	ok = ewok_db:create(#ewok_role{id=?ADMIN_ROLE}),
 	ok = ewok_db:create(#ewok_user{id=UserID, name=?ADMIN_USER, roles=[?ADMIN_ROLE]}), 

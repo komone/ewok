@@ -21,7 +21,7 @@
 %-compile(export_all).
 %% API
 -export([render/1, render/2, render/4]).
-%-export([render_page/4, parse_template/1]).
+-export([render_page/4, parse_template/1]).
 -export([add_dir/1, refresh/0, get_template/1]).
 -export([validate/1, validate/2]).
 
@@ -59,9 +59,12 @@ render(Status, Page = #page{}) ->
 %% 
 render(Template, Module, Request, Session) when ?is_string(Template) ->
 	case get_template(Template) of
-	undefined -> {error, no_file};
-	{error, Reason} -> {error, Reason};
-	_ -> render_page(Template#template.markup, Module, Request, Session)
+	undefined -> 
+		{error, no_file};
+	{error, Reason} -> 
+		{error, Reason};
+	_ -> 
+		render_page(Template#template.markup, Module, Request, Session)
 	end.
 
 %%
@@ -69,7 +72,7 @@ render_page(Spec, Module, Request, Session)  ->
 	render_page(Spec, Module, Request, Session, true).
 %
 render_page(Spec, Module, Request, Session, AllowInclude)  ->
-%	?TTY("SPEC:~n~p~n", [Spec]),
+%	?TTY({?MODULE, spec, Spec}),
 	F = fun (X) ->
 		try begin
 			case X of
@@ -245,7 +248,8 @@ load_template(Dir, Path) ->
 	
 parse_template(Bin) ->
 	Bin2 = re:split(Bin, ?ESP_DECOMMENT, [dotall]),
-	parse_template(re:split(Bin2, ?ESP_REGEX), []).
+	parse_template(ewok_text:split(Bin2, ?ESP_REGEX), []).
+	
 parse_template([<<"<%">>, Expr, <<"%>">>|T], Acc) ->
 	parse_template(T, [parse_expr(Expr)|Acc]);
 parse_template([H|T], Acc) ->
@@ -254,6 +258,6 @@ parse_template([], Acc) ->
 	lists:reverse(Acc).
 
 parse_expr(Expr) ->
-	[Ms, ":", Fs, "(", Args, ")"] = re:split(ewok_util:trim(Expr), "([\:\(\)])", [{return, list}, trim]),
-	[Mb, Fb, Argb] = [ewok_util:trim(X) || X <- [Ms, Fs, Args]],
+	[Ms, ":", Fs, "(", Args, ")"] = re:split(ewok_text:trim(Expr), "([\:\(\)])", [{return, list}, trim]),
+	[Mb, Fb, Argb] = [ewok_text:trim(X) || X <- [Ms, Fs, Args]],
 	{list_to_atom(Mb), list_to_atom(Fb), Argb}.

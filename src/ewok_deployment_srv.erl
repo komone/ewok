@@ -216,11 +216,16 @@ validate_routes([H = #route{}|T]) ->
 		case ewok_db:lookup(ewok_route, list_to_binary(H#route.path)) of
 		undefined -> 
 			validate_routes(T);
-		#ewok_route{} -> 
-			?TTY({duplicate_route, H}),
-			% TODO: When apps can be undeployed, this should be uncommented
-			%{error, {duplicate_route, H}}
-			validate_routes(T)
+		#ewok_route{handler = Handler} ->
+			case Handler =:= H#route.handler of
+			true ->
+				validate_routes(T);
+			false ->
+				% TODO: When apps can be undeployed, this should be uncommented
+				%{error, {duplicate_route, H}}
+				?TTY({?MODULE, duplicate_route, H}),
+				validate_routes(T)
+			end
 		end;
 	Error -> Error
 	end;

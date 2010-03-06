@@ -147,7 +147,7 @@ get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Cou
 %% WHO
 get_session(Request) ->
 	Session = ewok_session:get_session(Request:cookie(), Request:remote_ip()),
-	%% ?TTY("~p~n", [Request]),
+%	?TTY({request, Request}),
 	case Request:version() of
 	{1, 1} -> 
 		get_route(Request, Session);
@@ -317,7 +317,7 @@ cookie_compare([], _SessionCookie) ->
 	false;
 cookie_compare([{Tag, RequestCookie}], SessionCookie) -> 
 %	?TTY("Cookie Compare ~p ~p~n", [RequestCookie, SessionCookie]),
-	case re:split(SessionCookie, "[=;]") of
+	case ewok_text:split(SessionCookie, <<"[=;]">>) of
 	[Tag, RequestCookie|_] -> true;
 	_ -> false
 	end.
@@ -344,7 +344,7 @@ lookup_route(Path) ->
 	case ewok_db:lookup(ewok_route, Path) of
 	Route = #ewok_route{} -> Route;
 	undefined -> 
-		PathComponents = ewok_util:split(Path, <<"/">>),
+		PathComponents = ewok_text:split(Path, <<"/">>),
 		lookup_wildcard_route(lists:reverse(PathComponents));
 	Error -> Error
 	end.

@@ -48,14 +48,14 @@ get_remote_ip(Socket, ProxyHeader) ->
 		undefined ->
 			list_to_binary(inet_parse:ntoa(Addr));
 		Hosts ->
-			ewok_util:trim(lists:last(re:split(Hosts, ",")))
+			ewok_text:trim(lists:last(ewok_text:split(Hosts, <<",">>)))
 		end;
 	{ok, {{127, 0, 0, 1}, _Port}} ->
 		case ProxyHeader of
 		undefined ->
 			<<"127.0.0.1">>;
 		Hosts ->
-			ewok_util:trim(lists:last(re:split(Hosts, ",")))
+			ewok_text:trim(lists:last(ewok_text:split(Hosts, <<",">>)))
 		end;
 	{ok, {Addr, _Port}} ->
 		list_to_binary(inet_parse:ntoa(Addr))

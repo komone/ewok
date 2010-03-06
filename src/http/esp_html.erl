@@ -48,21 +48,29 @@ html4(Content) ->
 
 %% TODO: !!! html_encode...
 text(Value) when is_binary(Value) ->
-	Value;
+	encode(Value, <<>>);
 text(Value) when ?is_string(Value) ->
-	list_to_binary(Value);
+	encode(list_to_binary(Value), <<>>);
 text(Value) ->
-	String = io_lib:format("~p", [Value]),
-	case re:split(String, "^\\[|\\]$") of
-	[_, Bin, _] -> 
-		case re:replace(Bin, ",", ", ", [global]) of
-		Text when is_binary(Text) -> Text;
-		Text when is_list(Text) -> list_to_binary(Text)
-		end;
-	[Bin] -> Bin;
-	[] -> <<" ">>;
-	Bin -> Bin
-	end.
+	String = list_to_binary(io_lib:format("~p", [Value])),
+%	?TTY({?MODULE, text, String}),
+	encode(String, <<>>).
+	
+%%
+encode(<<$", Rest/binary>>, Acc) ->
+	encode(Rest, <<Acc/binary, "&quot;">>);
+encode(<<$', Rest/binary>>, Acc) ->
+	encode(Rest, <<Acc/binary, "&apos;">>);
+encode(<<$&, Rest/binary>>, Acc) ->
+	encode(Rest, <<Acc/binary, "&amp;">>);
+encode(<<$<, Rest/binary>>, Acc) ->
+	encode(Rest, <<Acc/binary, "&lt;">>);
+encode(<<$>, Rest/binary>>, Acc) ->
+	encode(Rest, <<Acc/binary, "&gt;">>);
+encode(<<X, Rest/binary>>, Acc) ->
+	encode(Rest, <<Acc/binary, X>>);
+encode(<<>>, Acc) ->
+	Acc.
 %
 stylesheet(Path) -> 
 	stylesheet(Path, "text/css", "all").

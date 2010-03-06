@@ -89,7 +89,7 @@
 					<li>Compile ewok</li>
 					<li>Run ewok for the first time</li>
 				</ul>
-				<p class="para">Once ewok is running, go to <a href="http://localhost:8000">http://localhost:8000</a>.
+				<p class="para">Once ewok is running, go to <a href="http://localhost:8080">http://localhost:8080</a>.
 				</p>
 			</div>
 		</div>

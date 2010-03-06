@@ -157,7 +157,7 @@ path() ->
 		%% NOTE: we'd like not to retrun a 'plain' string here. However, there's 
 		%% a few dependencies we need to address before removing {return, list} 
 		%% from this call.
-		case re:split(Url, <<"\\?">>, [{parts, 2}]) of
+		case ewok_text:split(Url, <<"\\?">>, 2) of
 		[Path, _Query] -> Path;
 		[Path] -> Path
 		end,
@@ -167,7 +167,7 @@ path() ->
 	end.
 %
 pathlist() ->	
-	ewok_util:split(path(), <<$/>>).
+	ewok_text:split(path(), <<$/>>).
 
 header(K) when is_atom(K) ->
 	header(ewok_http:header(K));
@@ -209,9 +209,9 @@ cookie() -> % [{string(), string{}}] | undefined
 	end.
 %%
 parse_cookie(Value) ->
-	Props = [X || X <- re:split(Value, ";")],
-	Pairs = [list_to_tuple(re:split(X, "=", [])) || X <- Props],
-	[{ewok_util:trim(K), ewok_util:trim(V)} || {K, V} <- Pairs].
+	Props = [X || X <- ewok_text:split(Value, <<";">>)],
+	Pairs = [list_to_tuple(ewok_text:split(X, <<"=">>, 2)) || X <- Props],
+	[{ewok_text:trim(K), ewok_text:trim(V)} || {K, V} <- Pairs].
 
 %% Query String from GET ? and POST of WWW Forms
 parameter(Key) when is_list(Key) ->
@@ -236,7 +236,7 @@ get_query() ->
 	end.
 %%
 parse_query('GET') ->
-	case re:split(Url, "\\?", [{parts, 2}]) of
+	case ewok_text:split(Url, <<"\\?">>, 2) of
 	[_, QS] -> parse_query(QS);
 	_ -> []
 	end;
@@ -253,8 +253,8 @@ parse_query('POST') ->
 	_ -> []
 	end;
 parse_query(QS) ->
-	Props = [X || X <- re:split(QS, "&")],
-	Pairs = [list_to_tuple(re:split(X, "=")) || X <- Props],
+	Props = [X || X <- ewok_text:split(QS, <<"&">>)],
+	Pairs = [list_to_tuple(ewok_text:split(X, <<"=">>)) || X <- Props],
 	[{ewok_http:url_decode(X), ewok_http:url_decode(Y)} || {X, Y} <- Pairs].	
 
 %%
@@ -325,8 +325,8 @@ read_chunk(Length) ->
 %% MULTIPART FORM-DATA
 %% Primarily file upload...
 parse_multipart(Content) ->
-	[Boundary, Rest] = re:split(Content, <<"\r\n">>, [{parts, 2}]),
-	Parts = [ewok_util:trim(X) || X <- re:split(Rest, Boundary)],
+	[Boundary, Rest] = ewok_text:split(Content, <<"\r\n">>, 2),
+	Parts = [ewok_text:trim(X) || X <- ewok_text:split(Rest, Boundary)],
 	parse_multipart(Parts, []).
 %	
 parse_multipart([], Acc) ->
@@ -334,8 +334,8 @@ parse_multipart([], Acc) ->
 parse_multipart([<<"--">>|_], Acc) ->
 	lists:reverse(Acc);
 parse_multipart([H|T], Acc) ->
-	[Prefix, Value] = re:split(H, <<"\r\n\r\n">>, [{parts, 2}]),
-	Attrs = [ewok_util:trim(X) || X <- re:split(Prefix, <<"\r\n">>)],
+	[Prefix, Value] = ewok_text:split(H, <<"\r\n\r\n">>, 2),
+	Attrs = [ewok_text:trim(X) || X <- re:split(Prefix, <<"\r\n">>)],
 	Properties = parse_multipart_headers(Attrs, []),
 	{value, {<<"name">>, Name}, Properties1} = lists:keytake(<<"name">>, 1, Properties),
 	parse_multipart(T, [{Name, {Properties1, Value}}|Acc]).
@@ -343,21 +343,21 @@ parse_multipart([H|T], Acc) ->
 parse_multipart_headers([], Acc) ->
 	lists:reverse(Acc);
 parse_multipart_headers([H|T], Acc) ->
-	case re:split(H, <<$:>>) of
+	case ewok_text:split(H, <<$:>>) of
 	[<<"Content-Disposition">>, Value] -> 
-		Params = parse_multipart_disposition(ewok_util:trim(Value)),
+		Params = parse_multipart_disposition(ewok_text:trim(Value)),
 		parse_multipart_headers(T, lists:append(Params, Acc));
 	[<<"Content-Type">>, Value] -> 
-		parse_multipart_headers(T, [{<<"mimetype">>, ewok_util:trim(Value)}|Acc]);
+		parse_multipart_headers(T, [{<<"mimetype">>, ewok_text:trim(Value)}|Acc]);
 	_ ->
 		{error, H}
 	end.
 %
 parse_multipart_disposition(Value) ->
-	[<<"form-data">> | Parts] = re:split(Value, <<$;>>),
-	Pairs = [list_to_tuple(re:split(X, "=")) || X <- Parts],
-	Pairs1 = [{ewok_util:trim(X), ewok_util:trim(Y)} || {X, Y} <- Pairs],
-	[{ewok_http:url_decode(X), ewok_http:url_decode(strip_quotes(Y))} || {X, Y} <- Pairs1].
+	[<<"form-data">> | Parts] = ewok_text:split(Value, <<$;>>),
+	Pairs = [list_to_tuple(ewok_text:split(X, <<"=">>)) || X <- Parts],
+	Pairs1 = [{ewok_text:trim(X), ewok_text:trim(Y)} || {X, Y} <- Pairs],
+	[{ewok_http:url_decode(X), ewok_http:url_decode(ewok_text:unquote(Y))} || {X, Y} <- Pairs1].
 
 %
 strip_quotes(X) ->

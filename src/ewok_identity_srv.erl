@@ -1,16 +1,16 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_identity_srv).
 -name("Ewok Identity Service").
@@ -25,8 +25,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
-
--compile(export_all).
 
 %% TODO: Replace this with an id that's dynamically generated at build time?
 -define(IVEC, <<213,53,164,93,158,212,70,56,134,80,224,220,249,214,82,76>>).
@@ -44,7 +42,7 @@
 
 %%
 start_link(Args) ->
-	crypto:start(),
+	ewok_crypto:start(),
     gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 	
 stop() ->
@@ -173,7 +171,7 @@ format_uuid(TL, TM, THV, CSR, CSL, N, V) ->
 format_uuid(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48, _Rest/binary>>, V) ->
     <<TL:32, TM:16, ((THV band 16#0fff) bor (V bsl 12)):16, ((CSR band 16#3f) bor 16#80):8, CSL:8, N:48>>.
 
-%% TODO: Add encryption - make aes work for Erlang Binary Term Format
+%%
 keystore_path(App) ->
 	ewok_file:path([ewok_util:appdir(App), ewok_util:get_env(data_dir, ?DATA_DIR), ?KEYSTORE_FILE]).
 %%

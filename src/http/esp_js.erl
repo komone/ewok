@@ -11,7 +11,7 @@
 compile_ajax(File, Keywords) ->
 	{ok, Bin} = file:read_file(File),
 	Regex = make_ajax_regex(lists:reverse(Keywords), []),
-	Term = [X || X = X1 <- re:split(Bin, Regex), X1 =/= <<>>],
+	Term = [X || X = X1 <- ewok_text:split(Bin, Regex), X1 =/= <<>>],
 	Matches = [list_to_binary(X) || X <- Keywords],
 	F = fun(X) -> 
 		case lists:member(X, Matches) of 
