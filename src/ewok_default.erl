@@ -23,7 +23,7 @@ config() -> [
 	{{server, ip}, any},
 	{{server, hostname}, <<"localhost">>}, %% unused
 	{{server, runmode}, development},
-	{{identity, [
+	{identity, [
 		{keystore, <<"./priv/data/.keystore">>},
 		{password, <<"password">>}
 	]},	
@@ -32,7 +32,7 @@ config() -> [
 	{{datasource, mnesia}, [
 		{mod, ewok_mnesia_ds}, %%
 		{args, []},
-		{path}, <<"./priv/data">>}
+		{path, <<"./priv/data">>}
 	]},
 	{{datasource, riak}, [
 		{mod, riak_ds},
@@ -131,7 +131,7 @@ config() -> [
 	{{http, request_timeout}, 30},
 	{{http, deploy_root}, "./priv/apps"},
 	{{http, autodeploy}, [ewok_admin]},
-	
+		
 	%% Cache is used in production mode to cache static files
 	%% and their file information for response headers --
 	%% the idea is to reduce file handles used by the system
