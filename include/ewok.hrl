@@ -3,7 +3,6 @@
 %% Author: Steve Davis <steve@simulacity.com>
 %% Updated: January 24, 2010
 %% Description: Definitions and records that may be used in applications
--define(SERVER_ID, <<"Ewok/1.0 BETA (Wicket)">>).
 
 -define(CONFIG_FILE_EXT, <<".config">>). % unused...
 -define(ARCHIVE_FILE_EXT, <<".ez">>).
@@ -29,21 +28,32 @@
 % Currently used in: ewok_file, ewok_logging_srv, ewok_text, ewok_xml, esp, esp_html
 -define(is_string(S), (is_list(S) andalso S =/= [] andalso is_integer(hd(S)))).
 
+
+%% "API record" used in deployment srv
+-record(mimetype, {ext, media}).
+
+%% "API record" used in deployment srv
+-record(route, {path, handler, realm, roles = []}).
+
+%% Ewok Session Management
+-record(session, {key, ip, user, data = [], started, expires, ttl, notify}).
+
+%%
+-record(task, {function, start=now, repeat=once, terminate=infinity}).
+
 %% This record is not (currently) used; It is more a statement of intent and a
 %% possible semantic approach to "strings" that more closely observes genuine 
 %% engineering principles and standards. You can safely ignore this record for now.
 -record(text, {bin, charset = utf8, lang = 'us-en'}).
 
-%% Ewok Session Management
--record(session, {key, ip, user, data = [], started, expires, ttl, notify}).
-
-%% "API record" used in deployment srv
--record(route, {path, handler, realm, roles = []}).
-
-%% "API record" used in deployment srv
--record(mimetype, {ext, media}).
-
-%%
--record(task, {function, start=now, repeat=once, terminate=infinity}).
-
+%% http request record
+-record(request, {
+	method, 
+	version, 
+	path, 
+	headers, 
+	realm, 
+	params, 
+	content
+}).
 %% end %%

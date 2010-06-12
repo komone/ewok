@@ -1,4 +1,17 @@
-%%
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+
 -module(ewok_web_admin).
 -include("ewok.hrl").
 -include("esp.hrl").
@@ -40,7 +53,8 @@ spec(home) ->
 	Services = lists:filter(fun(X) -> is_pid(whereis(X)) andalso (X =/= ewok_sup) end, Registered),
 	#server{runmode=Runmode, apps=Apps} = ewok_deployment_srv:list(),
 	AppNames = [App#web_app.id || App1 = App <- Apps, App1#web_app.deployed =:= true],
-	DSNames = [DS#datasource.id || DS1 = DS <- ewok_data_srv:info(), DS1#datasource.valid =:= true],
+%	DSNames = [DS#datasource.id || DS1 = DS <- ewok_data_srv:info(), DS1#datasource.valid =:= true],
+	DSNames = [DS#datasource.id || DS1 = DS <- [], DS1#datasource.valid =:= true],
 	[ {title, <<"Ewok AS - Administration">>},
 	  {menu, menu()},
 	  {content, [
@@ -84,7 +98,7 @@ spec(routes) ->
 
 %% 
 spec(configuration) ->
-	Config = ewok_config:all(),
+	Config = ewok_config:values(),
 	Format = fun ({K, V}) -> [ 
 		esp_html:text(K),
 		#input{value = esp_html:text(V)}
@@ -103,6 +117,7 @@ spec(configuration) ->
 	  ]}
 	];
 %% 
+% @author()
 spec(applications) -> 
 	#server{apps=Apps} = ewok_deployment_srv:list(),
 	%?TTY(Apps),
@@ -152,7 +167,7 @@ spec(applications) ->
 
 %%
 spec(datasources) -> 
-	DS = ewok_data_srv:info(),
+	DS = [], %% ewok_data_srv:info(),
 	F = fun (X) ->
 		{Icon, Actions} = 
 			case X#datasource.running of

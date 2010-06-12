@@ -1,0 +1,25 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head>
+<title>Ewok Admin</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<script>$(function(){$("#dock").buttonset();$("#dock").change(function(event){$("#page").load(event.target.id + ".html");});$("#page").load("welcome.html");});</script>
+</head>
+<body>
+<div id="header">
+<form id="dock">
+<span id="user">Administrator</span>
+<input id="dashboard" type="radio" name="radio"/>
+<label for="dashboard">Dashboard</label>
+<input id="news" type="radio" name="radio"/>
+<label for="news">News</label>
+<input id="reference" type="radio" name="radio"/>
+<label for="reference">Reference</label>
+<input id="about" type="radio" name="radio"/>
+<label for="about">About</label>
+</form>
+<img id="logo" src="/images/ewok-logo.png"/></div>
+<div id="page">
+</div>
+<div id="footer">
+&copy; Simulacity.com</div>
+</body>
+</html>

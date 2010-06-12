@@ -16,6 +16,8 @@
 -vsn("1.0.0").
 -author('steve@simulacity.com').
 
+-define(SERVER_ID, <<"Ewok/1.0 BETA (Wicket)">>).
+
 %% Defaults used internally by the server on installation
 %% These may be overridden by corresponding keys in the .app env entry.
 -define(DATA_DIR, <<"./priv/data">>).
@@ -31,12 +33,37 @@
 -define(ADMIN_USER, {ewok, <<"admin">>}).
 -define(ADMIN_ROLE, {ewok, admin}).
 
--define(EWOK_SESSION_KEY, <<"_EWOKSID">>).
+-define(EWOK_SESSION_KEY, <<"_SESSION">>).
 
 
 %% These are records that need to be shared between services but they should
 %% not be required by the API. Records required by the API are in ewok.hrl.
 -record(ewok_config, {key, value}).
+
+%% Used to initialize internet services
+-record(ewok_inet, {
+	name, 
+	ip = {0, 0, 0, 0}, 
+	port = 0, 
+	timeout = infinity, 
+	max_connections = infinity, 
+	transport = gen_tcp, 
+	protocol, 
+	handler, 
+	codec,
+	socket_opts = []
+}).
+
+-record(ewok_socket, {
+	ip = {0,0,0,0},
+	mode = binary,
+	packet = 0,
+	active = false,
+	backlog = 0,
+	nodelay = true,
+	reuseaddr = true,
+	recbuf = 8192
+}).
 
 %% The 'task' record is the API to the scheduler
 %% Meaning: "Using this task 'id' as a reference, execute this 'function' every 'repeat' 
@@ -56,7 +83,7 @@
 %%
 -record(workflow, {id, name, workitems=[]}).
 %% TODO: a 'task' record for workflow would conflict with the scheduler's task record
--record(workitem, {id, name, roles, payload}). 
+-record(workitem, {queue, id, roles, payload}).
 %% Auth and security... not intended for API usage. 
 -record(ewok_auth, {id, password, activation}).
 

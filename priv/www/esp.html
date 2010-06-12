@@ -1,90 +1,106 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<title>ESP Reference</title>
-	<script type="text/javascript" src="js/jquery-1.3.2.min.js"></script>
-	<script type="text/javascript" src="js/jquery-ui-1.7.2.min.js"></script>
+	<title>Ewok AS Console</title>
+	<link rel="icon" href="/favicon.png" type="image/png"/> 
+	
+	<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript" src="js/jquery-ui-1.8.1.custom.min.js"></script>
+	<script type="text/javascript" src="js/jquery-jeditable-1.7.1.js"></script>
+	<script type="text/javascript" src="ewok-admin.js"></script>
 	<script type="text/javascript" src="ubf.js"></script>
-	<script type="text/javascript" src="esp-1.0.0.js"></script>
-	<link rel="stylesheet" href="css/ui-smoothness-1.7.2.css" type="text/css" />
+	
+	<link rel="stylesheet" href="css/jquery-ui-1.8.1.custom.css" type="text/css" />
 	<link rel="stylesheet" href="esp.css" type="text/css" />
-
 </head>
+
 <body>
-<h1>ESP AJAX</h1>
-<!--
-<p class="inplace">
-	<span class="item">Escort DeFarge</span> 
-	<input name="name" class="editor" type="text"/>
-	<span class="edit">edit</span>
-	<span class="save">save</span>
-	<span class="message"></span>
-</p>
-<p class="inplace">
-	<span class="item">Alyssa Bijoux</span> 
-	<input name="name2" class="editor" type="text" />
-	<span class="edit">edit</span>
-	<span class="save">save</span>
-	<span class="message"></span>
-</p>
--->
-<script>
-	//alert(new Date().toUBF());
-</script>
-<h2>Profile</h2>
-<table>
-	<tr class="inplace">
-		<td>
-			<span class="label">Username</span>
-		</td>		
-		<td>
-			<span class="main item">Escort DeFarge</span>
-			<input name="name" class="form editor" type="text"/>
-		</td>
-		<td>
-			<span class="edit">change</span>
-			<span class="save">save</span>
-		</td>
-		<td><span class="message"></span></td>
-	</tr>
-	<tr class="inplace">
-		<td>
-			<span class="label">Email Address</span>
-		</td>		
-		<td>
-			<span class="item">escort.defarge@gmail.com</span>
-			<input name="name2" class="form editor" type="text" size="30"/>
-		</td>
-		<td>
-			<span class="edit">change</span>
-			<span class="save">save</span>
-		</td>
-		<td><span class="message"></span></td>
-	</tr>
-	<tr class="inplace">
-		<td class="label">Postal Address</td>
-		<td>
-			<span class="item">34, Ivy Drive</span>			
-			<input name="addr1" class="form editor" type="text" size="30"/>
-			<br/>
-			<span class="item">Sometown</span>
-			<input name="addr2" class="form editor" type="text" size="30"/>
-			<br/>
-			<span class="item">England</span>
-			<input name="addr3" class="form editor" type="text" size="30"/>
-		</td>
-		<td class="controls">
-			<span class="edit">change</span>
-			<span class="save">save</span>
-		</td>
-		<td><span class="message"></span></td>
-	</tr>
-	</table>
-	<hr/>
+<div>
+	<form id="dock">
+		<div id="radio">
+			<span id="user">Administrator</span>
+			<input type="radio" id="dashboard" name="radio" checked="checked" /><label for="dashboard">Dashboard</label>
+			<input type="radio" id="news" name="radio" /><label for="news">News</label>
+			<input type="radio" id="reference" name="radio" /><label for="reference">Reference</label>
+			<input type="radio" id="about" name="radio" /><label for="about">About</label>
+		</div>
+	</form>
+	<img id="logo" src="/images/ewok-logo.png" />
+</div>
+<div id="tabs">
+	<ul>
+		<li><a href="#tabs-1">Home</a></li>
+		<li><a href="#tabs-3">Applications</a></li>
+		<li><a href="#tabs-2">Services</a></li>
+		<li><a href="#tabs-4">Resources</a></li>
+		<li><a href="#tabs-8">Network</a></li>
+		<li><a href="#tabs-5">Security</a></li>
+		<li><a href="#tabs-6">Monitoring</a></li>
+		<li><a href="#tabs-7">Options</a></li>
+	</ul>
+	<div id="tabs-1" class="content"></div>
+	<div id="tabs-2" class="content">
 	<h3>View Transactions</h3>
 	<p>from <input type="text" class="form datepicker">
 		to <input type="text" class="form datepicker"> 
 		<input type="button" value="View"/></p> 
-<br/>
+	</div>
+	<div id="tabs-3" class="content">
+		<div id="nav">
+			<h3><a href="#">Ewok Web Administration - Port 11000</a></h3>
+			<div>
+			<ul>
+				<li>Application Servers</li>
+				<li>Web Servers</li>
+			</ul>
+			</div>	
+			<h3><a href="#">Blog - Port 8080</a></h3>
+			<div>?</div>	
+			<h3><a href="#">Redoc - Port 8080</a></h3>
+			<div>?</div>	
+		</div>
+	</div>
+	<div id="tabs-4" class="content">
+		<ul>
+			<li><a href="#tabs-1a">Data Sources</a></li>
+			<li><a href="#tabs-2a">Message Queues</a></li>
+			<li><a href="#tabs-3a">Connectors</a></li>
+		</ul>
+		<div id="tabs-1a">Nested tab</div>
+		<div id="tabs-2a">Another Nested tab</div>
+		<div id="tabs-3a">Yet Another Nested tab</div>
+	</div>
+	<div id="tabs-5" class="content">
+		<ul>
+			<li><a href="#tabs-1b">SSL Certificates</a></li>
+			<li><a href="#tabs-2b">Trust Associations</a></li>
+			<li><a href="#tabs-3b">System Administration</a></li>
+		</ul>
+		<div id="tabs-1b">Nested tab</div>
+		<div id="tabs-2b">Another Nested tab</div>
+		<div id="tabs-3b">Yet Another Nested tab</div>		
+	</div>
+	<div id="tabs-6" class="content">
+	</div>
+	<div id="tabs-7" class="content">
+	<h4>Profile</h4>
+	<table>
+	<tr>
+		<td class="label">Username</td>
+		<td id="username" class="editable bold">Escort DeFarge</td>
+	</tr>
+	<tr>
+		<td class="label">Email Address</td>		
+		<td id="email" class="editable item">escort.defarge@gmail.com</td>
+	</tr>
+	<tr>
+		<td class="label">Postal Address</td>
+		<td id="address" class="multiedit item">34, Ivy Drive<br/>Sometown<br/>England</td>
+	</tr>
+	</table>
+	</div>
+	<div id="tabs-8" class="content"></div>
+</div>
+
 </body>
 </html>

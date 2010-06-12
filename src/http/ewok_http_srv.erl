@@ -64,11 +64,10 @@ start_link(ServerId, Port) when is_atom(ServerId), is_integer(Port) ->
 	end catch
 	Error:Reason -> {Error, Reason}
 	end.
-
 %%	
 stop() ->
 	stop(?MODULE).
-%
+%%	
 stop(ServerId) -> 
 	case is_pid(whereis(ServerId)) of
 	true ->
@@ -85,7 +84,6 @@ service(Socket, Timeout, MaxHeaders) ->
 	ok = ewok_socket:setopts(Socket, [{packet, http_bin}]),
 	case ewok_socket:recv(Socket, 0, Timeout) of
 	{ok, {http_request, Method, URI, Version}} ->
-%		?TTY(HttpRequest),
 		RequestLine = {Method, uri_to_path(URI), Version},
 		ok = ewok_socket:setopts(Socket, [{packet, httph_bin}]),
 		get_headers(Socket, RequestLine, [], Timeout, 0, MaxHeaders);
@@ -97,35 +95,23 @@ service(Socket, Timeout, MaxHeaders) ->
     end.
 
 %%
-get_headers(Socket, RequestLine, Headers, _Timeout, MaxHeaders, MaxHeaders) ->
-	ProxyHeader = proplists:get_value(<<"X-Forwarded-For">>, Headers),
-	ewok_log:error([
-		{message, "Too many headers"}, 
-		{request_line, RequestLine}, 
-		{remote_ip, ewok_http:get_remote_ip(Socket, ProxyHeader)}
-	]),
-	%% NOTE: Consider sending the response 'bad_request' instead of just closing out?
-	ewok_socket:close(Socket),
-	exit(normal);
-%%
-get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Count, MaxHeaders) ->
+get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, HeadCount, MaxHeaders)  
+		when HeadCount =< MaxHeaders -> %% NOTE: if MaxHeaders = 'infinity' then HeadCount =< MaxHeaders will always be true		
 	case ewok_socket:recv(Socket, 0, Timeout) of
 	{ok, {http_header, _Integer, Name, _Reserved, Value}} ->
-%		?TTY(HttpHeader),
 		HeaderName =
 			case is_atom(Name) of
-			true -> atom_to_binary(Name, utf8); % would latin1 be "safer"?
-			false -> Name % must be a binary
+			true -> 
+				atom_to_binary(Name, utf8); % would latin1 be "safer"?
+			false -> 
+				Name % must be a binary
 			end,
-		NewCount = 
-			case is_integer(Count) of
-			true -> Count + 1;
-			false -> Count %% i.e. 'infinity'
-			end,
-		get_headers(Socket, RequestLine, [{HeaderName, Value} | Headers], Timeout, NewCount, MaxHeaders);
+		get_headers(Socket, RequestLine, [{HeaderName, Value} | Headers], Timeout, HeadCount + 1, MaxHeaders);
 	{ok, http_eoh} ->
-%		?TTY(http_eoh),
 		ok = ewok_socket:setopts(Socket, [{packet, raw}]),
+		
+		?TTY({request, Method, Path}),
+
 		Request = ewok_request_obj:new(Socket, Timeout, Method, Path, Version, Headers, MaxHeaders),
 		get_session(Request);
 %% IMPL: If the client screws up should we be strict (as currently), or lenient (as below)...
@@ -142,12 +128,23 @@ get_headers(Socket, RequestLine = {Method, Path, Version}, Headers, Timeout, Cou
 		ewok_log:error([{socket_error, {Error, Reason}}]), 
 		ewok_socket:close(Socket),
 		exit(normal)
-    end.
+    end;
+%%
+get_headers(Socket, RequestLine, Headers, _, _, _) ->
+	ProxyHeader = proplists:get_value(<<"X-Forwarded-For">>, Headers),
+	ewok_log:error([
+		{message, "Too many headers"}, 
+		{request_line, RequestLine}, 
+		{remote_ip, ewok_http:get_remote_ip(Socket, ProxyHeader)}
+	]),
+	%% NOTE: Consider sending the response 'bad_request' instead of just closing out?
+	ewok_socket:close(Socket),
+	exit(normal).
 	
 %% WHO
 get_session(Request) ->
-	Session = ewok_session:get_session(Request:cookie(), Request:remote_ip()),
-%	?TTY({request, Request}),
+	Session = ewok_session:get_session(Request:cookies(), Request:remote_ip()),
+%	?TTY({session, Session}),
 	case Request:version() of
 	{1, 1} -> 
 		get_route(Request, Session);
@@ -165,22 +162,24 @@ get_session(Request) ->
 %% NOTE: there's a good case to invert the argument ordering as it progresses from here
 get_route(Request, Session) ->
 	case lookup_route(Request:path()) of
-	Route = #ewok_route{} ->
-		Request:set_realm(Route#ewok_route.realm),
+	Route = #ewok_route{realm = Realm} ->
+		Request:set_realm(Realm),
 		get_access(Request, Session, Route);
 	_ ->
 		do_response(Request, Session, internal_server_error) %% TODO: shouldn't this be 404?
 	end.
 
-% HOW
+%% HOW
 get_access(Request, Session, #ewok_route{handler=Module, realm=Realm, roles=Roles}) ->	
-%	?TTY("REALM: ~p~n", [Request:realm()]),
 	case validate_access(Session:user(), Realm, Roles) of
 	ok -> 
 		case catch(handle_request(Request, Session, Module)) of
-		ok -> ok;
-		{'EXIT', normal} -> ok;
-		Value -> io:format("~p~n", [Value])
+		ok -> 
+			ok;
+		{'EXIT', normal} -> 
+			ok;
+		Value -> 
+			io:format("~p~n", [Value])
 		end;
 	not_authorized ->
 		case ewok:config({Realm, http, login}) of
@@ -188,52 +187,35 @@ get_access(Request, Session, #ewok_route{handler=Module, realm=Realm, roles=Role
 			ewok_log:warn([{auth_login_undefined, Realm}]),
 			do_response(Request, Session, unauthorized);
 		LoginPath ->
-			% it may be cleaner to use a module (other than proplists) that implements set/replacekey
 			Here =
 				case Request:header(referer) of
 				undefined -> 
 					ewok_http:absolute_uri(Request:path());
-				Value -> Value
+				Value -> 
+					Value
 				end,
 			Session:save(redirect, Here),
-			%Location = ewok_http:absolute_uri(LoginPath),
+			% Location = ewok_http:absolute_uri(LoginPath),
 			%% NOTE: traditionally, this is 'found 302' - but 'temporary_redirect 307' may be better
 			do_response(Request, Session, {found, [{location, LoginPath}], []})
 		end
 	end.
 
 %% WHAT
-%% NOTE: Everything else is just boilerplace compared to this...
 handle_request(Request, Session, Module) ->
 	ewok_log:info([{call, {Request:path(), Module, Session:data()}}]),
 	Response = 
 		case code:ensure_loaded(Module) of
 		{'module', Module} ->
 			case Module:filter(Request) of
-			{delegate, Handler, Options} when is_atom(Handler), is_list(Options) -> 
-				ewok_log:info([{delegated, {Handler, Options}}]),
+			{delegate, Delegate, Options} when is_atom(Delegate), is_list(Options) -> 
+				ewok_log:info([{delegated, {Delegate, Options}}]),
 				Session:save(delegated, Options),
 				%% TODO: how to implement delegation Options for a handler without making
 				%% the handler's client code onerous?
-				handle_request(Request, Session, Handler);
+				handle_request(Request, Session, Delegate);
 			ok ->
-				Method = Request:method(),
-				%% TODO - we may wish to trap 'OPTIONS' here
-				case erlang:function_exported(Module, Method, 2) of
-				true -> Module:Method(Request, Session);
-				false ->
-					%% IMPL: if possible, autogenerate a response for 'HEAD'
-					case Method =:= 'HEAD' 
-						andalso erlang:function_exported(Module, 'GET', 2) of
-					true -> 
-						case Module:'GET'(Request, Session) of
-						{ok, Headers, _} -> {ok, Headers, []};
-						Result -> Result
-						end;
-					false ->
-						method_not_allowed
-					end
-				end;
+				invoke_service(Request, Session, Module);
 			_ ->
 				precondition_failed
 			end;
@@ -242,6 +224,29 @@ handle_request(Request, Session, Module) ->
 			internal_server_error
 		end,
 	do_response(Request, Session, Response).
+	
+%% NOTE: Everything else is just boilerplace compared to this...
+invoke_service(Request, Session, Module) ->
+	Method = Request:method(),
+	%% TODO - we may wish to trap 'OPTIONS' here
+	case erlang:function_exported(Module, Method, 2) of
+	true -> Module:Method(Request, Session);
+	false ->
+		%% IMPL: if possible, autogenerate a response for 'HEAD'
+		case Method =:= 'HEAD' 
+			andalso erlang:function_exported(Module, 'GET', 2) of
+		true -> 
+			case Module:'GET'(Request, Session) of
+			{ok, Headers, _} -> 
+				{ok, Headers, []};
+			Result -> 
+				Result
+			end;
+		false ->
+			method_not_allowed
+		end
+	end.
+
 %%
 do_response(Request, Session, Status) when is_atom(Status) ->
 	Code = ewok_http:status_code(Status),
@@ -258,15 +263,17 @@ do_response(Request, Session, {Status, Headers, Content}) ->
 	%
 	ewok_session:update(Session),
 	% only set-cookie if cookie not set...
+	SessionKey = Session:key(),
 	NewHeaders =
-		case cookie_compare(Request:cookie(), Session:cookie()) of
-		false -> [{set_cookie, Session:cookie()}|Headers];
-		true -> Headers
+		case proplists:get_value(?EWOK_SESSION_KEY, Request:cookies()) of
+		SessionKey -> 
+			Headers;
+		_ -> 
+			[{set_cookie, Session:cookie()}|Headers]
 		end,
 	Response = {response, Code, NewHeaders, Content, false},	
 	%% and finally...
 	{ok, _HttpResponse, BytesSent} = ewok_response:reply(Request, Response),
-%	?TTY("HTTP~nREQUEST:~n~p~nRESPONSE:~n~p~n~n", [Request, HttpResponse]),
 	%%
 	{Tag, Message} = format_access_log(Request, Session, Code, BytesSent),
 	ok = ewok_log:message(access, Tag, Message),
@@ -275,7 +282,6 @@ do_response(Request, Session, {Status, Headers, Content}) ->
 
 %%
 cleanup(Request) ->
-	%?TTY("~nPD STATE~n~p~n", [lists:sort(get())]),
 	case Request:should_close() of
 	true ->
 		%ewok_session:close(Session),
@@ -301,26 +307,14 @@ cleanup(Request) ->
 			%% returned even though they ask for keep-alive... weird! Chrome lists this 
 			%% as a fixed bug in their browser, which again leaves IE as the toy.
 			Timeout = Request:timeout(), 
-			MaxHeaders = Request:max_headers(),
 			Request:reset(),
-			?MODULE:service(Request:socket(), Timeout, MaxHeaders)
+			?MODULE:service(Request:socket(), Timeout, Request:max_headers())
 		end
 	end.
 
 %%
 %% INTERNAL
 %%
-
-%% TODO: This is a TOTAL HACK
-%% There is a more elegant way to do this using binary matching... I'm certain of it.
-cookie_compare([], _SessionCookie) ->
-	false;
-cookie_compare([{Tag, RequestCookie}], SessionCookie) -> 
-%	?TTY("Cookie Compare ~p ~p~n", [RequestCookie, SessionCookie]),
-	case ewok_text:split(SessionCookie, <<"[=;]">>) of
-	[Tag, RequestCookie|_] -> true;
-	_ -> false
-	end.
 
 %%
 uri_to_path({abs_path, Path}) -> 
@@ -342,11 +336,13 @@ uri_to_path(URI) ->
 %%
 lookup_route(Path) ->
 	case ewok_db:lookup(ewok_route, Path) of
-	Route = #ewok_route{} -> Route;
+	Route = #ewok_route{} -> 
+		Route;
 	undefined -> 
 		PathComponents = ewok_text:split(Path, <<"/">>),
 		lookup_wildcard_route(lists:reverse(PathComponents));
-	Error -> Error
+	Error -> 
+		Error
 	end.
 %% note that since ewok_file_handler is usually the default -- ALL file urls 
 %% will be processed here -> could be a problem...
@@ -354,15 +350,21 @@ lookup_route(Path) ->
 %% Well, first, let's see if it shows up in profiling under load.
 lookup_wildcard_route(Parts = [_|T]) ->
 	case ewok_db:lookup(ewok_route, wildcard_path(Parts)) of
-	Route = #ewok_route{} -> Route;
-	undefined -> lookup_wildcard_route(T);
-	Error -> Error
+	Route = #ewok_route{} -> 
+		Route;
+	undefined -> 
+		lookup_wildcard_route(T);
+	Error -> 
+		Error
 	end;
 lookup_wildcard_route([]) ->
 	case ewok_db:lookup(ewok_route, default) of
-	Route = #ewok_route{} -> Route;
-	undefined -> {error, no_handler};
-	Error -> Error
+	Route = #ewok_route{} -> 
+		Route;
+	undefined -> 
+		{error, no_handler};
+	Error -> 
+		Error
 	end.
 %
 wildcard_path(Parts) ->
@@ -386,9 +388,10 @@ validate_access(#ewok_user{roles = UserRoles}, Realm, ResourceRoles) ->
 format_access_log(Request, Session, StatusCode, BytesSent) ->
 	UserId = 
 		case Session:user() of
-		#ewok_user{} = User -> 
-			list_to_binary(io_lib:format("~p", [User#ewok_user.name]));
-		_ -> <<"{-,-}">>
+		#ewok_user{name = Name} -> 
+			list_to_binary(io_lib:format("~p", [Name]));
+		_ -> 
+			<<"{-,-}">>
 		end,
 		
 	{Major, Minor} = Request:version(),
@@ -396,8 +399,10 @@ format_access_log(Request, Session, StatusCode, BytesSent) ->
 	Status = list_to_binary(integer_to_list(StatusCode)),
 	UserAgent =
 		case Request:header(<<"User-Agent">>) of
-		undefined -> <<"(No Header: User-Agent)">>;
-		Value -> Value
+		undefined -> 
+			<<"(No Header: User-Agent)">>;
+		Value -> 
+			Value
 		end,
 
 	RequestLine = list_to_binary([

@@ -49,10 +49,10 @@ stop () ->
 %% reopened. Otherwise, a new, empty table is created.
 %% @end
 
-open (Table, Options) when is_list (Options) ->
-  case osmos_table_format:valid (proplists:get_value (format, Options)) of
-    true  -> osmos_manager:open (Table, Options);
-    false -> erlang:error ({ badarg, Options })
+open(Table, Options) when is_list (Options) ->
+  case osmos_table_format:valid(proplists:get_value(format, Options)) of
+    true  -> osmos_manager:open(Table, Options);
+    false -> erlang:error({ badarg, Options })
   end.
 
 %% @spec close (any()) -> ok | { error, Reason }
@@ -62,7 +62,7 @@ open (Table, Options) when is_list (Options) ->
 %% @end
 
 close (Table) ->
-  osmos_manager:close (Table).
+  osmos_manager:close(Table).
 
 %% @spec read (any(), any()) -> { ok, Value::any() } | not_found
 %% @doc Read the value for Key in the given Table. Return { ok, Value } if
@@ -70,8 +70,8 @@ close (Table) ->
 %% @end
 
 read (Table, Key) ->
-  { ok, Pid } = osmos_manager:get_pid (Table),
-  osmos_table:read (Pid, Key).
+  {ok, Pid} = osmos_manager:get_pid(Table),
+  osmos_table:read(Pid, Key).
 
 %% @spec write (any(), any(), any()) -> ok | { error, Reason }
 %% @doc Write a new Value for Key in the given Table. The exact semantics

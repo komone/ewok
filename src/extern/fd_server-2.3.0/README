@@ -1,0 +1,37 @@
+
+This is the fdsrv package from jungerl packaged as single
+standalone package. To build:
+
+# make 
+# sudo make install
+
+this install fdsrv inside the erlang found in the PATH
+The intent of this package is that it should be much easier
+for yaws folks to get fdsrv in the air. It needs to get installed
+as root since it sets the suid bit on the fdsrv binary.
+
+
+
+
+The fdserv.erl module makes it possible to open
+up privileged ports from Erlang running as non-root.
+
+Here is an example from the esmb_browser.erl code:
+---------------------------------
+...
+{ok, Fd} = open_socket(137, []),
+....
+
+open_socket(Port,Opts) ->
+    case fdsrv:bind_socket(udp, Port) of
+	{ok, Fd} ->
+	    gen_udp:open(Port, [{fd, Fd}, binary, {broadcast,true} | Opts]);
+	Error ->
+	    ?elog("Couldn't open socket, port=~p: ~p~n",[Port, Error])
+    end. 
+--------------------------------
+
+Here we open the NetBIOS-NameService port 137.
+
+
+

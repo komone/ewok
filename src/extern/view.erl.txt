@@ -1,0 +1,407 @@
+%% @doc This module implements atomic multicast group communication.
+%% When a group a is created a group process is started that will
+%% handle all communication to and from the group. When a new process
+%% joins the group it is given its own group process. A group process
+%% is linked to its master and will deliver all messages to it. Any
+%% processes can send messages to the group through any of the group
+%% processes.
+%% 
+%% The implementation is based on a leader election scheme where a
+%% leader is used to serialize messages. The module is fault tolerant
+%% and a new leader will be elected if the current leader dies. 
+%%
+%% The correctness of the implementation depends on two properties
+%% (that are not guaranteed by Erlang). The first is that messages are
+%% not lost between non-faulty processes. If we can not rely in this
+%% then we would have to implement our own reliable message passing on
+%% top of Erlang messages. The second is that a 'DOWN' message with
+%% the reason <bf>noconnection</bf> will be treated as an accurate failure
+%% detection. This is of course not always true and the implementation
+%% will thus not work properly when a node is only temporarily
+%% disconnected. What could happen is that part of the group thinks
+%% that the leader is dead and elects a new leader. The group would
+%% then be parted into two sub-groups and then anything could
+%% happen. One can of course easily change this but the module would
+%% then stop working if a <bf>noconnection</bf> reasons is detected. 
+%% 
+%% Messages that are being delivered through the group layer will not
+%% be tagged in any way. It is up to the application layer to provide a
+%% tagging scheme it it needs to separate group messages from regular
+%% messages or keep track of messages from different groups.
+%%
+%% 
+
+%% @author Johan Montelius <johanmon@kth.se> 
+%% @copyright 2010
+%% @reference <a rel="license" 
+%% href="http://creativecommons.org/licenses/by/2.5/se/">This work is
+%% licensed under a Creative Commons Attribution 2.5 Sweden
+%% License</a>.  
+%% @version 0.1
+
+-module(view).
+
+-export([new/0,
+	 new/1,
+	 join/2,
+	 join/3,
+	 accept/2,
+	 reject/2,
+	 stop/1,
+	 abcast/2,
+	 uacast/2,
+	 bcast/2,
+	 send/3]).
+
+-define(logging, true).
+
+-define(INFO(Format, Arg), nop).
+-define(WARNING(Format, Arg), nop).
+-define(ERROR(Format, Arg), nop).
+
+
+%% @type group() = pid().
+%% @type option()= any().
+
+%% @doc Atomic multicast message to all members in the group. If a
+%% non-failing process in the group is given the the message then all
+%% non-failing processes will be given the message. All messages are
+%% delivered in a total order. The procedure does not implement a
+%% uniform property i.e. a failing process may be delivered a message
+%% while non-failing processes are not.
+%%
+%% @spec abcast(Grp::group(), Msg::any()) -> ok
+
+
+abcast(Grp, Msg) ->
+    Grp ! {forward, {abcast, Msg}},
+    ok.
+
+%% @doc Uniform atomic multicast message to all members in the
+%% group. If one process in the group is given the message then all
+%% processes will be given the message. All messages are delivered in
+%% a total order. The procedure does not implement a uniform property
+%% i.e. a failing process be delivered a message while non-failing
+%% processes are not.
+%%
+%% @spec uacast(Grp::group(), Msg::any()) -> ok
+
+uacast(Grp, Msg) ->
+    Grp ! {forward, {uacast, Msg}},
+    ok.
+
+%% @doc Basic multicast message to all members in the group. No
+%% guarantees on uniformity nor message ordering more than fifo.
+%%
+%% @spec bcast(Grp::group(), Msg::any()) -> ok
+
+bcast(Grp, Msg) ->
+    Grp ! {forward, {bcast, Msg}},
+    ok.
+
+%% @doc Sending a message to a specified group process will deliver
+%% the message in fifo and causal order also taking the multicast
+%% messages into account.
+%% 
+%% @spec send(Grp::group(), Member::group(), Msg::any()) -> ok
+
+send(Grp, Member, Msg) ->
+    Grp ! {forward, {send, Member, Msg}},
+    ok.    
+
+%% @doc A reply to a join request, accepting the new member. The State
+%% is passed to the requesting process in a view message. The message
+%% will be <tt>{view, accepted, {Ref, Peers, State}}</tt>.
+%%
+%% @spec accept(Grp::group(), State::any()) -> ok
+
+accept(Grp, State) ->
+    Grp ! {accept, State},
+    ok.
+
+%% @doc A reply to a join request, rejecting the new member. The
+%% Reason is passed to the requesting process in a view mesage. The
+%% message will be <tt>{view, failed, {rejected, Reason}}</tt>.
+%%
+
+%% @spec reject(Grp::group(), Reason::any()) -> ok
+
+reject(Grp, Reason) ->
+    Grp ! {reject, Reason},
+    ok.
+
+
+    
+%% @doc Create a new group. Same as <tt>view:new([])</tt>.
+%%
+%% @spec new() -> {group(), reference()}
+
+new() -> 
+    new([]).
+
+%% @doc Create a new group. This will create the first group process
+%% to which other process can send join request. The reference that is
+%% returend will be used in all view messages to be able to separate
+%% messages from different groups.
+%%
+%% @spec new(Options::[option()]) -> {group(), reference()}
+
+new(Options) -> 
+    Self = self(),
+    Ref = make_ref(),
+    {spawn_link(fun() -> init(Self, Ref, Options) end), Ref}.
+
+%% @doc This is the initialization of a new group process. The process
+%% is simply started as the leader of the group with an empty list of
+%% peers.
+%% 
+%% @spec init(Master::pid(), Ref::reference(), Options::[option()]) -> ok
+
+init(Master, Ref, _Options) ->
+    N = 1,
+    Slaves = [],
+    ?INFO("leader started ~w", [self()]),
+    leader(Master, Ref, N, Slaves).
+
+%% @doc Joining an existing group. Same as <tt>view:join(Grp, Msg,
+%% [])</tt>.
+%%
+%% @spec join(Grp::group(), Msg::any()) -> group()
+
+join(Grp, Msg) -> 
+    join(Grp, Msg, []).
+
+%% @doc Joining an existing group. The message, Msg, will be
+%% delivered to the master of the leader in a request to join the
+%% group. The message will be <tt>{view, Ref, join, Msg}</tt>.
+
+%%  @spec join(Group::group(), Msg::any(), Options::[option()]) -> group()
+
+join(Group, Msg, Options) -> 
+    Self = self(),
+    spawn_link(fun()-> init(Group, Self, Msg, Options) end).
+
+    
+%% @doc This is the initialization of a group process that should join
+%% an existing group.
+
+init(Grp, Master, Msg, Options) ->
+    Self = self(), 
+    Grf = erlang:monitor(process, Grp),
+    Grp ! {leader_request, self()},
+    receive
+	{leader_reply, Leader} ->
+	    erlang:demonitor(Grf, [flush]),
+	    Lrf = erlang:monitor(process, Leader),
+	    Leader ! {join, Self, Msg},
+	    receive 
+		{accepted, Ref, N, Leader, Slaves, State} ->
+		    Master ! {view, accepted, {Ref, Slaves, State}},
+		    Last = na,
+		    ?INFO("slave started~n", []),		    
+		    slave(Master, Ref, Leader, N+1, Last, Slaves);
+		{rejected, Reason} ->
+		    ?INFO("rejected~n", []),		    
+		    Master ! {view, failed, {rejected, Reason}};		    
+		{'DOWN', Lrf, process, Leader, _Reason} ->
+		    %% the leader died but we can try again
+		    ?INFO("leader died, trying again ~n", []),
+		    init(Grp, Master, Msg, Options)
+	    end;
+	{'DOWN', Grf, process, Grp, _Reason} ->
+	    ?INFO("group member died, giving up~n", []),		    
+	    Master ! {view, failed, {down, "group process is down"}}
+    end.
+
+
+%% @doc Stopping the group process. It is safe to kill the process anytime.
+%% 
+%% @spec stop(Grp::group()) -> ok
+
+stop(Grp) ->
+    Grp ! stop,
+    ok.
+
+%% @doc A group process in the slave state will forward requests to
+%% the leader. Messages from the leader are delivered to the master
+%% process. 
+%%
+%% @spec slave(Master::pid(), Ref::reference(), Leader::pid(), N::integer(),
+%% Last::any(), Peers::[group()]) -> ok
+
+slave(Master, Ref, Leader, N, Last, Peers) ->    
+    receive
+	
+	%% Messages sent from the master.
+
+	{forward, Msg} ->
+	    Leader ! Msg,
+	    slave(Master, Ref, Leader, N, Last, Peers);	    
+
+	{leader_request, Peer} ->
+	    Peer ! {leader_reply, Leader},
+	    slave(Master, Ref, Leader, N, Last, Peers);
+
+	stop ->
+	    ok;
+
+	%% Messages sent from the leader 
+
+	{msg, Msg} ->
+	    Master ! Msg,
+	    slave(Master, Ref, Leader, N, Last, Peers);	    
+	
+	{msg, N, Msg} = Nxt ->
+	    Master ! Msg,
+	    slave(Master, Ref, Leader, N+1, Nxt, Peers);
+	
+	{msg, I, _}  when I < N ->
+	    slave(Master, Ref, Leader, N, Last, Peers);
+
+	{umsg, N, Msg} = Nxt ->
+	    %% We only need to forward this to the remaining 
+	    %% peers. 
+	    [_|Rest] = lists:dropwhile(fun(Peer) -> not(Peer == self()) end, Peers),
+	    multicast({umsg, N, Msg}, Rest),
+	    Master ! Msg,
+	    slave(Master, Ref, Leader, N+1, Nxt, Peers);
+
+	{umsg, I, _} when I < N ->
+	    slave(Master, Ref, Leader, N, Last, Peers);
+
+	{update, N, New} = Nxt ->
+	    ?INFO("new view delivered ~n", []),
+	    Master ! {view, Ref, update, New},
+	    slave(Master, Ref, Leader, N+1, Nxt, New);	    
+
+	{update, I, _} when I < N ->
+	    slave(Master, Ref, Leader, N, Last, Peers);	    
+
+	%% The leader died; time for election.
+
+	{'DOWN', _Ref, process, Leader, _Reason} ->
+	    ?INFO("leader died ~n", []),
+	    election(Master, Ref, N, Last, Peers);
+
+	_Error ->
+	    ?WARNING("strange message ~w~n", [_Error]),
+	    slave(Master, Ref, Leader, N, Last, Peers)
+    end.
+
+%% @spec election(Master::pid(), Ref::reference(), N::integer(),
+%% Last::any(), Peers::[group()]) -> ok
+ 
+election(Master, Ref, N, Last, [_|Peers]) ->
+    %% The first member in the list is the leader that died.  The
+    %% second member is the new leader. It could be us.
+    [Leader|Slaves] = Peers,
+    if 
+	Leader == self() ->
+	    ?INFO("elected leader~n", []),		    
+	    multicast(Last, Slaves),
+	    lists:foreach(fun(Slave) -> erlang:monitor(process, Slave) end, Slaves), 
+	    multicast({update, N, Peers}, Slaves),
+	    Master ! {view, Ref, update, Peers},
+	    leader(Master, Ref, N+1, Slaves);
+	true ->
+	    erlang:monitor(process, Leader),
+	    slave(Master, Ref, Leader, N, Last, Peers)
+    end.
+
+%% @doc A group process in the leader state will handle syncronisation
+%% of messages. Messages are sent to slave processes and to the master of
+%% the leader.
+%%
+%% @spec leader(Master::pid(), Ref::reference(), N::integer(), Slaves::[group()]) -> ok
+
+leader(Master, Ref, N, Slaves) ->
+    receive
+	%% Messages sent from the master.
+
+	{forward, Msg} ->
+	    self() ! Msg,
+	    leader(Master, Ref, N, Slaves);	    
+
+	{leader_request, Peer} ->
+	    Peer ! {leader_reply, self()},
+	    leader(Master, Ref, N, Slaves);
+
+	stop ->
+	    ok;
+
+	%% Messages forwarded from a slave
+
+	{abcast, Msg} ->
+	    multicast({msg, N, Msg}, Slaves),
+	    Master ! Msg,
+	    leader(Master, Ref, N+1, Slaves);
+
+	{uacast, Msg} ->
+	    multicast({umsg, N, Msg}, Slaves),
+	    Master ! Msg,
+	    leader(Master, Ref, N+1, Slaves);
+
+	{bcast, Msg} ->
+	    multicast({msg, Msg}, Slaves),
+	    Master ! Msg,
+	    leader(Master, Ref, N, Slaves);
+
+	{send, To, Msg} ->
+	    if 
+		To == self() ->
+		    To ! Msg;
+		true ->
+		    To ! {msg, Msg}
+	    end,
+	    leader(Master, Ref, N, Slaves);
+
+	%% A new group process wants to join the group 
+
+	{join, New, Msg} ->
+	    ?INFO("process ~w wants to join~n", [New]),
+	    Master ! {view, Ref, join, Msg},
+	    %% If the master dies then we will die.
+	    receive
+		{accept, State} ->
+		    ?INFO("process ~w accepted~n", [New]),
+		    Slaves2 = lists:append(Slaves, [New]),
+		    erlang:monitor(process, New),
+		    View = [self()|Slaves2],
+		    multicast({update, N, View}, Slaves),	    		    
+		    Master ! {view, Ref, update, View},
+		    New ! {accepted, Ref, N, self(), View, State},
+		    leader(Master, Ref, N+1, Slaves2);
+		{reject, Reason} ->
+		    ?INFO("process ~w rejected~n", [New]),
+		    New ! {rejected, Reason},
+		    leader(Master, Ref, N, Slaves)
+	    end;
+
+	%% A slave died; deliver a updated view.
+
+	{'DOWN', _Ref, process, Dead, _Reason} ->
+	    ?INFO("slave ~w died~n", [Dead]),
+	    Slaves2 = lists:delete(Dead, Slaves),	    
+	    View = [self()|Slaves2],	    
+	    multicast({update, N, View}, Slaves2),
+	    Master ! {view, Ref, update, View},
+	    leader(Master, Ref, N+1, Slaves2);
+
+	_Error ->
+	    ?WARNING("strange message ~w~n", [_Error]),
+	    leader(Master, Ref, N, Slaves)
+    end.
+
+
+multicast(Msg, Slaves) ->
+    lists:foreach(fun(Slave) -> Slave ! Msg end, Slaves).
+
+
+			  
+
+	
+
+
+		    
+	    
+

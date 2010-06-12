@@ -15,7 +15,7 @@
 -record(domain, {name = [], options = [] }).
 
 -record(message2, {
-	name         = [], % Tuple {Message Name, User Name, Doamin Name}
+	name         = [], % Tuple {Message Name, User Name, Domain Name}
 	from         = [], % single address for sender
 	to           = [], % address list for recepient
 	cc           = [], % address list for carbon copy

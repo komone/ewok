@@ -3,30 +3,21 @@
 -include("ewok.hrl").
 
 -compile(export_all).
-
-target() ->
-	{ewok, [<<"ewok.hrl">>, <<"ewok_system.hrl">>], [
-		{ewok_app, [
-			{ewok_sup, [
-				{ewok_db, []},
-				{ewok_config, []}
-			]},
-			{ewok_config, []},
-			{io, []}
-		]}
-	]}.
 	
 %%
 application(App) when is_atom(App) ->
 	application:load(App),
 	{ok, {Module, _Args}} = application:get_key(App, mod),
+	module(Module).
+%%
+module(Module) ->
 	Path = ewok_file:path(code:which(Module)),
 	{Headers, BeamFiles, _Parsed} = parse_files([Path], sets:new(), [], [], []),
 %	{AHeaders, ABeamFiles, AParsed} = parse_files([Path], sets:new(), [], [], []),
 %	All = ewok_file:list(ewok_file:parent(Path)),
 %	Rest = [X || X <- All, lists:member(X, AParsed) =:= false],
 %	{Headers, BeamFiles, _} = parse_files(Rest, AHeaders, ABeamFiles, [], AParsed),
-	Result = {App, lists:sort(sets:to_list(Headers)), BeamFiles},
+	Result = {Module, lists:sort(sets:to_list(Headers)), BeamFiles},
 	Filename = ewok_file:path([ewok_util:appdir(ewok), <<"out.dep">>]),
 	?TTY({file, Filename}),
 	ok = ewok_file:save(Filename, io_lib:format("~p~n", [Result])).
@@ -38,7 +29,12 @@ parse_files([H|T], Headers, BeamList, RootList, Parsed) when is_binary(H) ->
 		Module = binary_to_atom(ewok_file:name(H), utf8),
 		case lists:member(H, RootList) of
 		true ->
-			parse_files(T, Headers, [{Module, cyclic}|BeamList], RootList, Parsed);
+			case RootList of
+			[H|_] ->				
+				parse_files(T, Headers, [{Module, self}|BeamList], RootList, Parsed);
+			_ ->
+				parse_files(T, Headers, [{Module, cyclic}|BeamList], RootList, Parsed)
+			end;
 		false ->
 			Src = proplists:get_value(source, Module:module_info(compile)),
 			%?TTY({source, Src}),

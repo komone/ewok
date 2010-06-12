@@ -11,28 +11,7 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-
 -module(ewok_file).
--interface([
-	{appname/1, api, "The application name if resolvable from the provided path", "binary() -> atom() | undefined"},
-	{close/1, api, "Close the file", "binary() -> ok | {error, Term}"},
-	{code_path/1, api, "The code directory if resolvable from the provided path", "binary() -> binary() | undefined"},
-	{save/2, api, "Write contents to a file", "binary(), binary() -> ok | {error, Term}"},
-	{extension/1, api, "The file extension from the provided path", "binary() -> binary()"},
-	{file_info/1, api, "The file descriptor information", "binary() -> {ok, file_info()} | undefined"},
-	{find/2, api, "A list of matching files", "binary(), binary() -> list()"},
-	{find/3, api, "A list of matching files", "binary(), binary(), recursive -> list()"},
-	{is_directory/1, api, "If the path refers to a directory", "binary() -> boolean()"},
-	{is_file/1, api, "If the path refers to a regular file", "binary() -> boolean()"},
-	{is_link/1, api, "If the path refers to a sym link", "binary() -> boolean()"},
-	{is_regular/1, api, "If the path refers to a regular file", "binary() -> boolean()"},
-	{list/1, api, "The list of files in the directory referred to by the path", "binary() -> list() | {error, Term}"},
-	{load/1, api, "Read the file contents", "binary() -> binary() | undefined"},
-	{name/1, api, "The file or directory name without an extension", "binary() -> binary()"},
-	{open/2, api, "Open the file", "binary(), opts() -> {ok, fd()} | {error, Term}"},
-	{parent/1, api, "An absolute path to the parent directory", "binary() -> binary()"},
-	{path/1, api, "An absolute binary path from path components", "list() -> binary()"}
-]).
 
 -include("ewok.hrl").
 -include("ewok_system.hrl").
@@ -41,7 +20,7 @@
 
 -export([open/2, close/1, filename/1]).
 -export([path/1, parent/1, name/1, appname/1, extension/1]).
--export([load/1, save/2, resource/2]). %, file_info/1]).
+-export([load/1, save/2, eval/1, resource/2]).
 -export([list/1, code_path/1]). 
 -export([is_directory/1, is_file/1, is_regular/1, is_link/1, modified/1]).
 -export([file_info/1, find/2, find/3]).
@@ -102,7 +81,6 @@ make_path([H|T], Acc) when is_binary(H) ->
 %
 make_path([], Acc) ->
 	Acc.
-
 	
 %% TODO: test
 code_path(Path) ->
@@ -214,8 +192,25 @@ load(Path) when is_binary(Path) ->
 		Bin;
 	false ->
 		undefined
+	end.	
+%%
+eval(File) ->
+	Path = path(File),
+	case is_regular(Path) of
+	true ->
+		try
+			{ok, Term} = file:consult(binary_to_list(Path)),
+			Term
+		catch
+		%% C{error,{103,erl_parse,["syntax error before: ","'{'"]}}
+		_:{badmatch, {error, {Line, _, Message}}} -> 
+			{error, [{file, Path}, {line, Line}, {reason, lists:flatten(Message)}]};
+		Error:Reason -> 
+			{Error, Reason}
+		end;
+	false ->
+		{error, Path}
 	end.
-
 %%
 list(Path) when is_binary(Path) ->
 	case is_directory(Path) of
@@ -267,8 +262,10 @@ file_info(File) when is_binary(File) ->
 %
 file_info(File) ->
 	case file:read_file_info(File) of
-	{ok, Info} -> Info;
-	_ -> undefined
+	{ok, Info} -> 
+		Info;
+	_ -> 
+		undefined
 	end.
 
 %% 
@@ -282,86 +279,3 @@ find(BasePath, Regex, Recurse) when is_binary(BasePath) ->
 	PathString = binary_to_list(BasePath),
 	Pred = fun(F, Acc) -> [path(F)|Acc] end,
 	filelib:fold_files(PathString, Regex, Recurse, Pred, []).
-	
-
-%% COLLECTED CRAP
-
-%% A dog's dinner: code:all_loaded()
-%{io,"c:/ERLANG~2/lib/stdlib-1.16.2/ebin/io.beam"},
-%{erl_distribution,"C:\\ERLANG~2/lib/kernel-2.13.2/ebin/erl_distribution.beam"},
-%{edlin,"c:/ERLANG~2/lib/stdlib-1.16.2/ebin/edlin.beam"},
-%{esp_html,"d:/Erlang/apps/ewok/ebin/esp_html.beam"},
-%{dets_v9,"c:/ERLANG~2/lib/stdlib-1.16.2/ebin/dets_v9.beam"},
-%{ewok_tcp_srv,"d:/Erlang/apps/ewok/ebin/ewok_tcp_srv.beam"},
-
-%% full_path() -> #web_app{} | undefined
-%xload_path(Path) when ?is_string(Path) ->
-%	case filelib:is_dir(Path) of 
-%	true -> 
-%		load_path1(Path);
-%	false ->
-%		case filelib:is_regular(Path) 
-%			andalso filename:extension(Path) =:= ?ARCHIVE_FILE_EXT of
-%		true ->
-%			load_path1(filename:join([Path, filename:basename(Path, ".ez")]));
-%		false -> 
-%			undefined
-%		end
-%	end.
-
-%%
-%load_path1(Path) ->
-%	BeamDir = filename:join(Path, "ebin"),
-%	%?TTY("Trying: ~p~n", [Path]),
-%	case filelib:wildcard("*" ++ ?CONFIG_FILE_EXT, BeamDir) of
-%	[AppFile|_] ->
-%		%?TTY("AppFile: ~p~n", [{AppFile, BeamDir}]),
-%		AppName = list_to_atom(filename:basename(AppFile, ?CONFIG_FILE_EXT)),
-%		code:add_pathz(BeamDir),
-%		Valid = validate(AppName),
-%		#web_app{id=AppName, path=Path, valid=Valid};
-%	_ -> 
-%		undefined
-%	end.
-	
-%% stub
-%validate(_Name) -> ok.
-
-%load_template(undefined, Path) -> 
-%	{error, {undefined, Path}};
-%load_template(Dir, Path) ->
-%	File = filename:join([code:lib_dir(ewok), Dir, Path]),
-%	case filelib:is_regular(File) of
-%	true -> 
-%		{ok, Bin} = file:read_file(File),
-%		parse_template(Bin);
-%	false -> 
-%		{error, File}
-%	end.
-
-%% stub
-%parse_template(_Bin) -> ok.
-
-%%
-%load_termfile(App) ->
-%	case code:ensure_loaded(App) of
-%	{'module', App} ->
-%		Path = filename:dirname(code:which(App)),
-%		File = filename:join(Path, atom_to_list(App) ++ ?CONFIG_FILE_EXT),
-%		case filelib:is_regular(File) of
-%		true ->
-%			try
-%				{ok, Terms} = file:consult(File),
-%				{ok, File, Terms}
-%			catch
-			%% C{error,{103,erl_parse,["syntax error before: ","'{'"]}}
-%			_:{badmatch, {error, {Line, _, Message}}} -> 
-%				{error, {file, File}, {line, Line}, {reason, lists:flatten(Message)}};
-%			E:R -> {E, R}
-%			end;
-%		false ->
-%			{error, {nofile, File}}
-%		end;
-%	_ -> {error, {no_app_found, App}}
-%	end.
-

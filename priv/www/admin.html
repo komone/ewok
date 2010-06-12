@@ -1,0 +1,37 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<title>Ewok AS Console</title>
+	<link rel="icon" href="/favicon.png" type="image/png"/> 
+	<link rel="stylesheet" href="css/jquery-ui-1.8.1.custom.css" type="text/css" />
+	<link rel="stylesheet" href="esp.css" type="text/css" />
+	
+	<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript" src="js/jquery-ui-1.8.1.custom.min.js"></script>
+	<script type="text/javascript" src="js/jquery-jeditable-1.7.1.min.js"></script>
+	<script type="text/javascript" src="ewok-admin.js"></script>
+	<script type="text/javascript">
+		$(function () {
+			$("#dock").buttonset();
+			$("#dock").change(function(event) {
+				$("#page").load(event.target.id + ".html");
+			});
+			$("#page").load("welcome.html");
+		});
+	</script>
+</head>
+<body>
+	<div id="header">
+		<form id="dock">
+			<span id="user">Administrator</span>
+			<input type="radio" id="dashboard" name="radio"/><label for="dashboard">Dashboard</label>
+			<input type="radio" id="news" name="radio" /><label for="news">News</label>
+			<input type="radio" id="reference" name="radio" /><label for="reference">Reference</label>
+			<input type="radio" id="about" name="radio" /><label for="about">About</label>
+		</form>
+		<img id="logo" src="/images/ewok-logo.png" />
+	</div>
+	<div id="page"></div>
+	<div id="footer">&copy; 2010 Simulacity</div>
+</body>
+</html>

@@ -1,44 +1,109 @@
 /* default esp.css */
 
 h1, h2, h3, h4, h5 {
-	color: teal;
-}
-
-h1 { font-size: 16pt; }
-h2 { font-size: 14pt; }
-h3 { font-size: 12pt; }
-h4 { font-size: 11pt; }
-h5 { font-size: 10pt; }
-	
-/*
-body, p, td, input { 
- .content { 
-	font-size: 10pt;
-	font-family: "Bitstream Vera Sans", "Courier New", sans-serif;
-}
-*/
-
-table {
-	border-collapse: collapse;
-}
-
-input.editor {
-	background-color: #eee;
-	border: solid 1px #ccc;
-}
-td p {
-	margin: 4px 0px;
-}
-td { 
-	border: solid 0px #eee;
-	padding: 4px;
-}
-.main {
 	font-weight: bold;
 }
 
-.item { 
-	/* no style */
+h1 { font-size: 11pt; }
+h2 { font-size: 10pt; }
+h3 { font-size: 9pt; }
+h4 { font-size: 8pt; }
+h5 { font-size: 7pt; }
+
+body {
+	background: url(images/admin-background.jpg);
+}
+
+body, p, td, .content { 
+	font-size: 9pt;
+	font-family: "Arial", "Trebuchet", sans-serif;
+}
+
+p { 
+/*	width: 50%;  */
+}
+
+#user {
+	font-weight: bold;
+	font-style: italic;
+	margin-right: 5px;
+}
+
+#logo {
+	padding-bottom: 6px;
+}
+
+#dock {
+	padding-top: 1px;
+	float:right;
+}
+
+.ui-button-text {
+	font-size: 8pt;
+}
+
+#panel {
+/*	margin: 20px; */
+}
+
+#footer {
+	color: #aaa;
+	padding: 5px;
+	font-size: 7pt;
+	text-align: right;
+}
+.content {
+	margin: 20px;
+}
+#tabs {
+	font-size: 8pt;
+	padding: 0px;
+}
+
+#tabs-4, #tabs-5 {
+	font-size: 7pt;
+	padding: 4px 2px;
+}
+
+table {
+	border-spacing: 15px;
+/*	border: solid 1px #ddd; */
+}
+
+td { 
+/*	border: solid 1px #ddd; */
+	padding: 3px 10px;
+}
+fieldset {
+	border: solid 1px #ddd;
+}
+
+legend {
+	font-size: 9pt;
+	font-weight: bold;
+	font-style: italic;
+}
+
+.editable, .multiedit {
+	background-color: #f7f7f7;
+	border: 1px solid #ddd;
+	cursor: pointer;
+}
+
+.label {
+	vertical-align: top;
+	color: teal;
+	font-style: italic;
+	padding-right: 20px;
+}
+
+input {
+	border: solid 1px #ccc;
+}
+
+
+.bold {
+	font-weight: bold;
 }
 
 .edit, .save {
@@ -61,13 +126,6 @@ td {
 	font-size: 8pt;
 }
 
-.label {
-	padding-top: 8px;
-	vertical-align: top;
-	color: teal;
-	font-style: italic;
-	padding-right: 20px;
-}
 
 .controls {
 	padding-bottom: 8px;

@@ -47,7 +47,7 @@ lookup(Type) ->
 lookup(Type, Key) ->
 	case lists:member(Type, ets:all()) of
 	true ->
-		case ewok_cache_srv:lookup(Type, Key) of
+		case ets:lookup(Type, Key) of
 		[R] -> R;
 		[] -> undefined 
 		end;

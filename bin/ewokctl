@@ -1,0 +1,18 @@
+#!/bin/sh
+
+NODENAME=ewok
+
+. `dirname $0`/ewok-env
+
+[ "x" = "x$EWOK_NODENAME" ] && EWOK_NODENAME=${NODENAME}
+[ "x" = "x$EWOK_CTL_ERL_ARGS" ] && EWOK_CTL_ERL_ARGS=${CTL_ERL_ARGS}
+
+exec erl \
+    -pa "${EWOK_HOME}/ebin" \
+    -noinput \
+    -hidden \
+    ${EWOK_CTL_ERL_ARGS} \
+    -sname ewokctl$$ \
+    -s ewok_control \
+    -nodename $EWOK_NODENAME \
+    -extra "$@"

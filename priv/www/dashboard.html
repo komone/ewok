@@ -1,0 +1,132 @@
+<div id="tabs">
+	<script type="text/javascript">
+	$(function () {
+		$("#tabs").tabs();
+		$("#tabs-4").tabs();
+		$("#tabs-5").tabs();
+		
+		var icons = {
+			header: "ui-icon-circle-arrow-e",
+			headerSelected: "ui-icon-circle-arrow-s"
+		};
+		
+		$("#nav").accordion({
+			active: false,
+			autoHeight: false,
+			collapsible: true,
+			icons: icons
+		});
+		
+		var busy_img = "<img src='images/indicator.gif'>";
+		
+		// inplace (jeditable)
+		$(".editable").editable("/ajax", { 
+			indicator: busy_img,
+			select: true,
+			tooltip: "Click to edit..."
+		});
+		
+		var choices = ["yes", "no"];
+		
+		// inplace (jeditable)
+		$(".selectable").editable("/ajax", { 
+			data: choices,
+			submitdata: choices,
+			type: "select",
+			submit: "Apply",
+			indicator: busy_img,
+			tooltip: "Click to edit..."
+		});
+		
+		// inplace (jeditable)
+		$(".multiedit").editable("/ajax", {
+			type: "textarea",
+			indicator: busy_img,
+			submit: "Apply",
+			rows: 4,
+			tooltip: "Click to edit..."
+		});
+			
+		// Date Picker Control
+		$(".datepicker").datepicker({dateFormat: 'D, d M yy'});
+	});
+	</script>
+	<ul>
+		<li><a href="#tabs-1">Home</a></li>
+		<li><a href="#tabs-3">Applications</a></li>
+		<li><a href="#tabs-2">Services</a></li>
+		<li><a href="#tabs-4">Resources</a></li>
+		<li><a href="#tabs-8">Network</a></li>
+		<li><a href="#tabs-5">Security</a></li>
+		<li><a href="#tabs-6">Monitoring</a></li>
+		<li><a href="#tabs-7">Options</a></li>
+	</ul>
+	<div id="tabs-1" class="content"></div>
+	<div id="tabs-2" class="content">
+	<h3>View Transactions</h3>
+	<p>from <input type="text" class="form datepicker">
+		to <input type="text" class="form datepicker"> 
+		<input type="button" value="View"/></p> 
+	</div>
+	<div id="tabs-3" class="content">
+		<div id="nav">
+			<h3><a href="#">Ewok Web Administration - Port 11000</a></h3>
+			<div>
+			<ul>
+				<li>Application Servers</li>
+				<li>Web Servers</li>
+			</ul>
+			</div>	
+			<h3><a href="#">Blog - Port 8080</a></h3>
+			<div>?</div>	
+			<h3><a href="#">Redoc - Port 8080</a></h3>
+			<div>?</div>	
+		</div>
+	</div>
+	<div id="tabs-4" class="content">
+		<ul>
+			<li><a href="#tabs-1a">Data Sources</a></li>
+			<li><a href="#tabs-2a">Message Queues</a></li>
+			<li><a href="#tabs-3a">Connectors</a></li>
+		</ul>
+		<div id="tabs-1a">Nested tab</div>
+		<div id="tabs-2a">Another Nested tab</div>
+		<div id="tabs-3a">Yet Another Nested tab</div>
+	</div>
+	<div id="tabs-5" class="content">
+		<ul>
+			<li><a href="#tabs-1b">SSL Certificates</a></li>
+			<li><a href="#tabs-2b">Trust Associations</a></li>
+			<li><a href="#tabs-3b">System Administration</a></li>
+		</ul>
+		<div id="tabs-1b">Nested tab</div>
+		<div id="tabs-2b">Another Nested tab</div>
+		<div id="tabs-3b">Yet Another Nested tab</div>		
+	</div>
+	<div id="tabs-6" class="content">
+	</div>
+	<div id="tabs-7" class="content">
+	<fieldset>
+	<legend>Profile</legend>
+	<table>
+	<tr>
+		<td class="label">Username</td>
+		<td id="username" class="editable bold">Escort DeFarge</td>
+	</tr>
+	<tr>
+		<td class="label">Show detail</td>
+		<td id="detail" class="selectable item">true</td>
+	</tr>
+	<tr>
+		<td class="label">Email Address</td>		
+		<td id="email" class="editable item">escort.defarge@gmail.com</td>
+	</tr>
+	<tr>
+		<td class="label">Postal Address</td>
+		<td id="address" class="multiedit item">34, Ivy Drive<br/>Sometown<br/>England</td>
+	</tr>
+	</table>
+	</fieldset>
+	</div>
+	<div id="tabs-8" class="content"></div>
+</div>

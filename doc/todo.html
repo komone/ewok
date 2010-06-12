@@ -1,36 +1,38 @@
 <html>
+<head>
 	<title>Ewok - TO DO </title>
-<style>
-body {
-margin: 40px;
-font-family: Tahoma, sans-serif;
-}
-h1 {
-	font-size:18pt;
-	margin-bottom: 2px;
-}
-h2 {
-	font-size:14pt;
-	margin-bottom: 2px;
-}
-ul {
-margin: 4px;
-background-color: #f4f4f4;
-border: 1px solid #ccc;
-}
-li {
-padding: 4px;
-font-size: 12pt;
-}
-.small {
-	font-size:9pt;
-	padding: 4px;
-	border:solid 1px #ddd;
-}
-</style>
+	<style>
+	body {
+		margin: 40px;
+		font-family: Tahoma, sans-serif;
+	}
+	h1 {
+		font-size:18pt;
+		margin-bottom: 2px;
+	}
+	h2 {
+		font-size:14pt;
+		margin-bottom: 2px;
+	}
+	ul {
+		margin: 4px;
+		background-color: #f4f4f4;
+		border: 1px solid #ccc;
+	}
+	li {
+		padding: 4px;
+		font-size: 12pt;
+	}
+	.small {
+		font-size:9pt;
+		padding: 4px;
+		border:solid 1px #ddd;
+	}
+	</style>
+</head>
 <body>
 <h1>Ewok 1.0/Wicket - Current Hit List</h1>
-<p class="small">Feb 18th 2010</p>
+<p class="small">Mar 15th 2010</p>
 <p>In general, these items are listed somewhat in order of priority...</p>
 
 <h2>ewok_installer</h2>
@@ -73,21 +75,9 @@ font-size: 12pt;
 <li>verify support for HTTP/1.0 in the codebase (main reason? NginX upstream / proxy-pass)</li>
 </ul>
 
-<h2>ewok_sdb</h2>
-<ul>
-<li>add query by attributes</li>
-<li>add datasource interface/gen_server</li>
-<li>update to latest AWS interface version</li>
-</ul>
-
 <h2>ewok_app</h2>
 <ul>
 <li>allow an "embedded" mode</li>
-</ul>
-
-<h2>ewok_sup</h2>
-<ul>
-<li>correctly register service instances by tcp port, e.g. ewok_http_srv_8080</li>
 </ul>
 
 <h2>ewok_session_srv</h2>
@@ -147,35 +137,32 @@ font-size: 12pt;
 
 <h2>ewok_data_srv</h2>
 <ul>
-<li>consider how best to provide pooled connections (where necessary)</li>
 <li>figure out "generic metadata" access via ewok_datasource interface</li>
 </ul>
 
-<h2>ewok_geoip_srv</h2>
+<h2>ewok_geoip</h2>
 <ul>
-<li>convert egeoip into an ewok_service</li>
-<li>implement country lookup/gen_server (use mnesia/default ds)</li>
+<li>add implement country lookup</li>
 </ul>
 
-<h2>Don't forget...</h2>
-<p>...why the following are NOT on the list: SSL and Port 80 (by design, ewok should always use a downstream proxy such as NginX, Litespeed, Apache), more...?</p>
+<h2>ewok_snmp</h2>
+<ul>
+<li>complete simple traps</li>
+</ul>
 
 <h2>...and documentation</h2>
 <p>installation/deployment; overview and design (UML process, seq, deployment diags); administration guide; tutorials; examples; downstream http server configuration examples for NginX and Apache; 'redoc' api documentation/reference</p>
 
 <h2>Ewok 1.1/Teebo</h2>
 <ul>
-<li>Consider a modified "ewgi" web app interface (the offered ewgi i/f isn't mature enough)</li>
 <li>Add support for distributed deployment (this... sounds... HARD)</li>
-<li>Add SNMP traps/support</li>
-<li>implement city-level lookup for geoip</li>
-<li>add riak/osmos datasource</li>
+<li>add riak datasource</li>
 <li>add couchdb datasource</li>
-<li>add postgresql datasource</li>
 <li>add mysql datasource</li>
 <li>add Oracle DS</li>
 <li>add blog application</li>
 <li>add SMS interface</li>
+<li>Consider a modified "ewgi" web app interface (the offered ewgi i/f isn't mature enough)</li>
 <li>webmail...??</li>
 </ul>
 

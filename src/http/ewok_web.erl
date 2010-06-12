@@ -60,7 +60,7 @@ render(_Request, Session, Status, Spec) ->
 		proplists:get_value(head, Spec, [])
 	],
 	{Y, _, _} = date(),
-	Year = ewok_text:value(Y),
+	Year = ewok_text:encode(Y),
 	Body = [
 		#'div'{id="top", body=[
 			#img{id="logo", src="/images/ewok-logo.png"},
@@ -72,7 +72,7 @@ render(_Request, Session, Status, Spec) ->
 		]},
 		#'div'{id="footer", body=[
 			#hr{},
-			#p{body=[<<"Copyright &copy; 2008-">>, Year, <<" Simulacity.com. All Rights Reserved.">>]}
+			#p{body=[<<"Copyright &copy; 2009-">>, Year, <<" Simulacity.com. All Rights Reserved.">>]}
 		]}
 	],
 	%

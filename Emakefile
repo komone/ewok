@@ -6,9 +6,10 @@
 
 %% Compile behaviour definitions first
 {"src/ewok_service.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
-{"src/datasource/ewok_datasource.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/db/ewok_datasource.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 {"src/http/ewok_http_resource.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 %{"src/http/ewok_web_application.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/usp/usp_service.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 
 %% Then everything else 
 {"src/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.

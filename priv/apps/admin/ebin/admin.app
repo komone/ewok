@@ -6,6 +6,7 @@
 		ewok_admin_web 
 	]},
 	{registered, []},
+	{applications, [ewok]},
 	%% {mod, {ewok_admin, []}},
 	{env, [
 		{web_app, [
@@ -16,7 +17,7 @@
 			{login, "/admin/login"},
 			{roles, [{ewok,admin}]},
 			{route, "/admin/*", ewok_web_admin, ewok, [{ewok, admin}]},
-			{route, "/admin/login", ewok_login_handler, ewok, any}	
+			{route, "/admin/login", ewok_login_handler, ewok, any}
 		]}
 	]}
 ]}.

@@ -24,7 +24,7 @@
 %% more 'grockable' markup from ESP.
 
 %%
--record(page, {doctype=xhtml, title, head=[], body=[]}).
+-record(page, {doctype=html, title, head=[], body=[]}).
 %% Deletable?
 %-record(esp, {page=[], handler, request, session}).
 %% Deletable?
@@ -42,12 +42,12 @@
 %% NOTE: "There is no need to use the language or type attributes. It is the 
 %%  server, not the script tag, that determines the MIME type." 
 %%  <http://javascript.crockford.com/code.html> 
--record(script, {fields=[src], src}).
+-record(script, {fields=[src, type, body], src, type, body=[]}).
 
 -record(body,   {fields=[body], body}).
 
--record('div',  {fields=[id, class, body], id, class, body}).
--record(span,   {fields=[id, class, body], id, class, body}).
+-record('div',  {fields=[id, class, body], id, class, body=[]}).
+-record(span,   {fields=[id, class, body], id, class, body=[]}).
 
 -record(h1,     {fields=[body], body}).
 -record(h2,     {fields=[body], body}).
@@ -77,10 +77,10 @@
 -record(th,       {fields=[body], body}).
 -record(td,       {fields=[class, body], class, body}).
 
--record(form,     {fields=[method, action, body], method=post, action, body}). %%
--record(input,    {fields=[label, type, name, class, value], label, type=text, name, class, value}).
+-record(form,     {fields=[id, method, action, body], id, method, action, body}). %%
+-record(input,    {fields=[id, label, type, name, class, value], id, label, type=text, name, class, value}).
 -record(textarea, {fields=[name, body], name, body=[]}).
-
+-record(label,    {fields=[for, body], for, body=[]}).
 %%
 %% ESP Custom Components and AJAX Controls
 %% 

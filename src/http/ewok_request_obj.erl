@@ -1,16 +1,16 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_request_obj, [Socket, Timeout, Method, Url, Version, Headers, MaxHeaders]).
 
@@ -18,15 +18,11 @@
 -include("ewok_system.hrl").
 -include_lib("kernel/include/file.hrl").
 
--export([get_range/0, content_length/0, socket/0, timeout/0, 
-	max_headers/0, remote_ip/0, version/0, url/0, headers/0, 
-	header/1, content/0, path/0, method/0, realm/0, set_realm/1]).
--export([recv/1, recv/2, should_close/0]).
--export([cookie/0, cookie/1, parameter/1, parameters/0]).
--export([reset/0, websocket/0]).
-
-%% expose for test only
--compile(export_all).
+-export([socket/0, get_range/0, content_length/0, timeout/0, 
+	remote_ip/0, version/0, url/0, headers/0, header/1, max_headers/0, 
+	content/0, path/0, pathlist/0, method/0, realm/0, set_realm/1]).
+-export([cookies/0, cookie/1, parameter/1, parameters/0]).
+-export([should_close/0, reset/0, websocket/0]).
 
 %%
 -define(REALM, www_request_realm).
@@ -49,23 +45,26 @@
 %% call also breaks the write-once contract with the Process Dictionary, 
 %% and thus may invalidate the entire approach of using 'pseudo-objects'
 %% to improve the development API... see the alternative idea of an 
-%% ewok_http_connection handler that is a gen_event process.
+%% ewok_http_connection handler that is a gen_event process...
+%% NOTE!!! ...or maybe even better, turn the http session into a gen_fsm.
 reset() ->
-    [erase(K) || K <- ?CACHE].
+    [erlang:erase(K) || K <- ?CACHE].
 	
-socket()      -> Socket.
+socket()      -> Socket. % required for response
 timeout()     -> Timeout.
 version()     -> Version.
 url()         -> Url.
 method()      -> Method.
 headers()     -> Headers.
-max_headers() -> MaxHeaders.
+max_headers() -> MaxHeaders.% required for keep-alive
 
 %%
 websocket() ->
 	case erlang:get(?WEB_SOCKET) of
-	undefined -> erlang:put(?WEB_SOCKET, true);
-	Value -> Value
+	undefined -> 
+		erlang:put(?WEB_SOCKET, true);
+	Value -> 
+		Value %% return the raw socket here?
 	end.
 	
 %%
@@ -75,10 +74,11 @@ remote_ip() ->
 		IP = ewok_http:get_remote_ip(Socket, header(<<"X-Forwarded-For">>)),
 		erlang:put(?REMOTE_IP, IP),
 		IP;
-	IP -> IP
+	IP -> 
+		IP
 	end.
 
-%% @private
+%%
 content_length() ->
 	case erlang:get(?CONTENT_LENGTH) of
 	undefined ->
@@ -86,8 +86,10 @@ content_length() ->
 			case header(transfer_encoding) of
 			undefined ->
 				case header(content_length) of
-				undefined -> 0;
-				Value -> list_to_integer(binary_to_list(Value))
+				undefined -> 
+					0;
+				Value -> 
+					list_to_integer(binary_to_list(Value))
 				end;
 			<<"chunked">> -> 
 				chunked;			
@@ -96,31 +98,39 @@ content_length() ->
 			end,
 		erlang:put(?CONTENT_LENGTH, Length),
 		Length;
-	Length -> Length
+	Length -> 
+		Length
 	end.
 
 %%
 content() -> 
     case header(expect) of
-	<<"100-continue">> -> ewok_response:continue(THIS);
-	_ -> ok %% expectation failed...
+	<<"100-continue">> -> 
+		ewok_response:continue(THIS);
+	_ -> 
+		ok %% expectation failed...
     end,
 	case erlang:get(?CONTENT) of
 	undefined -> 
 		Body = 
 			case content_length() of
-			undefined -> <<>>;
-			X when X =:= 0 -> <<>>;
-			X when is_integer(X) -> recv(X);
+			undefined -> 
+				<<>>;
+			X when X =:= 0 -> 
+				<<>>;
+			X when is_integer(X) -> 
+				recv(X, ?IDLE_TIMEOUT);
 			chunked ->
 				read_chunked_body(?MAX_RECV_BODY, []);
-			_ -> {error, not_implemented}
+			_ -> 
+				{error, not_implemented}
 			end,
 		% NOTE: Is it really such a good idea to store received content
 		% in the PD? If not, where does this go...
-		put(?CONTENT, Body),
+		erlang:put(?CONTENT, Body),
 		Body;
-	Value -> Value
+	Value -> 
+		Value
 	end.
 
 %%
@@ -158,12 +168,15 @@ path() ->
 		%% a few dependencies we need to address before removing {return, list} 
 		%% from this call.
 		case ewok_text:split(Url, <<"\\?">>, 2) of
-		[Path, _Query] -> Path;
-		[Path] -> Path
+		[Path, _Query] -> 
+			Path;
+		[Path] -> 
+			Path
 		end,
 		put(?PATH, Path),
 		Path;
-	Path -> Path
+	Path -> 
+		Path
 	end.
 %
 pathlist() ->	
@@ -179,33 +192,40 @@ header(K) when is_atom(K) ->
 %	end;
 header(K) when is_list(K) ->
 	case proplists:get_value(list_to_binary(K), Headers) of
-	undefined -> undefined;
-	Value -> binary_to_list(Value)
+	undefined -> %% this is a bit suspect 
+		undefined;
+	Value -> 
+		binary_to_list(Value)
 	end;
 header(K) when is_binary(K) ->
 	proplists:get_value(K, Headers).
 
 %%
 cookie(Key) when is_list(Key) ->
-	case proplists:get_value(list_to_binary(Key), cookie()) of 
-	undefined -> undefined;
-	Value -> binary_to_list(Value)
+	case proplists:get_value(list_to_binary(Key), cookies()) of 
+	undefined -> %% this is a bit suspect
+		undefined;
+	Value -> 	
+		binary_to_list(Value)
 	end;
 cookie(Key) when is_binary(Key) ->
-	proplists:get_value(Key, cookie()).
+	proplists:get_value(Key, cookies()).
 
 % LATER: also implement "Cookie2"
-cookie() -> % [{string(), string{}}] | undefined
+cookies() -> % [{string(), string{}}] | undefined
 	case erlang:get(?COOKIE) of
 	undefined ->
 		Cookie = 
 			case header(<<"Cookie">>) of 
-			undefined -> [];
-			Value -> parse_cookie(Value)
+			undefined -> 
+				[];
+			Value -> 
+				parse_cookie(Value)
 			end,
-		put(?COOKIE, Cookie),
+		erlang:put(?COOKIE, Cookie),
 		Cookie;
-	Cookie -> Cookie
+	Cookie -> 
+		Cookie
 	end.
 %%
 parse_cookie(Value) ->
@@ -216,8 +236,10 @@ parse_cookie(Value) ->
 %% Query String from GET ? and POST of WWW Forms
 parameter(Key) when is_list(Key) ->
 	case proplists:get_value(list_to_binary(Key), get_query()) of 
-	undefined -> undefined;
-	Value -> binary_to_list(Value)
+	undefined -> 
+		undefined;
+	Value -> 
+		binary_to_list(Value)
 	end;
 %
 parameter(Key) when is_binary(Key) ->
@@ -232,34 +254,46 @@ get_query() ->
 		Query = parse_query(Method),
 		undefined = put(?QUERY, Query),
 		Query;
-	Value -> Value
+	Value -> 
+		Value
 	end.
 %%
 parse_query('GET') ->
 	case ewok_text:split(Url, <<"\\?">>, 2) of
-	[_, QS] -> parse_query(QS);
-	_ -> []
+	[_, QS] -> 
+		parse_query(QS);
+	_ -> 
+		[]
 	end;
 parse_query('POST') ->
 	case header(content_type) of
 	<<"application/x-www-form-urlencoded">> -> 
 		case content() of
-		QS when is_binary(QS) -> parse_query(QS);
-		_ -> []
+		QS when is_binary(QS) -> 
+			parse_query(QS);
+		_ -> 
+			[]
 		end;
 	<<"multipart/form-data", _/binary>> ->
 		%% TODO: Take boundary from this header
 		parse_multipart(content());
-	_ -> []
+	_ -> 
+		[]
 	end;
 parse_query(QS) ->
-	Props = [X || X <- ewok_text:split(QS, <<"&">>)],
-	Pairs = [list_to_tuple(ewok_text:split(X, <<"=">>)) || X <- Props],
-	[{ewok_http:url_decode(X), ewok_http:url_decode(Y)} || {X, Y} <- Pairs].	
+	Params = [X || X <- ewok_text:split(QS, <<"&">>)],
+	Props = [list_to_tuple(ewok_text:split(X, <<"=">>)) || X <- Params],
+	F = fun 
+		({X, Y}) ->
+			{ewok_url_codec:decode(X), ewok_url_codec:decode(Y)};
+		({X}) ->
+			{ewok_url_codec:decode(X), true}
+		end,
+	[F(X) || X <- Props].
 
-%%
-recv(Length) -> 
-	recv(Length, ?IDLE_TIMEOUT).
+
+%% Internal API -- move these out of here...
+
 %% Timeout in msec.
 recv(Length, IdleTimeout) ->
     case ewok_socket:recv(Socket, Length, IdleTimeout) of
@@ -270,6 +304,7 @@ recv(Length, IdleTimeout) ->
 		exit(normal)
     end.
 
+%%
 read_chunked_body(Max, Acc) ->
     case read_chunk_length() of
 	0 ->
@@ -316,11 +351,11 @@ read_chunk(0) ->
 %%
 read_chunk(Length) ->
     case ewok_socket:recv(Socket, 2 + Length, ?IDLE_TIMEOUT) of
-	{ok, <<Chunk:Length/binary, "\r\n">>} -> Chunk;
-	_ -> exit(normal)
+	{ok, <<Chunk:Length/binary, "\r\n">>} -> 
+		Chunk;
+	_ -> 
+		exit(normal)
     end.
-
-%% Internal API
 
 %% MULTIPART FORM-DATA
 %% Primarily file upload...
@@ -357,11 +392,7 @@ parse_multipart_disposition(Value) ->
 	[<<"form-data">> | Parts] = ewok_text:split(Value, <<$;>>),
 	Pairs = [list_to_tuple(ewok_text:split(X, <<"=">>)) || X <- Parts],
 	Pairs1 = [{ewok_text:trim(X), ewok_text:trim(Y)} || {X, Y} <- Pairs],
-	[{ewok_http:url_decode(X), ewok_http:url_decode(ewok_text:unquote(Y))} || {X, Y} <- Pairs1].
-
-%
-strip_quotes(X) ->
-	re:replace(X, <<$">>, <<>>, [global, {return, binary}]).
+	[{ewok_url_codec:decode(X), ewok_url_codec:decode(ewok_text:unquote(Y))} || {X, Y} <- Pairs1].
 
 %%
 parse_range_request(RawRange) when is_list(RawRange) ->

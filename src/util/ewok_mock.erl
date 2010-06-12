@@ -4,7 +4,7 @@
 
 request() ->
 	Req = ewok_request_obj:new(undefined, 30000,
-		'GET', <<"/mock/test/file.html?foo=bar">>, <<"1.1">>, [], 99),
+		'GET', <<"/mock/test/file.html?wsdl">>, <<"1.1">>, [], 99),
 	Req:set_realm(ewok),
 	Req.
 

@@ -57,7 +57,7 @@ init(_Opts) ->
 	_SnmpAgentPriv = ewok_identity:keystore(snmp_agent_priv),
 	_SnmpManagerAuth = ewok_identity:keystore(snmp_manager_auth),
 	_SnmpManagerPriv = ewok_identity:keystore(snmp_manager_priv),
-	
+	%% TODO: more...
 	{ok, #state{}}.
 
 %%

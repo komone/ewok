@@ -30,7 +30,7 @@
 
 -define(SERVER, ?MODULE).
 -define(ETS, ?MODULE).
--define(DEPENDS, [ewok_data_srv, ewok_identity_srv]).
+-define(DEPENDS, [ewok_identity_srv]).
 
 %%
 %% ewok_service Callbacks

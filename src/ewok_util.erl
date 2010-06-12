@@ -1,16 +1,16 @@
-%%%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_util).
 
@@ -122,16 +122,15 @@ to_iso8601({{Year, Month, Day}, {Hour, Min, Sec}}, Zone) ->
 	io_lib:format(ISO_8601, [Year, Month, Day, Hour, Min, Sec, Zone]).
 	
 %
-ftime(Fun) ->
-	ftime(Fun, 1).
-ftime(Fun, Repeats) when is_function(Fun), is_integer(Repeats) ->
+ftime({M, F, A}) ->
+	ftime({M, F, A}, 1).
+ftime({M, F, A}, Repeats) when is_integer(Repeats) ->
 	{A1, B1, C1} = erlang:now(),
-    exec_function(Fun, Repeats),
+    exec_function({M, F, A}, Repeats),
 	{A2, B2, C2} = erlang:now(),
-    Time = ((A2-A1) * 1000000 + (B2-B1)) * 1000 + (C2-C1) / 1000,
-	io:format("~p ms~n", [Time]).
+	((A2-A1) * 1000000 + (B2-B1)) * 1000 + (C2-C1) / 1000.
 %
 exec_function(_, 0) -> ok;
-exec_function(F, Repeats) ->
-	F(),
-	exec_function(F, Repeats - 1).
+exec_function({M, F, A}, Repeats) ->
+	apply(M, F, A),
+	exec_function({M, F, A}, Repeats - 1).

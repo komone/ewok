@@ -1,3 +1,16 @@
+%% Copyright 2009-2010 Steve Davis <steve@simulacity.com>
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 {application, ewok, [
 	{description, "EWOK SIM 100 Beta"},
 	{vsn, "1.0.0"},
@@ -8,117 +21,67 @@
 		ewok_util, ewok_workflow_sup, ewok_smtp_srv 
 	]},
 	{registered, [
-		ewok_sup,
-		ewok_cache_srv,
-		ewok_data_srv,
-		ewok_deployment_srv,
-		ewok_geoip,
-		ewok_http_srv,
-		ewok_scheduler_srv,
-		ewok_sdb,
-		ewok_session_srv,
-		ewok_smtp_srv,
-		ewok_umtp,
-		ewok_workflow_sup
+		ewok_cache_srv, ewok_data_srv, ewok_deployment_srv, ewok_geoip,
+		ewok_http_srv, ewok_scheduler_srv, ewok_sdb, ewok_session_srv,
+		ewok_smtp_srv, ewok_sup, ewok_umtp, ewok_workflow_sup
 	]},
-	
-	%% The args for ewok_sup control service load order. Don't change this 
-	%% order unless you are sure that you know what you are doing!
+	%% 
+	{applications, [kernel, stdlib]},
+	{included_applications, [crypto, mnesia]},
+	%% 
 	{mod, {ewok_app, [
-		ewok_identity_srv,
-		ewok_scheduler_srv,
 		ewok_cache_srv, % non-transactional utility cache
-		ewok_data_srv, % external datasources
-		ewok_sdb,
+		ewok_identity_srv,
 		ewok_session_srv,
-		% ewok_workflow_sup,
+		ewok_scheduler_srv,
+		ewok_workflow,
 		ewok_deployment_srv,
 		ewok_geoip,
 		{ewok_http_srv, 8080}
 		% {ewok_smtp_srv, 25},
 		% {ewok_umtp, 30}
 	]}},
-	%% 
-	{applications, [kernel, stdlib]},
+%%
+%	{start_phases, [
+%		{core, []}, 
+%		{extensions, []},
+%		{inet, []}
+%	]},
 	%% 
 	{env, [
 		{runmode, development},
 		{autoinstall, true}, 
 		{autodeploy, [admin]},
-		{geoip, [{data_file, "./priv/data/geoip/GeoLiteCity.dat.gz"}]},
-		%{server, [
-		%	{ip, any},
-		%	{hostname, "localhost"}, %% unused
-		%	{runmode, development},
-		%% attempt to correctly install ewok when the application is 
-		%% started, if the install doesn't validate. If this is 'false'
-		%% then the call ewok:install() must be made before running the
-		%% application server.
-		%	{boot_log, "./boot.log"}, 
-		%	{log_dir, "./priv/log"},
-		%	{data_dir, "./priv/data"}
-		% ]},
+		{geoip, [{data_file, "./priv/data/geoip/GeoLiteCity.dat.gz"}]}
+		% {ip, any},
+		% {hostname, "localhost"}, %% unused
+		% {boot_log, "./boot.log"}, 
+		% {log_dir, "./priv/log"},
+		% {data_dir, "./priv/data"},
 		
-		%% This needs to be cut down, or perhaps removed entirely.
-		{web_app, [
-			{app_path, "/"}, % used for static file urls?
-			
+%% This needs to be removed entirely.
+%		{web_app, [
+%			{app_path, "/"}, % used for static file urls?
+%			
 			%% realm-based role... this probably shouldn't be in here at all
-			{login, "/login"}, 
+%			{login, "/login"}, 
 			
-			{doc_root, "./priv/www"},
-			{template_root, "./priv/esp"},
-			{index_file, "index.html"},
+%			{doc_root, "./priv/www"},
+%			{template_root, "./priv/esp"},
+%			{index_file, "index.html"},
 			
-			{roles, []},
+%			{roles, []},
 			%% -record(route, {path, handler, realm, roles=[]}).
-			{route, default, ewok_file_handler, ewok, any},
-			{route, "/", ewok_home, ewok, any},
-			{route, "/app/login", ewok_world, ewok, any},
-			{route, "/cgi-bin/login.cgi", ewok_world, ewok, any},
-			{route, "/home", ewok_home, ewok, any},
-			{route, "/ajax", ewok_print_handler, ewok, any},
-			{route, "/login", ewok_login_handler, ewok, any},
-			{route, "/activation", ewok_activation_handler, ewok, any},
-			{route, "/registration", ewok_registration_handler, ewok, any},
-			{route, "/websocket", ewok_websocket_handler, ewok, any}
-		]},
-		
-		%% maybe move to a seperate def file...
-		{mimetypes, [
-			{default, "application/x-octet-stream"},
-			{".bmp",  "image/bmp"},
-			{".bz2",  "application/x-bzip2"},
-			{".css",  "text/css"},
-			{".csv",  "text/csv"},
-			{".doc",  "application/msword"},
-			{".esp",  "application/xhtml+xml"},
-			{".exe",  "application/octet-stream"},
-			{".gif",  "image/gif"},
-			{".gz",   "application/x-gzip"},
-			{".html", "text/html"},
-			{".ico",  "image/x-icon"},
-			{".jpg",  "image/jpeg"},
-			{".js",   "application/x-javascript"},
-			{".json", "application/json"},
-			{".m3u",  "audio/x-mpegurl"},
-			{".m4a",  "audio/mpeg"},
-			{".mov",  "video/quicktime"},
-			{".mp3",  "audio/mpeg"},
-			{".pdf",  "application/pdf"},
-			{".png",  "image/png"},
-			{".rtf",  "application/rtf"},
-			{".swf",  "application/x-shockwave-flash"},
-			{".tar",  "application/x-tar"},
-			{".tgz",  "application/x-gzip"},
-			{".txt",  "text/plain"},
-			{".ubf",  "application/x-ubf"},
-			{".xhtml", "application/xhtml+xml"},
-			{".xls",  "application/vnd.ms-excel"},
-			{".xml",  "application/xml"},		
-			{".wav",  "audio/x-wav"},
-			{".z",    "application/x-compress"},
-			{".zip",  "application/zip"}
-		]}
+%			{route, default, ewok_file_handler, ewok, any},
+%			{route, "/", ewok_home, ewok, any},
+%			{route, "/app/login", ewok_world, ewok, any},
+%			{route, "/cgi-bin/login.cgi", ewok_world, ewok, any},
+%			{route, "/home", ewok_home, ewok, any},
+%			{route, "/ajax", ewok_print_handler, ewok, any},
+%			{route, "/login", ewok_login_handler, ewok, any},
+%			{route, "/activation", ewok_activation_handler, ewok, any},
+%			{route, "/registration", ewok_registration_handler, ewok, any},
+%			{route, "/websocket", ewok_websocket_handler, ewok, any}
+%		]}
 	]}
 ]}.

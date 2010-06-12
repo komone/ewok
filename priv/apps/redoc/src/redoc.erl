@@ -9,7 +9,7 @@
 
 -export([run/0]).
 
--record(ibeam, {mod, version, 'author', specs=[]}).
+-record(ibeam, {mod, version, author, specs=[]}).
 -record(ispec, {function, usage=unknown, spec, comment="undocumented"}).
 
 application_info() -> [].
@@ -88,7 +88,7 @@ generate_html([M|T], Acc, DocPath) when is_record(M, ibeam) ->
 	"<a name=\"", Module, "\"/>\n",
 	"<h3>", Module, "</h3>\n", 
 	"<p><em><a href=\"../src/", Module, ".erl\">src</a> ",
-	io_lib:format("~p version: ~p", [M#ibeam.'author', M#ibeam.version]), "</em></p>\n", 
+	io_lib:format("~p version: ~p", [M#ibeam.author, M#ibeam.version]), "</em></p>\n", 
 	"<table width=\"90%\" cellspacing=\"0\" cellpadding=\"4\" border=\"1\">\n",
 	"<thead><tr><th>Function</th><th>Returns</th><th>Usage</th><th>Comment</th></tr></thead>\n",
 	"<tbody>\n",

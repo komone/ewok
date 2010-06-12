@@ -15,50 +15,70 @@
 -module(ewok_text).
 -include("ewok.hrl").
 
--export([trim/1, split/2, split/3, replace/3, unquote/1, 
-	is_upper/1, is_lower/1, to_upper/1, to_lower/1,
-	value/1, hex/1, unhex/1, hex2int/1]).
+-export([encode/1, trim/1, split/2, split/3, replace/3, strip/2, remove/2, unquote/1, 
+	is_upper/1, is_lower/1, to_upper/1, to_lower/1, eval/1, match/2]).
+
+%%
+encode(X) when is_binary(X)  -> 
+	X;
+encode(X) -> 
+	list_to_binary(io_lib:format("~p", [X])).
+
+%% Currently, just simple integers and floats
+eval(X) ->
+	X1 = trim(X),
+	case re:run(X1, <<"^-?[0-9]*\\.[0-9]+?$">>) of
+	{match, _} ->
+		list_to_float(binary_to_list(<<X1/binary>>));
+	nomatch ->
+		case re:run(X1, <<"^-?[0-9]+$">>) of
+		{match, _} ->
+			list_to_integer(binary_to_list(X1));
+		nomatch ->
+			undefined
+		end
+	end.
+
+%%
+match(Bin, Regex) ->
+	case re:run(Bin, Regex) of
+	{match, _} ->
+		true;
+	nomatch ->
+		false
+	end.
 
 %%
 split(Bin, Regex) ->
 	split(Bin, Regex, []).
 split(Bin, Regex, Parts) when is_integer(Parts) ->
 	split(Bin, Regex, [{parts, Parts}]);
+split(Bin, Regex, all) ->
+	re:split(Bin, Regex, []);
 split(Bin, Regex, Opts) ->
 	[X || X <- re:split(Bin, Regex, Opts), X =/= <<>>].	
 
 %%
 replace(Bin, Regex, Value) ->
 	re:replace(Bin, Regex, Value, [{return, binary}, global]).
-
+%%
+strip(Bin, Regex) ->
+	replace(Bin, Regex, <<>>).
+%% @deprecated: use strip/2
+remove(Bin, Regex) ->
+	replace(Bin, Regex, <<>>).
 %%
 unquote(Bin) ->
 	replace(Bin, <<"^\"|\"$">>, <<"">>).
 
 %% hmmm
 trim(S) when ?is_string(S) ->
-	string:strip(S);
+	trim(list_to_binary(S));
 trim(S) when is_binary(S) -> 
 	% @thanks Seth Falcon
 	replace(S, <<"^\\s+|\\s+$">>, <<"">>);
 trim(S) -> 
 	S.
-
-%%
-value(X) when is_binary(X)  -> X;
-value(X) when is_atom(X)    -> atom_to_binary(X, utf8);
-value(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
-value(X) when is_float(X)   -> list_to_binary(float_to_list(X));
-%value(X) when ?is_string(X) -> list_to_binary(X);
-value(X) when is_tuple(X)   -> list_to_binary(io_lib:format("~p", [X]));
-value(X) -> list_to_binary(io_lib:format("~p", [X])).
-
-%% in ewok_xml the above is...
-%makeio(X) when is_integer(X) -> makeio(integer_to_list(X));
-%makeio(X) when is_float(X)   -> makeio(float_to_list(X));
-%makeio(X) when is_atom(X)    -> atom_to_binary(X, utf8);
-%makeio(X) when is_list(X)    -> list_to_binary(X);
-%makeio(X) when is_binary(X)  -> X.
 
 %%
 is_upper(<<C>>) -> is_upper(C);
@@ -109,38 +129,3 @@ lowercase(C) when C >= $A, C =< $Z -> C + 32;
 lowercase(C) when C >= 16#C0, C =< 16#D6 -> C + 32;
 lowercase(C) when C >= 16#D8, C =< 16#DE -> C + 32;
 lowercase(C) -> C.
-
-%%
-hex(Bin) when is_binary(Bin) ->
-	hex(Bin, <<>>).
-hex(<<A:4, B:4, Rest/binary>>, Acc) ->
-	U = hexdigit(A),
-	L = hexdigit(B),
-	hex(Rest, <<Acc/binary, U, L>>);
-hex(<<>>, Acc) ->
-	Acc.
-
-% @private
-hexdigit(D) when D >= 0, D =< 9 -> $0 + D;
-hexdigit(D) when D >= 10, D =< 16 -> $a + D - 10.
-
-%%
-hex2int(Bin) when is_binary(Bin) ->
-	hex2int(Bin, 0).
-hex2int(<<A, Rest/binary>>, Acc) ->
-	hex2int(Rest, unhexdigit(A) + Acc * 16);
-hex2int(<<>>, Acc) ->
-	Acc.
-
-unhex(Bin) when is_binary(Bin) ->
-	unhex(Bin, <<>>).
-unhex(<<A, B, Rest/binary>>, Acc) ->
-	I = unhexdigit(A) * 16 + unhexdigit(B),
-	unhex(Rest, <<Acc/binary, I>>);
-unhex(<<>>, Acc) ->
-	Acc.
-
-% @private
-unhexdigit(H) when H >= $0, H =< $9 -> H - $0;
-unhexdigit(H) when H >= $a, H =< $f -> H - $a + 10;
-unhexdigit(H) when H >= $A, H =< $F -> H - $A + 10.

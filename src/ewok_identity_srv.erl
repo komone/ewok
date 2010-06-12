@@ -173,7 +173,8 @@ format_uuid(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48, _Rest/binary>>, V) ->
 
 %%
 keystore_path(App) ->
-	ewok_file:path([ewok_util:appdir(App), ewok_util:get_env(data_dir, ?DATA_DIR), ?KEYSTORE_FILE]).
+	DataDir = ewok_util:get_env(data_dir, ?DATA_DIR),
+	ewok_file:path([ewok_util:appdir(App), DataDir, ?KEYSTORE_FILE]).
 %%
 save_keystore(App, SecretKey, Keystore) ->
 	Path = keystore_path(App),

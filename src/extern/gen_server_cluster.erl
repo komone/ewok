@@ -125,17 +125,7 @@ unlink(Name, Pid) ->
     gen_server:cast({global,Name}, {unlink, Pid}).
 
 
-%%====================================================================
 %% gen_server callbacks
-%%====================================================================
-
-%%--------------------------------------------------------------------
-%% Function: init(Args) -> {ok, State} |
-%%                         {ok, State, Timeout} |
-%%                         ignore               |
-%%                         {stop, Reason}
-%% Description: Initiates the server
-%%--------------------------------------------------------------------
 
 %% Called by global server at startup.
 init({initGlobal, Name, TargetModule, TargetArgs}) ->
@@ -166,16 +156,6 @@ init({initLocal, Name}) ->
     process_flag(trap_exit, true),
     State = gen_server:call({global,Name}, init_local_server_state),
     {ok,State}.
-    
-%%--------------------------------------------------------------------
-%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
-%%                                      {reply, Reply, State, Timeout} |
-%%                                      {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, Reply, State} |
-%%                                      {stop, Reason, State}
-%% Description: Handling call messages
-%%--------------------------------------------------------------------
 
 %% Called by global server to get the target state.
 handle_call(get_target_state, _From, State) ->
@@ -214,14 +194,6 @@ handle_call(stopByTarget=Reason, _From, State) ->
 handle_call(Request, From, State) ->
     delegate_to_target(State, handle_call, [Request, From, 
 					    State#state.targetState]).
-
-
-%%--------------------------------------------------------------------
-%% Function: handle_cast(Msg, State) -> {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, State}
-%% Description: Handling cast messages
-%%--------------------------------------------------------------------
 
 %% Called by local server to update its state.
 %% The update function is sent by the global server and returns the new state
@@ -264,14 +236,6 @@ handle_cast({unlink,Pid}, State) ->
 %% Called by global or local server and delegates the request to the target.
 handle_cast(Msg, State) ->
     delegate_to_target(State, handle_cast, [Msg, State#state.targetState]).
-
-
-%%--------------------------------------------------------------------
-%% Function: handle_info(Info, State) -> {noreply, State} |
-%%                                       {noreply, State, Timeout} |
-%%                                       {stop, Reason, State}
-%% Description: Handling all non call/cast messages
-%%--------------------------------------------------------------------
 
 %% Called by all local servers when the global server has died.
 %% Each local server tries to register itself as the new global one,
@@ -335,35 +299,19 @@ handle_info({'EXIT', Pid, _Reason}=Info, State) ->
 handle_info(Info, State) ->
     delegate_to_target(State, handle_info, [Info, State#state.targetState]).
 
-
-%%--------------------------------------------------------------------
-%% Function: terminate(Reason, State) -> void()
-%% Description: This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any necessary
-%% cleaning up. When it returns, the gen_server terminates with Reason.
-%% The return value is ignored.
-%%--------------------------------------------------------------------
-
 %% Called by global or local server when it is about to terminate.
 terminate(Reason, State) ->
     TargetModule = State#state.targetModule,
     TargetModule:terminate(Reason,  State#state.targetState),
     io:format("Server ~p stopped.~n", [State#state.name]).
 
-
-%%--------------------------------------------------------------------
-%% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% Description: Convert process state when code is changed
-%%--------------------------------------------------------------------
-
 %% Currently not supported.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
+%%
+%% Internal functions
+%%
 
 %% Called by global server to delegate a gen_server callback function
 %% (handle_call, etc.) to the target module. The result returned by the

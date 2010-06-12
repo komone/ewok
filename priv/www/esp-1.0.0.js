@@ -61,6 +61,7 @@ $(function () {
 		});
 		control.find(".edit").show();
 	});
+	
 	// Date Picker Control
     $(".datepicker").datepicker({dateFormat: 'D, d M yy'});
 });

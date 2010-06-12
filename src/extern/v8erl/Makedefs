@@ -1,0 +1,48 @@
+# -*- mode: makefile -*-
+# Makefile definitions for v8erl
+
+#Build environment info
+CPP := g++
+ARCH := $(shell uname -m | tr -s " ") #x86_64, x86, ppc, ...
+KERNEL := $(shell uname -s | tr -s " ") #Linux, Darwin, ...
+LIB_EXT := so
+
+#Build environment pointers
+LIB_DIR := ./lib
+SRC_DIR := ./src
+ERL_DIR := ./erl
+EBIN_DIR := ./ebin
+
+#OS specific settings. 
+ifeq ($(strip $(KERNEL)),Darwin)
+LDFLAGS = -Wall -fPIC -shared -flat_namespace -undefined suppress -m32
+else
+LDFLAGS = -Wall -fPIC -shared -flat_namespace -undefined
+endif
+
+#Is ERL_ROOT defined?  If not we have to guess....
+ifeq (${ERL_ROOT},)
+ERL_INC += -I/usr/lib/erlang/usr/include
+ERL_INC += -I/usr/local/lib/erlang/usr/include
+ERL_INC += -I/opt/local/lib/erlang/usr/include
+
+EI_LIB += -L/usr/lib/erlang/lib/erl_interface-3.5.9/lib
+EI_LIB += -L/usr/local/lib/erlang/lib/erl_interface-3.5.9/lib
+EI_LIB += -L/opt/local/lib/erlang/lib/erl_interface-3.5.9/lib
+else
+EI_ROOT = ${ERL_ROOT}/lib/erl_interface-3.5.9
+EI_INC = ${EI_ROOT}/include
+ERL_INC = -I${ERL_ROOT}/usr/include
+EI_LIB = -L${EI_ROOT}/lib
+endif
+
+#Is V8_ROOT defined?  If not we have to guess....
+ifeq (${V8_ROOT},)
+V8_INC += -I./v8/include
+V8_INC += -I../v8/include
+
+V8_LIB += -L./v8
+V8_LIB += -L../v8
+else
+V8_LIB = -L${V8_ROOT}
+endif

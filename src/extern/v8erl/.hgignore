@@ -1,0 +1,6 @@
+^src/.+\.o$
+^ebin/
+^lib/
+^js/.+\.jsc$
+erl_crash.dump
+\.a$

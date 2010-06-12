@@ -33,6 +33,7 @@
 -define(NOT_ALLOWED, 530).
 -define(NOT_IMPLEMENTED, 540).
 -define(INTERNAL_ERROR, 541).
+
 %% Method field records.
 -record('connection.start', {version_major = 0, version_minor = 8, server_properties, mechanisms = <<"PLAIN">>, locales = <<"en_US">>}).
 -record('connection.start_ok', {client_properties, mechanism = <<"PLAIN">>, response, locale = <<"en_US">>}).

@@ -14,7 +14,7 @@
 
 -module(ewok_smtpd_session).
 -author('steve@simulacity.com').
--include("../include/email.hrl").
+-include("email.hrl").
 
 -compile(export_all).
 
@@ -38,6 +38,7 @@ create() ->
 create(Options) ->
     {ok, Pid} = gen_fsm:start_link(?MODULE, [], Options),
 	{ok, Pid, service_ready}.
+
 %%
 request(Pid, {Command, Args}) ->
 	gen_fsm:sync_send_event(Pid, {Command, Args});
@@ -47,6 +48,11 @@ request(Pid, close) ->
 close(Pid) ->
 	gen_fsm:send_all_state_event(Pid, stop).
 
+%% callbacks: gen_fsm
+init(Options) ->
+    process_flag(trap_exit, true), %% should we trap exits?	
+	_Timeout = proplists:get_value(timeout, Options, 180),
+	{ok, connected, #state{}}.
 
 %%
 %% state callbacks
@@ -62,7 +68,7 @@ connected(Message, _From, State) ->
 
 %%
 session({'MAIL', MailFrom}, _From, State) ->
-	{reply, service_ready, mail, State#state{from=MailFrom}};
+	{reply, service_ready, mail, State#state{from=MailFrom, to=[]}};
 session(Message, _From, State) ->
 	{reply, do_command(Message), session, State}. 
 	
@@ -95,13 +101,6 @@ do_command({'QUIT', _}) ->
 	closing_channel;
 do_command(_) ->
 	bad_command_sequence.
-
-%% callbacks: gen_fsm
-init(Options) ->
-    process_flag(trap_exit, true), %% should we trap exits?
-	
-	_Timeout = proplists:get_value(timeout, Options, 180),
-	{ok, connected, #state{}}.
 	
 %% TODO: complete callback set
 handle_event(stop, _StateName, State) ->

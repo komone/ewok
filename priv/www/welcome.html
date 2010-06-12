@@ -1,0 +1,92 @@
+<script type="text/javascript">
+$(function () {
+	$("#tabs").tabs();
+	var busy_img = "<img src='images/indicator.gif'>";
+	
+	// inplace (jeditable)
+	$(".editable").editable("/ajax", { 
+		indicator: busy_img,
+		select: true,
+		tooltip: "Click to edit..."
+	});
+});
+</script>
+<style>
+	/* column container */
+	.colmask {
+		/*clear:both;
+		float:left;
+		width:100%;		*/
+		overflow:hidden;		/* This chops off any overhanging divs */
+	}
+	/* common column settings */
+	.colright,
+	.colmid,
+	.colleft {
+		float:left;
+		width:100%;
+		position:relative;
+	}
+	.col1,
+	.col2,
+	.col3 {
+		float:left;
+		position:relative;
+		padding:0 0 1em 0;
+		overflow:hidden;
+	}
+	/* 2 Column (double page) settings */
+	.doublepage {
+		background:#fff;		/* right column background colour */
+	}
+	.doublepage .colleft {
+		right:50%;			/* right column width */
+		background:#fff;		/* left column background colour */
+	}
+	.doublepage .col1 {
+		width:46%;			/* left column content width (column width minus left and right padding) */
+		left:52%;			/* right column width plus left column left padding */
+	}
+	.doublepage .col2 {
+		width:46%;			/* right column content width (column width minus left and right padding) */
+		left:56%;			/* (right column width) plus (left column left and right padding) plus (right column left padding) */
+	}
+</style>
+<div id="tabs">
+	<ul>
+		<li><a href="#tabs-1">Welcome</a></li>
+	</ul>
+	<div id="tabs-1" class="content">
+		<div class="colmask doublepage"> 
+			<div class="colleft"> 
+				<div class="col1"> 
+		<h1>Getting Started with Ewok</h1>
+		<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. In tempor ligula id ante iaculis et ornare felis dignissim. Quisque viverra, felis quis porttitor malesuada, sem tortor rhoncus ante, eu tempus dui nunc ut massa. Aliquam eget commodo massa. Donec eget est metus, id bibendum mauris. Quisque et eros et arcu tincidunt aliquam. Integer a libero non tortor tempus interdum. Proin aliquet iaculis tellus. Morbi non nunc orci, ut dapibus lacus. Fusce sagittis sem sit amet urna facilisis ultrices. Suspendisse tempor turpis at nisi iaculis quis sagittis dui pellentesque. Etiam ut lacus vel turpis adipiscing tincidunt at et nisi.</p>
+		<p>Pellentesque sed augue ipsum. Phasellus scelerisque tincidunt ornare. Nulla rutrum mauris quis nisl gravida vitae lacinia dui laoreet. Suspendisse commodo, quam et lacinia cursus, ligula ipsum euismod nisl, sed tincidunt enim tortor quis turpis. Donec eget leo elit. Nullam eget purus sit amet orci posuere vulputate id vitae sapien. Donec sagittis egestas molestie. Vivamus ullamcorper ultricies sodales. Etiam odio neque, sollicitudin non commodo quis, dapibus sed diam. Maecenas ornare leo sed justo eleifend semper. Nam lobortis, nibh vel sodales volutpat, mi est blandit nisi, sed consectetur nibh justo a enim.</p>
+		<p>Integer scelerisque dolor elit. Vestibulum tellus arcu, pellentesque eu semper at, ultrices at nunc. Nulla eget ipsum non neque ullamcorper elementum. Mauris congue arcu et mi adipiscing in iaculis nunc accumsan. Curabitur congue, ipsum id consequat tincidunt, turpis tellus egestas odio, ac congue ante sem eu ligula. Nunc sagittis euismod ipsum, sed mollis diam ultricies commodo. Fusce mattis viverra hendrerit. Mauris nec nisl sem, ut lobortis neque. Morbi nec mauris elit, non pharetra ipsum. Aliquam nec tortor enim, in rutrum mauris.</p>
+				</div>
+				<div class="col2">
+	<h1>Activation</h1>
+	<p>Phasellus vitae mauris ac felis consequat pellentesque. Maecenas ac porttitor lectus. Praesent mollis aliquet purus in dapibus. Cras quis sapien mi, ut ultricies risus. Donec sem leo, sollicitudin quis feugiat ac, ornare non mi. Sed euismod lacinia turpis at consectetur. Ut rutrum consequat diam vitae fringilla. Phasellus aliquam, velit in viverra laoreet, est dui ullamcorper metus, ut vulputate ligula erat auctor felis. Aliquam aliquam mattis porttitor. Duis vel felis purus, quis posuere nisi. Donec neque ante, ultricies et rhoncus eu, vehicula vel mi. Aliquam rhoncus pharetra justo, quis vulputate purus ultrices nec.</p>
+	<fieldset>
+	<legend>Activation</legend>
+	<table>
+	<tr>
+		<td class="label">Activation Key</td>
+		<td id="activation" class="editable"></td>
+	</tr>
+	<tr>
+		<td class="label">Password</td>
+		<td id="password" class="editable"></td>
+	</tr>
+	<tr>
+		<td class="label">Repeat Password</td>
+		<td id="password2" class="editable"></td>
+	</tr>
+	</table>
+	</fieldset>
+				</div> 
+			</div>
+		</div>
+	</div>
+</div>

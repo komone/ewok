@@ -36,8 +36,8 @@ resource_info() -> [].
 		Request:path(), 
 		Request:header(content_type),
 		Request:header(content_length), 
-		Request:content(),
-		Request:parameters()
+		Request:parameters(),
+		Request:content()
 	},
 	
 	%%io:format(user, "REQ~n~p~n", [Request]),
@@ -46,6 +46,6 @@ resource_info() -> [].
 	<<"application/json">> -> 
 		{ok, [{content_type, <<"application/json">>}], [<<"{date: ">>, ewok_http:date(), <<"}">>]};
 	_ ->
-		ok
+		{ok, [{content_type, <<"text/html">>}], Request:parameter(<<"value">>)}
 	end.
 

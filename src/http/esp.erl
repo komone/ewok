@@ -18,7 +18,7 @@
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
-%-compile(export_all).
+-compile(export_all).
 %% API
 -export([render/1, render/2, render/4]).
 -export([render_page/4, parse_template/1]).
@@ -74,50 +74,11 @@ render_page(Spec, Module, Request, Session)  ->
 render_page(Spec, Module, Request, Session, AllowInclude)  ->
 %	?TTY({?MODULE, spec, Spec}),
 	F = fun (X) ->
-		try begin
-			case X of
-			Bin when is_binary(Bin) -> 
-				Bin;
-			%% Grrrr strings...
-			String = [H|_] when ?is_string(H) ->
-				list_to_binary(String);
-			Records when is_list(Records) ->
-				render_elements(Records, []);
-			{esp, 'include', Filename} ->
-				true = AllowInclude, % intentionally throw parse error
-				%have to load the file now...
-				?TTY({"ESP include", Filename});
-				%render_page(Spec, Module, Request, Session, false);
-			{page, Function, []} -> 
-				Result = Module:Function(Request, Session),
-				%?TTY("ESP -> ~p ~p~n", [{Module, Function}, Result]),
-				render_elements(Result, []);
-			{request, Function, []} ->
-				esp_html:text(Request:Function());
-			{session, ip, []} ->
-				Session:ip();
-			{session, started, []} ->
-				esp_html:text(Session:started());
-			{session, user, []} ->
-				case Session:user() of
-				#ewok_user{} = User -> 
-					User#ewok_user.name;
-				_ -> 
-					<<"undefined">>
-				end;
-			{session, data, []} ->
-				esp_html:text(Session:data());
-			{M, F, []} ->
-				case M:F() of
-				Value when is_binary(Value) -> Value;
-				Value -> esp_html:text(Value)
-				end
-			end
-		end catch
-		_:_ -> [
-			<<"<tt>&lt;!ESP PARSE ERROR ">>,
-			esp_html:text(X),
-			<<" &gt;</tt>">> ]
+		try
+			eval(X, Module, Request, Session, AllowInclude)
+		catch
+		_:_ -> [<<"<tt>&lt;!ESP PARSE ERROR ">>,
+			esp_html:text(X), <<" &gt;</tt>">> ]
 		end
 	end,
 	case list_to_binary([F(X) || X <- Spec]) of
@@ -126,7 +87,46 @@ render_page(Spec, Module, Request, Session, AllowInclude)  ->
 	{error, Reason} -> 
 		{error, Reason}
 	end.
-	
+
+eval(Bin, _, _, _, _) when is_binary(Bin) -> 
+	Bin;
+eval([H|_] = String, _, _, _, _) when ?is_string(H) ->
+	list_to_binary(String);
+eval(Records, _, _, _, _) when is_list(Records) ->
+	render_elements(Records, []);
+eval({esp, 'include', Filename}, _, _, _, AllowInclude) ->
+	true = AllowInclude, % intentionally throw parse error
+	%have to load the file now...
+	?TTY({"ESP include", Filename});
+	%render_page(Spec, Module, Request, Session, false);
+eval({page, Function, []}, Module, Request, Session, _) -> 
+	Result = Module:Function(Request, Session),
+	%?TTY("ESP -> ~p ~p~n", [{Module, Function}, Result]),
+	render_elements(Result, []);
+eval({request, Function, []}, _, Request, _, _) ->
+	esp_html:text(Request:Function());
+eval({session, ip, []}, _, _, Session, _) ->
+	Session:ip();
+eval({session, started, []}, _, _, Session, _) ->
+		esp_html:text(Session:started());
+eval({session, user, []}, _, _, Session, _) ->
+	case Session:user() of
+	#ewok_user{} = User -> 
+		User#ewok_user.name;
+	_ -> 
+		<<"undefined">>
+	end;
+eval({session, data, []}, _, _, Session, _) ->
+	esp_html:text(Session:data());
+eval({M, F, []}, _, _, _, _) ->
+	case M:F() of
+	Value when is_binary(Value) -> 
+		Value;
+	Value ->
+		esp_html:text(Value)
+	end.
+
+
 % render_elements
 render_elements([H|T], Acc) when is_binary(H) ->
 	render_elements(T, [H|Acc]);
@@ -142,6 +142,7 @@ render_elements([], Acc) ->
 
 % render_element/1
 render_element(E) when is_tuple(E), size(E) > 1 ->
+%	?TTY(E),
 	T = transform_custom_element(E),
 	{[Type, Fields], Values} = lists:split(2, tuple_to_list(T)),
 	F = fun (X, Y) ->
@@ -224,10 +225,10 @@ get_template(Path) ->
 	#template{} = T -> 
 		T;
 	undefined ->
-		TemplateRoot = ewok:config({ewok, http, template_root}),
+		TemplateRoot = ewok_config:get_value({ewok, http, template_root}),
 		Markup = load_template(TemplateRoot, Path),
 		T = #template{path=Path, markup=Markup},
-		case ewok:config({ewok, runmode}, production) of
+		case ewok_config:get_value({ewok, runmode}, production) of
 		true -> ok = ewok_cache:add(T);
 		_ -> ok
 		end,
@@ -237,13 +238,12 @@ get_template(Path) ->
 load_template(undefined, Path) -> 
 	{error, {undefined, Path}};
 load_template(Dir, Path) ->
-	File = filename:join([code:lib_dir(ewok), Dir, Path]),
-	case filelib:is_regular(File) of
-	true -> 
-		{ok, Bin} = file:read_file(File),
-		parse_template(Bin);
-	false -> 
-		{error, File}
+	File = ewok_file:path([code:lib_dir(ewok), Dir, Path]),
+	case ewok_file:load(File) of
+	undefined -> 
+		{error, File};
+	Bin -> 
+		parse_template(Bin)
 	end.
 	
 parse_template(Bin) ->

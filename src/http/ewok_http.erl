@@ -13,6 +13,7 @@
 
 -export([absolute_uri_couch/1]).
 
+-record(http_message, {status, headers=[], body=[]}).
 
 absolute_uri(Path) -> 
 	absolute_uri(<<"http">>, Path).
@@ -113,66 +114,6 @@ date(LocalDateTime) ->
 % platform_signatures() -> [].
 
 %%
-url_decode(Bin) when is_binary(Bin) ->
-	list_to_binary(url_decode(binary_to_list(Bin), []));
-url_decode(List) when is_list(List) ->
-	url_decode(List, []).	
-%
-url_decode([$%, Hi, Lo|T], Acc) ->
-	try 
-		Char = erlang:list_to_integer([Hi, Lo], 16),
-		url_decode(T, [Char|Acc])
-	catch
-		error:badarg -> {error, invalid_encoding}
-	end;
-url_decode([$+|T], Acc) ->
-	url_decode(T, [$ |Acc]);
-url_decode([H|T], Acc) ->
-	url_decode(T, [H|Acc]);
-url_decode([], Acc) ->
-	lists:reverse(Acc).
-	
-%%
-url_encode(Bin) when is_binary(Bin) ->
-	list_to_binary(url_encode(binary_to_list(Bin), []));
-url_encode(List) when is_list(List) ->
-	url_encode(List, []).	
-%
-url_encode([H|T], Acc) ->
-	url_encode(T, [url_encode_char(H)|Acc]);
-url_encode([], Acc) ->
-	lists:flatten(lists:reverse(Acc)).
-
-url_encode_char(C) when C >= $a, C =< $z -> C;
-url_encode_char(C) when C >= $A, C =< $Z -> C;
-url_encode_char(C) when C >= $0, C =< $9 -> C;
-url_encode_char(C = $~) -> C;
-url_encode_char(C = $_) -> C;
-url_encode_char(C = $.) -> C;
-url_encode_char(C = $-) -> C;
-url_encode_char($ ) -> "%20";
-url_encode_char($!) -> "%21";
-url_encode_char($#) -> "%23";
-url_encode_char($$) -> "%24";
-url_encode_char($%) -> "%25";
-url_encode_char($&) -> "%26";
-url_encode_char($') -> "%27";
-url_encode_char($() -> "%28";
-url_encode_char($)) -> "%29";
-url_encode_char($*) -> "%2A";
-url_encode_char($+) -> "%2B"; % should this always be encoded?
-url_encode_char($,) -> "%2C";
-url_encode_char($/) -> "%2F";
-url_encode_char($:) -> "%3A";
-url_encode_char($;) -> "%3B";
-url_encode_char($=) -> "%3D";
-url_encode_char($@) -> "%40";
-url_encode_char($?) -> "%3F";
-url_encode_char($[) -> "%5B";
-url_encode_char($]) -> "%5D".
-% No other characters are valid
-
-%%
 status(X) when is_integer(X) ->
 	status_type(X);
 status(X) when is_atom(X) ->
@@ -220,8 +161,7 @@ status_type(501) -> not_implemented;
 status_type(502) -> bad_gateway;
 status_type(503) -> service_unavailable;
 status_type(504) -> gateway_timeout;
-status_type(505) -> http_version_not_supported;
-status_type(X) when is_integer(X) -> X.
+status_type(505) -> http_version_not_supported.
 
 status_code(Int) when is_integer(Int)      -> Int;
 status_code(continue)                      -> 100;

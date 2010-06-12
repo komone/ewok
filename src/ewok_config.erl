@@ -1,58 +1,52 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%% http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright 2010 Steve Davis <steve@simulacity.com>
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 -module(ewok_config).
 
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
--export([load/3, unload/1, all/0, get_value/1, get_value/2, put_value/2, mimetype/1, get_env/1, get_env/2]).
--export([import_file/1, import_file/2, export_file/1, load_mimetypes/0]).
+-export([lookup/1]).
+-export([load/1, load/3, unload/1, values/0, get_value/1, get_value/2, put_value/2, get_env/1, get_env/2]).
+-export([import_file/1, import_file/2, export_file/1]).
 -export([print/0, print/1]).
 
--define(CONFIG, ?MODULE).
-
 %%
-%% API
-%%
+get_value(Property) ->
+	lookup(Property).
+%
+lookup(Property) ->
+	case ewok_db:lookup(?MODULE, Property) of
+	#ewok_config{value = Value} ->
+		Value;
+	undefined ->
+		undefined			
+	end.
+%
+get_value(Property, Default) ->
+	case ewok_db:lookup(?MODULE, Property) of
+	#ewok_config{value = Value} -> 
+		Value;
+	undefined -> 	
+		ok = ewok_db:create(#ewok_config{key = Property, value = Default}),
+		Default
+	end.
+%	
+put_value(Property, Value) ->
+	ok = ewok_db:update(#ewok_config{key = Property, value = Value}).
 
-%% TODO: This isn't right
-load(App, Prefix, Terms) -> 
-	%? application:unload(App),
-	Config = parse_config([{{App}, Prefix, Terms}], []),
-	ewok_db:add(Config).
-
-unload(_App) ->
-	not_implemented.
-	
-%%
-load_mimetypes() ->
-	F = fun (X, Y) ->
-		X1 = 
-			case X of 
-			_ when is_atom(X) -> X;
-			_ -> list_to_binary(X)
-			end, 
-		Y1 = list_to_binary(Y),
-		{ewok_mimetype, X1, Y1}
-		end,
-	Mimetypes = get_env(mimetypes, []),
-	Records = [F(K, V) || {K, V} <- Mimetypes],
-	ewok_db:add(Records),
-	ewok_log:message(?MODULE, [Records]).
-
-%%
+%
 get_env(Key) ->
 	get_env(Key, undefined).
 %
@@ -65,41 +59,26 @@ get_env(Key, Default) when is_atom(Key) ->
 	end.
 	
 % 
-all() ->
-	{ok, Config} = ewok_db:select(?CONFIG),
-	[{X, Y} || {?CONFIG, X, Y} <- Config].
-%
-get_value(Property) ->
-	case ewok_db:lookup(?MODULE, Property) of
-	undefined -> 
-		undefined;
-	#ewok_config{value = Value} -> 
-		Value
-	end.
-%
-get_value(Property, Default) ->
-	case ewok_db:lookup(?CONFIG, Property) of
-	undefined -> 	
-		ok = ewok_db:create(#ewok_config{key = Property, value = Default}),
-		Default;
-	#ewok_config{value = Value} -> 
-		Value
-	end.
-	
-put_value(Property, Value) ->
-	ok = ewok_db:update(#ewok_config{key = Property, value = Value}).
-	
-mimetype(Extension) ->
-	case ewok_db:lookup(ewok_mimetype, Extension) of
-	undefined -> 
-		<<"application/octet-stream">>;
-	{ewok_mimetype, Extension, Value} -> 
-		Value
-	end.
+values() ->
+	{ok, Config} = ewok_db:select(?MODULE),
+	[{X, Y} || {?MODULE, X, Y} <- Config].
 
+%% TODO: This isn't right
+load(App, Prefix, Terms) -> 
+	%? application:unload(App),
+	Config = parse_config([{{App}, Prefix, Terms}], []),
+	ewok_db:add(Config).
+%% TEMP
+load([]) ->
+	[].
+%%
+unload(_App) ->
+	not_implemented.
+
+%
 export_file(File) ->
-	{ok, Terms} = ewok_db:select(?CONFIG),
-	Tuples = lists:sort([{K, V} || {?CONFIG, K, V} <- Terms]),
+	{ok, Terms} = ewok_db:select(?MODULE),
+	Tuples = lists:sort([{K, V} || {?MODULE, K, V} <- Terms]),
 	%% Provisional
 	{ok, Mimetypes} = ewok_db:select(ewok_mimetype),
 	Tuples2 = lists:sort([{K, V} || {ewok_mimetype, K, V} <- Mimetypes]),
@@ -107,32 +86,34 @@ export_file(File) ->
 	Tuples3 = lists:sort([{A, B, C, D} || {ewok_route, A, B, C, D} <- Routes]),
 
 	%% TODO: now convert to a term and write the term out
-	ok = file:write_file(File, io_lib:format("~p~n", [
+	Path = ewok_file:path(File),
+	ok = ewok_file:save(Path, io_lib:format("~p~n", [
 		{ewok, [
 			{config, Tuples},
 			{mimetypes, Tuples2},
 			{routes, Tuples3}
 		]}
 	])),
-	{ok, filename:absname(File)}.
+	{ok, Path}.
 	
 import_file(File) ->
 	import_file(ewok, File).
 import_file(_App, File) ->
-	case load_file(File) of
+	Path = ewok_file:path(File),
+	case load_file(Path) of
 	{ok, Terms} -> 
 		Values = parse_config(Terms, []),
 		ok = ewok_db:add(Values),
-		{ok, filename:absname(File), length(Values)};
+		{ok, Path, length(Values)};
 	Error -> 
 		Error
 	end.
 
 %%
 print() ->
-	case ewok_db:select(?CONFIG) of
+	case ewok_db:select(?MODULE) of
 	{ok, Recs} -> 
-		[io:format(" ~p = ~p~n", [K, V]) || {?CONFIG, K, V} <- lists:sort(Recs)],
+		[io:format(" ~p = ~p~n", [K, V]) || {?MODULE, K, V} <- lists:sort(Recs)],
 		{ok, length(Recs)};
 	undefined -> 
 		undefined
@@ -152,20 +133,20 @@ print(Type) ->
 %%
 
 %%
-load_file(File) ->
-	case filelib:is_regular(File) of
+load_file(Path) ->
+	case ewok_file:is_regular(Path) of
 	true ->
 		try
-			file:consult(File)
+			ewok_file:eval(Path)
 		catch
 		%% C{error,{103,erl_parse,["syntax error before: ","'{'"]}}
 		_:{badmatch, {error, {Line, _, Message}}} -> 
-			{error, {file, File}, {line, Line}, {reason, lists:flatten(Message)}};
+			{error, {file, Path}, {line, Line}, {reason, lists:flatten(Message)}};
 		Error:Reason -> 
 			{Error, Reason}
 		end;
 	false ->
-		{error, {nofile, File}}
+		{error, {nofile, Path}}
 	end.
 
 %target format e.g.-> {ewok,server,ip}, {127,0,0,1}}
@@ -178,19 +159,19 @@ parse_config([], Acc) ->
 %
 parse_properties(Parent, autodeploy, Props) ->
 	Key = erlang:append_element(Parent, autodeploy),
-	{?CONFIG, Key, Props};
+	{?MODULE, Key, Props};
 parse_properties(Parent, roles, Props) ->
 	Key = erlang:append_element(Parent, roles),
-	{?CONFIG, Key, Props};
+	{?MODULE, Key, Props};
 parse_properties(Parent, Id, Props) -> 
 	Key = erlang:append_element(Parent, Id),
 %	io:format("~p ~p~n", [Key, Props]),
 	case is_list(Props) of 
 	true when Props =:= [] ->
-		{?CONFIG, Key, Props};
+		{?MODULE, Key, Props};
 	true ->
 		case proplists:get_keys(Props) of
-		[] -> {?CONFIG, Key, list_to_binary(Props)};
+		[] -> {?MODULE, Key, list_to_binary(Props)};
 		Keys -> 
 			F = fun (X) ->
 				case proplists:get_value(X, Props) of
@@ -202,7 +183,7 @@ parse_properties(Parent, Id, Props) ->
 			end,
 			[F(X) || X <- Keys]
 		end;
-	false -> {?CONFIG, Key, Props}
+	false -> {?MODULE, Key, Props}
 	end.
 %%
 parse_records(Type, Props) ->

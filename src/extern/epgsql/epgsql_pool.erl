@@ -3,13 +3,9 @@
 -behavior(application).
 -behavior(supervisor).
 
+-export([start/2, stop/1, init/1]).
 -export([start_pool/3]).
 
--export([start/2, stop/1, init/1]).
-
-%%
-start_pool(Name, Size, Opts) ->
-    supervisor:start_child(?MODULE, [Name, Size, Opts]).
 
 %%
 start(_Type, _Args) ->
@@ -34,6 +30,10 @@ init([]) ->
 		]
 	}}.
 
+%%
+start_pool(Name, Size, Opts) ->
+    supervisor:start_child(?MODULE, [Name, Size, Opts]).
+	
 %% @private
 start_pool(Name) ->
     case application:get_env(Name) of

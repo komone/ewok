@@ -14,6 +14,7 @@
 
 -module(ewok_socket_srv).
 
+-include("ewok.hrl"). %% debug only
 -include("ewok_system.hrl").
 
 -behaviour(gen_server2).
@@ -45,19 +46,19 @@ connections(Name) ->
 start_link(Name, Opts) when is_atom(Name), is_list(Opts) ->
 	gen_server2:start_link({local, Name}, ?MODULE, [{name, Name}|Opts], []).
 %
-stop(Name) when is_atom(Name) -> 
-	gen_server2:cast(Name, stop);
-stop(Pid) when is_pid(Pid) -> 
-	gen_server2:cast(Pid, stop).
+stop(Name) when is_atom(Name); is_pid(Name) -> 
+	gen_server2:cast(Name, stop).
 
 %%
 %% gen_server
 %%
+
+%%
 init(Opts) ->
     process_flag(trap_exit, true),	
 	Port = proplists:get_value(port, Opts, 0),
-	SocketOpts = proplists:get_value(socket_opts, Opts),
 	Transport = proplists:get_value(transport, Opts, gen_tcp),
+	SocketOpts = proplists:get_value(socket_opts, Opts, []),
 	
 	%?TTY("Listen port ~p Opts: ~p~n", [Port, SocketOpts]), 
 	case ewok_socket:listen(Transport, Port, SocketOpts) of
@@ -84,7 +85,6 @@ init(Opts) ->
 listen(S = #state{count=Count, max=Max}) ->
 	case Count < Max of
 	true ->
-		%?TTY("Spawning accept ~p ~p~n", [ServerSocket, Handler]),
 		Pid = proc_lib:spawn_link(?MODULE, accept, [{self(), S#state.transport, S#state.socket, S#state.handler}]),
 		S#state{pid=Pid};
 	false ->
@@ -93,13 +93,13 @@ listen(S = #state{count=Count, max=Max}) ->
 	end.
 
 accept({Pid, Transport, ServerSocket, Handler}) ->
-	%?TTY("ACCEPT: ~p~n", [{Pid, ServerSocket}]),
+	%io:format("ACCEPT: ~p~n", [{Pid, ServerSocket}]),
 	try begin
 		{ok, Socket} = ewok_socket:accept({Transport, ServerSocket}),
 		gen_server2:cast(Pid, {accepted, self()}),
 		Handler({Transport, Socket})
 	end catch
-	exit: normal ->
+	exit : normal ->
 		exit(normal);
 	Error: Reason ->
 		ewok_log:error([{application, ewok}, "Accept failed", {Error, Reason}]),
@@ -119,7 +119,7 @@ handle_cast({accepted, Pid}, State=#state{pid=Pid, count=Count}) ->
 handle_cast(stop, State) ->
     {stop, normal, State}.
 %
-handle_info(_E ={'EXIT', Pid, normal}, State=#state{pid=Pid}) ->
+handle_info(_E = {'EXIT', Pid, normal}, State=#state{pid=Pid}) ->
 	% ?TTY("1. ~p~n", [E]),
     {noreply, listen(State)};
 handle_info(_E = {'EXIT', Pid, Reason}, State=#state{pid=Pid}) ->
@@ -133,7 +133,7 @@ handle_info(_E = {'EXIT', _LoopPid, Reason}, State=#state{pid=Pid, count=Count})
 	normal -> ok;
 	Error -> ewok_log:error({?MODULE, ?LINE, {child_error, Error, Reason}})
     end,
-	NewState = State#state{count=Count-1},
+	NewState = State#state{count=Count - 1},
     FinalState = 
 		case Pid of
 		null -> listen(NewState);

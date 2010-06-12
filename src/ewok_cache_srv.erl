@@ -47,7 +47,7 @@ handle_call({add, Record}, _From, State) ->
 	NewState = 
 		case lists:member(Type, State) of
 		false -> 
-			%ets:new(Type, [set, named_table, protected, {keypos, 2}]),
+			ets:new(Type, [set, named_table, protected, {keypos, 2}]),
 			[Type|State];
 		true -> 
 			State

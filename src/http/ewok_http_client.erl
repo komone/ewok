@@ -78,7 +78,7 @@ request(Method, Url, _Headers, _Body) when is_atom(Method) ->
 response(Socket, Method) ->
     {ok, Packet} = ewok_socket:recv(Socket, 0, ?SOCKET_TIMEOUT),
 	{Status, Headers, Data} = parse_response(Packet),
-%	?TTY({Status, Headers}),
+	?TTY({packet, Packet}),
 	case Method of
 	'HEAD' ->
 		Content = [Data];
@@ -138,7 +138,7 @@ read_chunked_content(Socket, Packet, Acc) ->
 	[ChunkSize|Part] = ewok_text:split(Packet, ?NEWLINE, 3),
 	Chunk = list_to_binary(Part),
 	[Hex|_] = ewok_text:split(ChunkSize, <<$;>>, 2),
-	Size = ewok_text:hex2int(Hex),
+	Size = ewok_hex:get_value(Hex),
 %	?TTY({Size, size(Chunk)}),
 	case {Size, size(Chunk)} of 
 	{0, _} ->

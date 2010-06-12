@@ -35,7 +35,7 @@ filter(_Request) -> ok.
 					[<<"path()">>, esp_html:text(Request:path())],
 					[<<"version()">>, esp_html:text(Request:version())],
 					[<<"realm()">>, esp_html:text(Request:realm())],
-					[<<"cookie()">>, esp_html:text(Request:cookie())],
+					[<<"cookies()">>, esp_html:text(Request:cookies())],
 					[<<"headers()">>, esp_html:text(Request:headers())],
 					[<<"header(user_agent)">>, esp_html:text(Request:header(user_agent))],
 					[<<"parameters()">>, esp_html:text(Request:parameters())],

@@ -30,7 +30,7 @@ init(Args) ->
 	ChildSpecs = [childspec(Service) || Service <- Args],
 	case supervisor:check_childspecs(ChildSpecs) of
 	ok -> 
-		{ok, {{one_for_all, 0, 1}, ChildSpecs}};
+		{ok, {{one_for_one, 0, 1}, ChildSpecs}};
 	Error -> 
 		Error
 	end.
@@ -38,7 +38,8 @@ init(Args) ->
 %%
 start_services([Child|Rest]) ->
 	ewok_log:message(?MODULE, [{starting, Child}]),
-	case supervisor:start_child(?MODULE, Child) of
+	ChildSpec = childspec(Child),
+	case supervisor:start_child(?MODULE, ChildSpec) of
 	{ok, _Pid} -> 
 		start_services(Rest);
 	{ok, _Pid, _Info} -> 

@@ -1,4 +1,4 @@
-%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%% Copyright 2009-2010 Steve Davis <steve@simulacity.com>
 %
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
@@ -13,9 +13,6 @@
 % limitations under the License.
 
 -module(ewok_socket).
--vsn("1.0.0").
--author('steve@simulacity.com').
-
 -include("ewok.hrl").
 
 -export([configure/2, connect/4, setopts/2, controlling_process/2, sockname/2,
@@ -25,17 +22,16 @@
 
 %% IMPL: note that 'Transport' is the actual **module name**
 configure(gen_tcp, Prefix) -> [ 
-	ewok_config:get_value(merge(Prefix, {tcp, socket, mode}), binary),
-	{ ip, ewok_config:get_value({ewok, ip}, {0, 0, 0, 0}) }, 
-	{ packet, ewok_config:get_value(merge(Prefix, {tcp, socket, packet}), 0) },
-	{ backlog, ewok_config:get_value(merge(Prefix, {tcp, socket, backlog}), 0) },
-	{ active, ewok_config:get_value(merge(Prefix, {tcp, socket, active}), false) },
-	{ nodelay, ewok_config:get_value(merge(Prefix, {tcp, socket, nodelay}), true) },
-	{ reuseaddr, ewok_config:get_value(merge(Prefix, {tcp, socket, reuseaddr}), true) },
-	{ recbuf, ewok_config:get_value(merge(Prefix, {tcp, socket, recbuf}), 8192) }
+	param(Prefix, {tcp, socket, mode}, binary),
+	{ ip, param({ewok, ip}, {0, 0, 0, 0})}, 
+	{ packet, param(Prefix, {tcp, socket, packet}, 0)},
+	{ backlog, param(Prefix, {tcp, socket, backlog}, 0)},
+	{ active, param(Prefix, {tcp, socket, active}, false)},
+	{ nodelay, param(Prefix, {tcp, socket, nodelay}, true)},
+	{ reuseaddr, param(Prefix, {tcp, socket, reuseaddr}, true) },
+	{ recbuf, param(Prefix, {tcp, socket, recbuf}, 8192) }
 ];
 
-%
 configure(ssl, Prefix) ->
 	case ewok_config:get_value(Prefix ++ ".ssl.enabled", false) of
 	true -> ssl:start(); %% TODO: not the right place for this
@@ -57,9 +53,10 @@ configure(ssl, Prefix) ->
 	{ certfile, ewok_config:get_value(Prefix ++ ".ssl.certfile", "./priv/ssl/yaws-cert.pem") }].
 
 % @private
-merge(T, T1) ->
-	list_to_tuple(lists:append(tuple_to_list(T), tuple_to_list(T1))).
-
+param(Key, Default) ->
+	ewok_config:get_value(Key, Default).
+param(Prefix, Key, Default) ->
+	param(list_to_tuple(lists:append(tuple_to_list(Prefix), tuple_to_list(Key))), Default).
 
 %%
 connect(Transport, Host, Port, Options) when is_binary(Host) ->

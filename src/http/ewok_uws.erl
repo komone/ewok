@@ -16,6 +16,30 @@
 -record(event, {id, in}).
 -record(anystate, {in, out}).
 
+def() ->
+	{?MODULE, fulfil, [integer]}.
+	
+request() ->
+	request({?MODULE, fulfil, 3}).
+	
+request(MFA) ->
+	Request = term_to_binary(MFA),
+	Response = service(Request),
+	Result = binary_to_term(Response),
+	io:format("Request: ~p -> ~p~nResponse: ~p -> ~p~n", [MFA, Request, Response, Result]).
+
+service(Request) ->
+	case binary_to_term(Request) of
+	{?MODULE, fulfil, X} when is_integer(X) ->
+		Value = fulfil(X);
+	_ ->
+		Value = {error, enoent}
+	end,
+	term_to_binary(Value).
+
+fulfil(Number) when is_integer(Number) ->
+	ok.
+
 %% NOTES
 
 %% To define what approach to take we need to

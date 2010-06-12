@@ -46,7 +46,7 @@ encode({xml, [{version, 1}], Markup}) ->
 encode([Term]) -> 
 	try
 		Result = encode_element(Term),
-		list_to_binary([?XML_DECL, Result])
+		list_to_binary([?XML_DECL, $\n, Result])
 	catch
 	E:R -> {E, R}
 	end.
@@ -55,53 +55,57 @@ encode([Term]) ->
 xpath(Xpath, {xml, _, Markup}) ->
 	Path = ewok_text:split(Xpath, <<"/">>),
 %	?TTY({path, Path}),
-	path(Path, Markup).
+	parse_path(Path, Markup).
 %%
-path([H, <<"values()">>], Values = [{H, _Attrs, _Body}|_Rest]) ->
+parse_path([H, <<"values()">>], Values = [{H, _Attrs, _Body}|_Rest]) ->
 	[X || {_, _, X} <- Values];
-path([H, <<"node()">>], [Element = {H, _Attrs, _Body}|_Rest]) ->
+parse_path([H, <<"node()">>], [Element = {H, _Attrs, _Body}|_Rest]) ->
 	Element;
-path([H, <<"text()">>], [{H, _Attrs, Body}|_Rest]) ->
+parse_path([H, <<"text()">>], [{H, _Attrs, Body}|_Rest]) ->
 	Body;
-path([H], [{H, _Attrs, Body}|_Rest]) ->
+parse_path([H], [{H, _Attrs, Body}|_Rest]) ->
 %	?TTY({found, H}),
 	Body;
-path([H|T], [{H, _Attrs, Body}|_Rest]) ->
+parse_path([H|T], [{H, _Attrs, Body}|_Rest]) ->
 %	?TTY({traverse, H}),
-	path(T, Body);
-path(Path, [{_H, _, _}|Rest]) ->
+	parse_path(T, Body);
+parse_path(Path, [{_H, _, _}|Rest]) ->
 %	?TTY({ignore, Path, H}),
-	path(Path, Rest);
-path([_|_], _) ->
+	parse_path(Path, Rest);
+parse_path([_|_], _) ->
 	[];
-path([], _) ->
+parse_path([], _) ->
 	[].
 
-%% @private
 
 %%
 decode_elements([Terminal|T], Terminal, Acc) ->
 	{lists:reverse(Acc), T};
 decode_elements([<<$<, Bin/binary>>|T], Terminal, Acc) ->
 	[Tag, Close] = ewok_text:split(Bin, <<"(>|/>)">>, 2),
-	[Name|Attrs] = ewok_text:split(Tag, <<" ">>),
+	%% TODO: clean this up
+%	[Name|Attrs] = ewok_text:split(Tag, <<" ">>),
+	R = ewok_text:split(Tag, <<"([0-9A-Za-z]*=\"[^\"]+\")">>),
+	R1 = [ewok_text:trim(X) || X <- R],
+	R2 = [X || X <- R1, X =/= <<>>],
+	[Name|Attrs] = R2,
 	Pairs = decode_attrs(Attrs, []),
 	case Close of
 	<<"/>">> -> 
-		decode_elements(T, Terminal, [{Name, Pairs, []}|Acc]);
+		decode_elements(T, Terminal, [{make_key(Name), Pairs, []}|Acc]);
 	<<">">> ->
 		ChildTerminal = <<"</", Name/binary, ">">>,
 %		io:format("T: ~p~n", [Terminal]),
 %		{BodyList, [Terminal|T1]} = lists:splitwith(fun(X) -> X =/= Terminal end, T),
 		{Body, Rest} = decode_elements(T, ChildTerminal, []),
-		decode_elements(Rest, Terminal, [{Name, Pairs, Body}|Acc])
+		decode_elements(Rest, Terminal, [{make_key(Name), Pairs, Body}|Acc])
 	end;
 decode_elements([H|T], Terminal, Acc) ->
 	case ewok_text:trim(H) of %% remove whitespace -- make optional?
 	<<>> ->
 		decode_elements(T, Terminal, Acc);
 	Value ->
-		decode_elements(T, Terminal, [Value|Acc])
+		decode_elements(T, Terminal, [make_key(Value)|Acc])
 	end;
 decode_elements([], _Terminal, Acc) ->
 	{lists:reverse(Acc), []}.
@@ -116,19 +120,21 @@ decode_attrs([], Acc) ->
 encode_element({Name, Content}) ->
 	encode_element({Name, [], Content});
 encode_element({Name, Attrs, Content}) ->
-	%?TTY({encode, Name}),
-	StartTag = [$<, makeio(Name), encode_attrs(Attrs, [])],
+%	?TTY({encode, Name}),
+	StartTag = [$\n, $<, ewok_text:encode(Name), encode_attrs(Attrs, [])], %% readability \n
 	Element = 
 		case encode_content(Content, []) of
-		[] -> [StartTag, $/, $>];
-		Value -> [StartTag, $>, Value, $<, $/, makeio(Name), $>]
+		[] -> 
+			[StartTag, $/, $>, $\n]; %% readability \n
+		Value -> 
+			[StartTag, $>, Value, $<, $/, ewok_text:encode(Name), $>, $\n] %% readability \n
 		end,
 	list_to_binary(Element);
 encode_element(Content) ->
-	makeio(Content).
+	ewok_text:encode(Content).
 %%
 encode_attrs([{K, V}|T], Acc) ->
-	Attr = list_to_binary([<<$ >>, makeio(K), <<$=, $">>, makeio(V), <<$">>]),
+	Attr = list_to_binary([<<$ >>, ewok_text:encode(K), <<$=, $">>, ewok_text:encode(V), <<$">>]),
 	encode_attrs(T, [Attr|Acc]);
 encode_attrs([], Acc) ->
 	lists:reverse(Acc).
@@ -147,9 +153,3 @@ make_key(Name) ->
 		Name
 	end.
 
-%% use ewok_text:value/1 ?
-makeio(X) when is_integer(X) -> makeio(integer_to_list(X));
-makeio(X) when is_float(X)   -> makeio(float_to_list(X));
-makeio(X) when is_atom(X)    -> atom_to_binary(X, utf8);
-makeio(X) when is_list(X)    -> list_to_binary(X);
-makeio(X) when is_binary(X)  -> X.

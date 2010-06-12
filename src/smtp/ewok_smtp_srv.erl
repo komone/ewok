@@ -24,12 +24,9 @@
 
 %% API
 -export([service/2]).
--export([format_mail_log/3]).
+-export([format_log/3]).
 
 -compile(export_all).
-
-
-
 
 %%
 start_link(_Args) ->
@@ -77,15 +74,16 @@ service(Socket, Timeout) ->
 	read_request(Socket, Session, Timeout, []).
 
 %
-read_request({Transport, Socket}, Session, Timeout, Acc) ->
-	case Transport:recv(Socket, 0, Timeout) of
+read_request(Socket, Session, Timeout, Acc) ->
+	case ewok_socket:recv(Socket, 0, Timeout) of
 	{ok, Packet} ->
 		Parts = ewok_text:split(Packet, <<"(\r\n)">>),
-		case process_request({Transport, Socket}, Session, Parts, Acc) of
-		{ok, Acc1} -> read_request({Transport, Socket}, Session, Timeout, Acc1);
+		case process_request(Socket, Session, Parts, Acc) of
+		{ok, Acc1} -> 
+			read_request(Socket, Session, Timeout, Acc1);
 		close ->
 			ewok_smtpd_session:request(Session, close),
-			Transport:close(Socket)
+			ewok_socket:close(Socket)
 		end;
 	{error, Reason} ->
 		ewok_smtpd_session:request(Session, close),
@@ -113,18 +111,22 @@ handle_request(Session, Request) ->
 	ewok_log:message(mail, session, Request),
 	[Verb|Args] = ewok_text:split(Request, <<$ >>, 2),
 	R = case ewok_smtp:command(ewok_text:to_upper(Verb)) of
-		undefined -> {undefined, Request};
-		Command -> {Command, Args}
+		undefined -> 
+			{undefined, Request};
+		Command -> 
+			{Command, Args}
 		end,
 	ewok_smtpd_session:request(Session, R).
 
 %%
-send_reply({Transport, Socket}, Reply) ->
+send_reply(Socket, Reply) ->
 	Code = ewok_smtp:code(Reply),
 	Data = [integer_to_list(Code), ?SP, ewok_smtp:status_message(Code), ?CRLF],
-    case Transport:send(Socket, Data) of
-	ok -> ok;
-	_ -> exit(normal) %% leaving a file open?
+    case ewok_socket:send(Socket, Data) of
+	ok -> 
+		ok;
+	_ -> 
+		exit(normal) %% leaving a file open?
     end.
 
 %%
@@ -132,5 +134,5 @@ send_reply({Transport, Socket}, Reply) ->
 %%
 
 %% TODO: Move this later on. To...?
-format_mail_log(_Session, _StatusCode, _BytesSent) ->
+format_log(_Session, _StatusCode, _BytesSent) ->
 	ok.

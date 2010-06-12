@@ -48,7 +48,7 @@ id(timestamp) -> gen_server:call(?SERVER, {new, timestamp}).
 
 %%
 key() -> 
-	ewok_text:hex(id()).
+	ewok_hex:encode(id()).
 %%
 uuid() -> 
 	<<A:64, B:32, C:32, D:32, E:96>> = key(),

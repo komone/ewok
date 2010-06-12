@@ -1,0 +1,4 @@
+svn checkout http://v8.googlecode.com/svn/trunk/ v8
+scons
+
+output is libv8.a, links statically.

@@ -1,4 +1,4 @@
-%% Copyright 2010 Steve Davis <steve@simulacity.com>
+%% Copyright 2009-2010 Steve Davis <steve@simulacity.com>
 % 
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
@@ -18,71 +18,107 @@
 -include("ewok_system.hrl").
 
 -behaviour(application).
--export([start/2, config_change/3, prep_stop/1, stop/1]).
+-export([start/2, start_phase/3, config_change/3, prep_stop/1, stop/1]).
 -export([deploy_web/1]).
 
 %% 
-start(normal, Services) ->
-	% force reload of ewok.app config file
-	application:unload(ewok),
+start(_Type, AppOpts) ->
+	EnvOpts = application:get_all_env(),
+	% ensure boot logging is available
+	ok = ewok_logging_srv:start_link(EnvOpts),
 	
+	% Consider writing a .pid file
+	OsPid = os:getpid(),	
+	ewok_log:message(?MODULE, ewok:ident()),	
+	ewok_log:message(?MODULE, [{os, os:type(), {pid, OsPid}}]),
+	ewok_log:message(?MODULE, [{loaded, X} || X <- application:loaded_applications()]),	
+	
+	Files = proplists:get_value(config_files, EnvOpts, []),
+	FileOpts = ewok_config:load(Files),
+	AllOpts = lists:append([AppOpts, EnvOpts, FileOpts]),
+	
+	% start config database
+	ok = ewok_db:start(AllOpts),
+	{ok, Pid} = supervisor:start_link({local, ewok_sup}, ewok_sup, []),
+	
+	% initial configuration of inet
 	% IMPL: Maybe use this later -- for now ignore
     {ok, _IP} = 
 		case os:getenv("EWOK_IP") of 
 		false -> {ok, {0,0,0,0}};
 		Any -> inet_parse:address(Any) 
 		end,	
-	% Consider writing a .pid file
-	OsPid = os:getpid(),
+	{ok, Host} = inet:gethostname(),
+	{ok, HostEnt} = inet:gethostbyname(Host),
+	ewok_log:message(?MODULE, [{inet, {node, node()}, HostEnt}]),
 	
-	% ensure boot logging is available
-	ok = ewok_logging_srv:start_link([]),
+	ok = ewok_sup:start_services(AppOpts),
 	
-	%
-	ewok_log:message(?MODULE, ewok:ident()),	
-	ewok_log:message(?MODULE, [{os, os:type(), {pid, OsPid}}]),
+	%% swap out and remove boot log
+	ewok_log:add_log(server),
+	ewok_log:set_default(server),
+	ewok_log:remove_log(boot),
+	
+	{ok, Pid}.
+%	{ok, AdminUser, Activation} ->
+%		ewok_log:message(?MODULE, {activation, AdminUser, Activation}),
+%		io:format(user, "~p~n", [{AdminUser, Activation}])
+%	end,
+	
+%%
+start_phase(core, _Type, Services) ->
+	%% NOTE: {supervisor, ewok_data_sup}
+	?TTY({start_phase, core, Services}),
+	ewok_log:message(?MODULE, {core, Services}),
+	{ok, Datasource} = ewok_db:start(),
+	ewok_log:message(?MODULE, Datasource),
+	ewok_sup:start_services(Services);
+%%
+start_phase(extensions, _Type, Services) ->
+	?TTY({start_phase, extensions, Services}),
+	ewok_log:message(?MODULE, {extensions, Services}),
+	ewok_sup:start_services(Services);
+%%
+start_phase(inet, _Type, Services) ->
+	?TTY({start_phase, inet, Services}),
+	% IMPL: Maybe use this later -- for now ignore
+    {ok, _IP} = 
+		case os:getenv("EWOK_IP") of 
+		false -> {ok, {0,0,0,0}};
+		Any -> inet_parse:address(Any) 
+		end,	
 	{ok, Host} = inet:gethostname(),
 	{ok, HostEnt} = inet:gethostbyname(Host),
 	ewok_log:message(?MODULE, [{inet, {node, node()}, HostEnt}]),	
-	ewok_log:message(?MODULE, [{loaded, X} || X <- application:loaded_applications()]),
-	
-	%
-	Autoinstall = ewok_config:get_env(autoinstall, true),
-	case ewok_installer:run(Autoinstall) of
-	ok ->
-		start_server(Services, true); % make the boolean arg more obviously "is_activated"
-	{ok, AdminUser, Activation} ->
-		ewok_log:message(?MODULE, {activation, AdminUser, Activation}),
-		io:format(user, "~p~n", [{AdminUser, Activation}]),
-		start_server(Services, false);
-	Error ->
-		Error
-	end.
-
-%% @private
-start_server(Services, Activated) ->
-	{ok, Datasource} = ewok_db:start(),
-	ewok_log:message(?MODULE, Datasource),
-
-	% TODO: this is questionable
 	ewok_config:load_mimetypes(),
 	
-	ewok_log:message(?MODULE, {services, Services}),
+	ok = ewok_sup:start_services(Services),
 	
-	case supervisor:start_link({local, ewok_sup}, ewok_sup, Services) of
-	{ok, Pid} ->
-		%% swap out and remove boot log
-		ewok_log:add_log(server),
-		ewok_log:set_default(server),
-		ewok_log:remove_log(boot),
-		
-		deploy_web(Activated),
-		
-		ewok_log:message(bootstrap, Pid),
-		{ok, Pid};
-	Error ->
-		Error
-	end.
+	%% swap out and remove boot log
+	ewok_log:add_log(server),
+	ewok_log:set_default(server),
+	ewok_log:remove_log(boot),
+	
+	%% ewok_log:info({bootstrap, Pid}).
+	%%	deploy_web(Activated),
+	ok.
+	
+%% 
+config_change(Changed, New, Removed) -> 
+	?TTY({config_change, {changed, Changed}, {new, New}, {removed, Removed}}),
+	ok.
+	
+%% 
+prep_stop(State) ->
+	?TTY({prep_stop, State}),
+	%ewok_db:stop(),
+	%% stop db?
+	State.
+	
+%% 
+stop(State) ->
+	?TTY({stop, State}),
+	ok.
 
 %% TODO: here we should really treat the default ewok web config as a deployable web_app
 deploy_web(false) ->
@@ -127,16 +163,4 @@ deploy_web(true) ->
 	undefined ->
 		ewok_log:error({autodeploy, {not_running, ewok_deployment_srv}})
 	end.
-	
-%% 
-config_change(Changed, New, Removed) -> 
-	?TTY({config_change, {changed, Changed}, {new, New}, {removed, Removed}}),
-	ok.
-	
-%% 
-prep_stop(State) ->
-	State.
 
-%% 
-stop(_State) ->
-	ok.

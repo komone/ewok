@@ -26,7 +26,7 @@
 %% *** NOTE: Later, it will probably be better to add 'delayed_write' as an
 %% option for file:open (currently at lines 194, 226) - at least in production mode
 
--behaviour(ewok_service). %%?
+-behaviour(ewok_service). %
 -export([start_link/1, stop/0]).
 
 -behaviour(gen_event).
@@ -38,10 +38,10 @@
 -compile(export_all).
 
 %%
-start_link(_Args) ->
-    application:load(ewok),
-    LogDir = ewok_util:get_env(log_dir, ?LOG_DIR),
-    BootLog = ewok_util:get_env(boot_log, ?BOOT_LOG),
+start_link(Opts) ->
+    LogDir = proplists:get_value(log_dir, Opts, ?LOG_DIR),
+    BootLog = proplists:get_value(boot_log, Opts, ?BOOT_LOG),
+	
     case lists:member(?MODULE, gen_event:which_handlers(error_logger)) of
 	false ->
 		ok = gen_event:add_sup_handler(error_logger, ?MODULE, {LogDir, BootLog});
@@ -87,8 +87,7 @@ init(Opts = {_, _}) ->
 % {error_report, Gleader, {Pid, std_error, Report}}
 % {error_report, Gleader, {Pid, Type, Report}}
 %%
-handle_event({_, GL, _}, State)
-    when node(GL) =/= node() ->
+handle_event({_, GL, _}, State) when node(GL) =/= node() ->
     ?TTY({handle_event, node(GL)}), 
 	{ok, State};
 handle_event({_, _GL, {_From, ?MODULE, {default, Type, Messages}}}, State) ->
@@ -222,8 +221,7 @@ handle_info(Message = {'EXIT', _Fd, _Reason}, State) ->
       Prev ->
 		{swap_handler, install_prev, [Message], Prev, go_back}
     end;
-handle_info({emulator, GL, Chars}, State)
-    when node(GL) =:= node() ->
+handle_info({emulator, GL, Chars}, State) when node(GL) =:= node() ->
     write_messages(State#state.fd, group_leader, Chars),
     {ok, State};
 handle_info({emulator, noproc, Chars}, State) ->
@@ -295,8 +293,8 @@ write_messages(_, _, []) ->
 
 %%
 write_message(Fd, Type, Message) -> %%
-    Tag = ewok_text:value(Type),
-    Line = ewok_text:value(Message),
+    Tag = ewok_text:encode(Type),
+    Line = ewok_text:encode(Message),
     % HACK placeholder
     Line1 = re:replace(Line, "[ \t\r\n]+", " ", [global]),
     Log = list_to_binary([ewok_util:timestamp(), <<" [">>, Tag, <<"] ">>, Line1, <<$\n>>]),

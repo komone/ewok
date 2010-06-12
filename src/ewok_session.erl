@@ -30,9 +30,9 @@
 %% API
 
 %%
-get_session(Cookie, RemoteIp) ->
+get_session(Cookies, RemoteIp) ->
 	Record = 
-		case proplists:get_value(?EWOK_SESSION_KEY, Cookie) of
+		case proplists:get_value(?EWOK_SESSION_KEY, Cookies) of
 		undefined -> 
 			new_session(RemoteIp);
 		SessionKey ->

@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wsdl:definitions name="MemberCommunicationService" 
+		targetNamespace="http://bridge.hds.service.kbde.kess.express_scripts.com/"
+		xmlns:ns1="http://schemas.xmlsoap.org/soap/http"
+		xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+		xmlns:tns="http://bridge.hds.service.kbde.kess.express_scripts.com/"
+		xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+		xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<wsdl:types>
+		<xs:schema 
+				attributeFormDefault="unqualified" 
+				elementFormDefault="unqualified" 
+				targetNamespace="http://bridge.hds.service.kbde.kess.express_scripts.com/" 
+				xmlns:tns="http://bridge.hds.service.kbde.kess.express_scripts.com/" 
+				xmlns:xs="http://www.w3.org/2001/XMLSchema">
+			<xs:element name="launchMemberCommunicationProcess" type="tns:launchMemberCommunicationProcess" />
+			<xs:element name="launchMemberCommunicationProcessResponse" type="tns:launchMemberCommunicationProcessResponse" />
+			<xs:complexType name="launchMemberCommunicationProcess">
+				<xs:sequence>
+					<xs:element minOccurs="0" name="request" type="tns:memberCommunicationProcessRequest" />
+				</xs:sequence>
+			</xs:complexType>
+			<xs:complexType name="memberCommunicationProcessRequest">
+				<xs:sequence>
+					<xs:element minOccurs="0" name="batchNumber" type="xs:string" />
+					<xs:element minOccurs="0" name="category" type="xs:string" />
+					<xs:element minOccurs="0" name="chrRepairUser" type="xs:string" />
+					<xs:element minOccurs="0" name="docGroupType" type="xs:string" />
+					<xs:element maxOccurs="unbounded" minOccurs="0" name="documents" nillable="true" type="tns:memberCommunicationDocument" />
+					<xs:element minOccurs="0" name="faxNumber" type="xs:string" />
+					<xs:element minOccurs="0" name="faxType" type="xs:string" />
+					<xs:element minOccurs="0" name="irNoteFlag" type="xs:string" />
+					<xs:element minOccurs="0" name="originChannelName" type="xs:string" />
+					<xs:element minOccurs="0" name="pofSwitch" type="xs:string" />
+					<xs:element minOccurs="0" name="prepOperatorID" type="xs:string" />
+					<xs:element minOccurs="0" name="priorityCode" type="xs:string" />
+					<xs:element minOccurs="0" name="processSiteId" type="xs:string" />
+					<xs:element minOccurs="0" name="receivedDate" type="xs:string" />
+					<xs:element minOccurs="0" name="remoteId" type="xs:string" />
+					<xs:element minOccurs="0" name="routingCode" type="xs:string" />
+					<xs:element minOccurs="0" name="scanOperatorID" type="xs:string" />
+					<xs:element minOccurs="0" name="scannedDateTime" type="xs:string" />
+					<xs:element minOccurs="0" name="scannerID" type="xs:string" />
+					<xs:element minOccurs="0" name="siteID" type="xs:string" />
+					<xs:element minOccurs="0" name="workStatus" type="xs:string" />
+					<xs:element minOccurs="0" name="xmlInfo" type="xs:string" />
+				</xs:sequence>
+			</xs:complexType>
+			<xs:complexType name="memberCommunicationDocument">
+				<xs:sequence>
+					<xs:element minOccurs="0" name="dcn" type="xs:string" />
+					<xs:element minOccurs="0" name="docType" type="xs:string" />
+					<xs:element minOccurs="0" name="fnDocNumber" type="xs:string" />
+					<xs:element minOccurs="0" name="formIDBarcode" type="xs:string" />
+					<xs:element minOccurs="0" name="memberId" type="xs:string" />
+					<xs:element minOccurs="0" name="rxNumber" type="xs:string" />
+					<xs:element minOccurs="0" name="xmlInfo" type="xs:string" />
+				</xs:sequence>
+			</xs:complexType>
+			<xs:complexType name="launchMemberCommunicationProcessResponse">
+				<xs:sequence>
+					<xs:element name="return" type="xs:boolean" />
+				</xs:sequence>
+			</xs:complexType>
+			<xs:element name="ParseException" type="tns:ParseException" />
+			<xs:complexType name="ParseException">
+				<xs:sequence />
+			</xs:complexType>
+		</xs:schema>
+	</wsdl:types>
+	
+	<wsdl:message name="ParseException">
+		<wsdl:part element="tns:ParseException" name="ParseException"></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="launchMemberCommunicationProcess">
+		<wsdl:part element="tns:launchMemberCommunicationProcess" name="parameters"></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="launchMemberCommunicationProcessResponse">
+		<wsdl:part element="tns:launchMemberCommunicationProcessResponse" name="parameters"></wsdl:part>
+	</wsdl:message>
+	
+	<wsdl:portType name="MemberCommunicationService">
+		<wsdl:operation name="launchMemberCommunicationProcess">
+			<wsdl:input message="tns:launchMemberCommunicationProcess" name="launchMemberCommunicationProcess"></wsdl:input>
+			<wsdl:output message="tns:launchMemberCommunicationProcessResponse" name="launchMemberCommunicationProcessResponse"></wsdl:output>
+			<wsdl:fault message="tns:ParseException" name="ParseException"></wsdl:fault>
+		</wsdl:operation>
+	</wsdl:portType>
+	
+	<wsdl:binding name="MemberCommunicationServiceSoapBinding" type="tns:MemberCommunicationService">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsdl:operation name="launchMemberCommunicationProcess">
+			<soap:operation soapAction="" style="document" />
+				<wsdl:input name="launchMemberCommunicationProcess">
+					<soap:body use="literal" />
+				</wsdl:input>
+			<wsdl:output name="launchMemberCommunicationProcessResponse">
+				<soap:body use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="ParseException">
+				<soap:fault name="ParseException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+	</wsdl:binding>
+	
+	<wsdl:service name="MemberCommunicationService">
+		<wsdl:port binding="tns:MemberCommunicationServiceSoapBinding" name="MemberCommunicationServiceImplPort">
+			<soap:address location="http://localhost:63091/services/launchMemberCommunicationProcess" />
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>
