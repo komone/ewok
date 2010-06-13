@@ -27,7 +27,7 @@ behaviour_info(callbacks) -> [
 behaviour_info(_) ->
     undefined.
 
-encode(Codec, Term) -> when is_atom(Codec) ->
+encode(Codec, Term) when is_atom(Codec) ->
 	encode(Codec, Term, []).
 	
 encode(Codec, Term, Acc) ->
@@ -35,8 +35,9 @@ encode(Codec, Term, Acc) ->
 	{continue, Term1, Acc1} ->
 		encode(Codec, Term1, [Acc1|Acc]);
 	{ok, Bin} -> 
-		list_to_binary(lists:reverse([Bin|Acc])
+		list_to_binary(lists:reverse([Bin|Acc]))
 	end.
 	
 decode(Codec, Bin) when is_atom(Codec), is_binary(Bin) ->
+	ok.
 	

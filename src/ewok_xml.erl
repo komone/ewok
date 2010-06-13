@@ -33,13 +33,13 @@ decode(File) when ?is_string(File) ->
 	{ok, Bin} = file:read_file(File),
 	decode(Bin);
 decode(Bin) when is_binary(Bin) ->
-	try
-		[?XML_DECL|List] = ewok_text:split(Bin, ?XML_REGEX),
-		{Root, []} = decode_elements(List, [], []),
-		{xml, [{version, {1, 0}}], Root}
-	catch
-	E:R -> {E, R}
-	end.
+%	try
+	[_|List] = ewok_text:split(Bin, ?XML_REGEX),
+	{Root, []} = decode_elements(List, [], []),
+	{xml, [{version, {1, 0}}], Root}.
+%	catch
+%	E:R -> {E, R}
+%	end.
 %%
 encode({xml, [{version, 1}], Markup}) ->
 	encode(Markup);
@@ -85,7 +85,7 @@ decode_elements([<<$<, Bin/binary>>|T], Terminal, Acc) ->
 	[Tag, Close] = ewok_text:split(Bin, <<"(>|/>)">>, 2),
 	%% TODO: clean this up
 %	[Name|Attrs] = ewok_text:split(Tag, <<" ">>),
-	R = ewok_text:split(Tag, <<"([0-9A-Za-z]*=\"[^\"]+\")">>),
+	R = ewok_text:split(Tag, <<"([0-9A-Za-z:]*=\"[^\"]+\")">>),
 	R1 = [ewok_text:trim(X) || X <- R],
 	R2 = [X || X <- R1, X =/= <<>>],
 	[Name|Attrs] = R2,

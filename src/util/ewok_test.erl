@@ -1,7 +1,7 @@
 %%
 -module(ewok_test).
 -compile(export_all).
--include("ewok_geoip.hrl").
+-include("../ewok_geoip.hrl").
 
 start() ->
 	io:format("~p~n", [test]),

@@ -7,7 +7,6 @@
 -include("ewok_system.hrl").
 
 -export([absolute_uri/1, absolute_uri/2, get_remote_ip/2, browser_detect/1]).
--export([url_encode/1, url_decode/1]).
 -export([status/1, status_type/1, status_code/1, status_message/1, header/1]).
 -export([mimetype/1, date/0, date/1]). 
 
