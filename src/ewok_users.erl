@@ -39,7 +39,8 @@ exists(Realm, Username) ->
 		case ewok_db:select(ewok_user, {name, {Realm1, Username}}) of
 		{ok, [#ewok_user{}]} ->
 			true;
-		_ -> false
+		_ -> 
+			false
 		end
 	end catch
 		error:badarg -> 

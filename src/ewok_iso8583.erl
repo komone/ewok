@@ -6,10 +6,10 @@
 
 -record(message, {version, class, function, origin}).
 
-encode(Term) ->
+encode(_Term) ->
 	ok.
 	
-decode(<<Version:8, Class:8, Function:8, Origin:8, Primary:32, Rest/binary>>) ->
+decode(<<Version:8, Class:8, Function:8, Origin:8, _Primary:32, _Rest/binary>>) ->
 	#message{
 		version = version(Version),
 		class = class(Class),

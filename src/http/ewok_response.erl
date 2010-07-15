@@ -35,34 +35,34 @@
 
 %% Placeholder!! 100-continue
 continue(Request) ->
-	reply(Request, #response{status=100, headers=[], content=[], close=false}).
+	reply(Request, #http_response{status=100, headers=[], content=[], close=false}).
 
 % Plaintext response for now... soon use esp errorpage template?
-reply(Request, Response = #response{}) ->
-	ContentLength = content_length(Response#response.content),
+reply(Request, Response = #http_response{}) ->
+	ContentLength = content_length(Response#http_response.content),
 	Headers = 
-		case proplists:get_value(content_length, Response#response.headers) of
+		case proplists:get_value(content_length, Response#http_response.headers) of
 		undefined -> 
-			case Response#response.content of 
+			case Response#http_response.content of 
 			chunked -> 
-				[{transfer_encoding, chunked}|Response#response.headers];
+				[{transfer_encoding, chunked}|Response#http_response.headers];
 			_ -> 
-				case Response#response.status =/= 304 of
-				true -> [{content_length, ContentLength}|Response#response.headers];
-				false -> Response#response.headers
+				case Response#http_response.status =/= 304 of
+				true -> [{content_length, ContentLength}|Response#http_response.headers];
+				false -> Response#http_response.headers
 				end
 			end;
 		Value when is_integer(Value) -> 
-			Response#response.headers
+			Response#http_response.headers
 		end,
 %	?TTY("~p -> get_http_response~n~p~n", [Request:url(), Response]),
-	HttpResponse = get_http_response(Request, Response#response{headers=Headers}),
+	HttpResponse = get_http_response(Request, Response#http_response{headers=Headers}),
 %	?TTY("REQUEST: ~p~n~n", [{Request:method(), Request:url()}]),
 %	?TTY("RESPONSE: ~p~n~n", [HttpResponse]),
 	Socket = Request:socket(),
 	ok = send(Socket, HttpResponse),
 	case is_integer(ContentLength) andalso ContentLength > 0 of
-	true -> ok = send(Socket, Response#response.content); %% file or iolist
+	true -> ok = send(Socket, Response#http_response.content); %% file or iolist
 	false -> ok
 	end,
 	{ok, HttpResponse, ContentLength}.
@@ -77,7 +77,7 @@ content_length(chunked) ->
 
 %% HACKY needs a fix 
 get_http_response(Request, Response) ->
-	Code = ewok_http:status_code(Response#response.status),
+	Code = ewok_http:status_code(Response#http_response.status),
 	case Code of 
 	100 ->
 		<<"HTTP/1.1 100 Continue\r\n\r\n">>;
@@ -97,7 +97,7 @@ get_http_response(Request, Response) ->
 			<<" ">>, ewok_http:status_message(Code), <<"\r\n">>
 		],	
 		Headers = [{server, ?SERVER_ID}, {date, ewok_http:date()} 
-			|Response#response.headers],
+			|Response#http_response.headers],
 		F = fun ({K, V}, Acc) ->
 				[list_to_binary([ewok_http:header(K), <<": ">>, make_io(V), <<"\r\n">>]) | Acc]
 			end,

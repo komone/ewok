@@ -1,4 +1,4 @@
-%% Copyright 2009 Steve Davis <steve@simulacity.com>
+%% Copyright 2009-2010 Steve Davis <steve@simulacity.com>
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -11,14 +11,54 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
+-module(ewok_smtp).
+
+-include("ewok.hrl").
+-include("ewok_system.hrl").
+-include("email.hrl").
+
+-behaviour(ewok_codec).
+-export([encode/1, decode/1]).
 
 %% @ref RFC5321
 
--module(ewok_smtp).
--vsn({1, 0, 0}).
--author('steve@simulacity.com').
+%% ewok_codec callbacks
+%%
+encode(Term) ->
+	Code = code(Term),
+	{ok, list_to_binary([ewok_text:encode(Code), ?SP, status_message(Code), ?CRLF])}.
+%%	
+decode(Bin) ->
+	[Verb|Args] = ewok_text:split(Bin, <<"[ \r\n]+">>, 2),
+	case command(ewok_text:to_upper(Verb)) of
+	undefined -> 
+		case ewok_text:split(Bin, <<"\r\n\r\n">>) of
+		[Body] ->
+			{ok, {data, [], decode_body([Body])}};
+		[Headers|Body] ->
+			{ok, {data, decode_headers(Headers), decode_body(Body)}}
+		end;
+	Command ->
+		{ok, {Command, ewok_text:split(Args, <<"\r\n">>)}}
+	end.
 
--export([command/1, code/1, status_message/1]).
+%%
+decode_headers(Headers) ->
+	decode_headers(ewok_text:split(Headers, <<"\r\n">>), []).
+decode_headers([H|T], Acc) ->
+	[Name, Value] = ewok_text:split(H, <<":">>, 2),
+	decode_headers(T, [{ewok_text:trim(Name), ewok_text:trim(Value)} | Acc]);
+decode_headers([], Acc) ->
+	lists:reverse(Acc).
+	
+%%
+decode_body(Lines) ->
+	decode_body(Lines, []).
+decode_body([H|T], Acc) ->
+	Lines = ewok_text:split(H, <<"\r\n">>),
+	decode_body(T, lists:append(Acc, Lines));
+decode_body([], Acc) ->
+	Acc.
 
 command(<<"DATA">>) -> 'DATA';
 command(<<"EHLO">>) -> 'EHLO';

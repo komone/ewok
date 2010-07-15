@@ -26,22 +26,32 @@
 -export([init/1]).
 
 %%
-start_link([]) ->
-	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(Opts) ->
+	supervisor:start_link({local, ?MODULE}, ?MODULE, [Opts]).
 %%
 stop() ->
 	%% supervisor:terminate_child... all?
 	ok.
 	
 %% supervisor callback
-init(Args) ->
-	ewok_log:message(?MODULE, Args),
-	ChildSpecs = [childspec(Service) || Service <- Args],
-	{ok, {{one_for_one, 0, 1}, ChildSpecs}}.
+init([]) ->
+	ok;
+init([Services|_]) ->
+	ewok_log:message(?MODULE, Services),
+	ChildSpecs = [childspec(Service, Port) || {Service, Port} <- Services],
+	case supervisor:check_childspecs(ChildSpecs) of
+	ok -> 
+		{ok, {{one_for_one, 0, 1}, ChildSpecs}};
+	Error -> 
+		Error
+	end.
 	
 %%
-childspec(Conf = #ewok_inet{name=Name}) ->
-	{Name, {ewok_inet, start_link, [Conf]}, permanent, 5000, worker, [ewok_inet]}.
+childspec(Module, Port) when is_atom(Module), is_integer(Port) ->
+	Inet = Module:start(Port),
+	Name = ewok_inet:make_name(Port),
+%	?TTY(Inet#ewok_inet{id = Name}),
+	{Name, {ewok_inet, start_link, [Inet#ewok_inet{id = Name}]}, permanent, 5000, worker, [ewok_inet]}.
 
 %%
 start_services([Child|Rest]) ->

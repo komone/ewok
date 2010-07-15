@@ -17,7 +17,9 @@
 			{login, "/admin/login"},
 			{roles, [{ewok,admin}]},
 			{route, "/admin/*", ewok_web_admin, ewok, [{ewok, admin}]},
-			{route, "/admin/login", ewok_login_handler, ewok, any}
+			{route, "/admin/login", ewok_login_handler, ewok, any},
+			{route, "/console", ewok_console, ewok, any},
+			{route, "/service/test", ws_test, ewok, any}			
 		]}
 	]}
 ]}.

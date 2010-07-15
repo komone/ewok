@@ -13,6 +13,7 @@
 % limitations under the License.
 
 -module(ewok_console).
+-include("ewok.hrl").
 -include("ewok_system.hrl").
 -include("esp.hrl").
 
@@ -20,8 +21,8 @@
 % http_resource callbacks
 -export([filter/1, resource_info/0]).
 
--export(['GET'/2, 'POST'/2]).
--compile(export_all).
+-export(['GET'/2]).
+
 %%
 %% Resource Callbacks
 %%
@@ -32,19 +33,7 @@ resource_info() ->
 filter(_Request) ->  
 	ok.
 
-'GET'(Request, Session) ->
-	case Request:pathlist() of
-	[<<"console">>] ->
-		page(Session);
-	_ -> 
-		not_found
-	end.
-
-	
-'POST'(_Request, _Session) ->
-	method_not_supported.
-
-page(Session) ->
+'GET'(_Request, Session) ->
 	esp:render(#page{title="Ewok Admin", head=head(), body=body(Session)}).
 
 head() -> [
@@ -60,7 +49,7 @@ head() -> [
 
 body(Session) ->
 	Username = 
-		case Session:user() of
+		case Session#http_session.user of
 		undefined -> 
 			<<"Guest">>;
 		U = #ewok_user{} -> 
@@ -68,7 +57,7 @@ body(Session) ->
 			list_to_binary(Name)
 		end,
 	[ 	#'div'{id="header", body = [
-		dock(Username),
+			dock(Username),
 			#img{id="logo", src= <<"/images/ewok-logo.png">>}
 		]},
 		#'div'{id="page"},

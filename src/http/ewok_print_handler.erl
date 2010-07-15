@@ -1,6 +1,6 @@
 -module(ewok_print_handler).
--include("../include/ewok.hrl").
--include("../include/esp.hrl").
+-include("ewok.hrl").
+-include("esp.hrl").
 
 -behavior(ewok_http_resource).
 -export([filter/1, resource_info/0]).

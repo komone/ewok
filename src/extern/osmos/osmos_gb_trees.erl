@@ -72,6 +72,8 @@
 	   iterator_lower_bound/2,
 	   next/1 ]).
 
+-compile({no_auto_import,[max/2]}).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Data structure:
 %% - {Size, Tree}, where `Tree' is composed of nodes of the form:

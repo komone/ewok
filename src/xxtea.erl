@@ -116,8 +116,8 @@ void btea(uint32_t *v, int n, uint32_t const k[4]) {
 	}
 }".
 
-decode(Key, Value) ->
+decode(_Key, Value) ->
 	Rounds = 6 + 52 div size(Value),
-	Sum = Rounds * ?DELTA,
+	_Sum = Rounds * ?DELTA,
 	<<Y:32, _/binary>> = Value,
 	{Rounds, Y}.

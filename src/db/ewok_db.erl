@@ -39,7 +39,7 @@
 	{ewok_profile, record_info(fields, ewok_profile)},
 	{ewok_role, record_info(fields, ewok_role)},
 	{ewok_route, record_info(fields, ewok_route)},
-	{ewok_session, record_info(fields, ewok_session)},
+	{http_session, record_info(fields, http_session)},
 	{ewok_task, record_info(fields, ewok_task)},
 	{ewok_user, record_info(fields, ewok_user)}
 ]).

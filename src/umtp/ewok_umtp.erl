@@ -23,78 +23,36 @@
 %% Suggested IANA Port 30
 %% Suggested Well-known ports 3300-3301
 %% Stateless
+-define(UMTP_PORT, 30).
 
--behaviour(ewok_service).
--export([start_link/1, stop/0]).
--export([service/2, sendmail/1]).
+-export([start/0, start/1]).
 
+-behaviour(ewok_inet).
+-export([init/2, terminate/3]).
+-export([connected/2]).
 %-record(mail, {from, to, timestamp, body}).
+-record(state, {remote_ip, remote_port}).
 
-start_link(_Args) -> 
-	try begin
-		ewok_log:message(service, ?MODULE),
-		%% DS = ewok_data_srv:connect(default)
-		Transport = gen_tcp, %% TEMP
-		Port = ewok:config({ewok, umtp, port}, 30),
-		SocketOpts = ewok_socket:configure(Transport, {ewok, umtp}),
-		MaxConnections = ewok:config("ewok.umtp.tcp.max_connections", infinity),
-		Timeout = ewok:config({ewok, umtp, timeout}, 10) * 1000,
-		
-		Handler = fun(X) -> ?MODULE:service(X, Timeout) end,
-		
-		Configuration = [
-			{name, ?MODULE},
-			{transport, Transport}, %% defines use of gen_tcp or ssl module
-			{port, Port},
-			{protocol, umtp},
-			{max_connections, MaxConnections},
-			{socket_opts, SocketOpts},
-			{handler, Handler}
-		],
-		%% ?TTY("CONFIG:~n~p~n", [Configuration]),
-		ewok_log:message(configuration, {?MODULE, Configuration}),
-		%% Starts a TCP Server for UTP
-		{ok, Pid} = ewok_socket_srv:start_link(?MODULE, Configuration),
-		ewok_log:add_log(mail),
-		{ok, Pid}
-	end catch
-	Error:Reason -> {Error, Reason}
-	end.
+start() ->
+	start(?UMTP_PORT).
+start(Port) ->
+	#ewok_inet{
+		transport = tcp,
+		protocol = umtp,
+		port = Port,
+		handler = ewok_umtp,
+		codec = ewok_ubf,
+		timeout = 10
+	}.
 
-stop() -> 
-	ewok_socket_srv:stop(?MODULE),
-	ewok_log:remove_log(mail).
+%% Callbacks: ewok_inet
+init(_Options, {RemoteIP, RemotePort}) ->
+	{noreply, connected, #state{remote_ip = RemoteIP, remote_port = RemotePort}}.	
+%%
+connected(Request, State) ->
+	?TTY({umtp, Request}),
+	{reply, ok, connected, State}.
+%%
+terminate(_Reason, _NextState, _StateData) ->
+	ok.
 
-
-%% Callback from ewok_socket_srv, handing over a client connection
-service(Socket, Timeout) ->
-	case ewok_socket:recv(Socket, 0, Timeout) of
-	{ok, Packet} ->
-		try begin
-			Message = ewok_ubf:decode(Packet),
-			?TTY({umtp, message, Message}),
-			reply(Socket, {reply, ok})
-		end catch 
-			Error:Reason ->
-				reply(Socket, {Error, Reason})
-		end;
-	{error, Reason} ->
-		?TTY({error, Reason})
-	end.
-
-reply({Transport, Socket}, Reply) ->
-	case Transport:send(Socket, ewok_ubf:encode(Reply)) of
-	ok -> ok;
-	_ -> exit(normal)
-	end.
-
-sendmail(Mail = #mail{}) ->
-	{ok, Host} = inet:gethostname(),
-	{ok, Socket} = gen_tcp:connect(Host, 30, [{active, false}]),
-	gen_tcp:send(Socket, ewok_ubf:encode(Mail)),
-	print(Socket),
-	gen_tcp:close(Socket).
-
-print(Socket) ->
-	{ok, Packet} = gen_tcp:recv(Socket, 0),
-	io:format("~p~n", [Packet]).

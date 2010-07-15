@@ -1,18 +1,25 @@
 %%
 -module(ewok_http).
--vsn({1,0,0}).
--author('steve@simulacity.com').
 
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
+-behaviour(ewok_codec).
+-export([encode/1, decode/1]).
+
+-define(SP, <<" ">>).
+-define(CRLF, <<"\r\n">>).
+-define(EOH, <<"\r\n\r\n">>).
+
 -export([absolute_uri/1, absolute_uri/2, get_remote_ip/2, browser_detect/1]).
--export([status/1, status_type/1, status_code/1, status_message/1, header/1]).
+-export([status/1, status_type/1, status_code/1, status_message/1, header/1, convert_header/1]).
 -export([mimetype/1, date/0, date/1]). 
 
 -export([absolute_uri_couch/1]).
 
--record(http_message, {status, headers=[], body=[]}).
+-compile(export_all).
+
+%-record(http_message, {status, headers=[], body=[]}).
 
 absolute_uri(Path) -> 
 	absolute_uri(<<"http">>, Path).
@@ -86,6 +93,9 @@ browser_signatures() -> [
 	"Safari/[0-9\\.]+"
 ].
 
+%% placeholder...
+% platform_signatures() -> [].
+
 %% API
 mimetype(Type) when is_binary(Type) ->
 	case ewok_db:lookup(ewok_mimetype, Type) of
@@ -107,10 +117,81 @@ date() ->
 date(LocalDateTime) ->
 	list_to_binary(httpd_util:rfc1123_date(LocalDateTime)).
 
-%
+%% ewok_codec
+%%
+encode(#http_response{status = Status, headers = Headers, content = Content, close = Close}) when is_binary(Content) ->
+	Length = size(Content),
+	%?TTY({Status, Headers, Length}),
+	Headers0 = 
+		case proplists:get_value(content_length, Headers) of
+		Length ->
+			Headers;
+		undefined ->
+			[{content_length, Length} | Headers]
+		end,
+	Headers1 = 
+		case Close of
+		false ->
+			Headers0;
+		true ->
+			[{connection, close} | Headers0]
+		end,
+	Response = [
+		<<"HTTP/1.1 ">>,
+		ewok_text:encode(status_code(Status)), ?SP,
+		status_message(Status), ?CRLF,
+		encode_headers([
+			{server, ?SERVER_ID}, 
+			{date, ewok_http:date()}
+			| Headers1], []),
+		?CRLF,
+		Content
+	],
+	{ok, list_to_binary(Response)}.
 
-%% placeholder...
-% platform_signatures() -> [].
+encode_headers([{K, V}|T], Acc) ->
+	Header = [header(K), <<":">>, ?SP, ewok_text:encode(V), ?CRLF],
+	encode_headers(T, [list_to_binary(Header) | Acc]);
+encode_headers([], Acc) ->
+	list_to_binary(lists:reverse(Acc)).
+
+%%
+decode(Bin) ->
+	[Head | Body] = ewok_text:split(Bin, ?EOH, 2),
+%	?TTY(Head),
+	[Command | Lines] = ewok_text:split(Head, ?CRLF),
+	[Method, FullPath, <<"HTTP/", Version/binary>>] = ewok_text:split(Command, ?SP),
+	[Path | Query] = ewok_text:split(FullPath, <<"\\?">>, 2),
+	Headers = decode_headers(Lines, []),
+	Params = decode_params(ewok_text:split(Query, <<"&">>), []),
+	Request = #http_request{
+		method = method(Method),
+		version = ewok_util:decode_version(Version),
+		path = Path,
+		headers = Headers,
+		params = Params,
+		content = Body
+	},
+	{ok, Request}.
+%%
+decode_headers([H|T], Acc) ->
+	[Name, Value] = ewok_text:split(H, <<":">>, 2),
+	decode_headers(T, [{convert_header(ewok_text:trim(Name)), ewok_text:trim(Value)} | Acc]);
+decode_headers([], Acc) ->
+	lists:reverse(Acc).
+%%
+decode_params([H|T], Acc) ->
+	[K | V] = ewok_text:split(H, <<"=">>, 2),
+	decode_params(T, [{K, list_to_binary(V)} | Acc]);
+decode_params([], Acc) ->
+	lists:reverse(Acc).
+
+method(<<"HEAD">>) -> 'HEAD';
+method(<<"GET">>) -> 'GET';
+method(<<"POST">>) -> 'POST';
+method(<<"PUT">>) -> 'PUT';
+method(<<"TRACE">>) -> 'TRACE';
+method(<<"OPTIONS">>) -> 'OPTIONS'.
 
 %%
 status(X) when is_integer(X) ->
@@ -311,3 +392,63 @@ header(WebSocket = <<"WebSocket-", _R/binary>>) -> WebSocket;
 header(X = <<"X-", _R/binary>>) -> X.
 %% Don't return undefined if not found... ewok_request gets unhappy.
 
+% HTTP Header Keys
+convert_header(<<"Accept">>) ->              accept;                       
+convert_header(<<"Accept-Charset">>) ->      accept_charset;               
+convert_header(<<"Accept-Encoding">>) ->     accept_encoding;              
+convert_header(<<"Accept-Language">>) ->     accept_language;              
+convert_header(<<"Accept-Ranges">>) ->       accept_ranges;                
+convert_header(<<"Age">>) ->                 age;                          
+convert_header(<<"Allow">>) ->               allow;                        
+convert_header(<<"Authorization">>) ->       authorization;                
+convert_header(<<"Cache-Control">>) ->       cache_control;                
+convert_header(<<"Connection">>) ->          connection;                   
+convert_header(<<"Content-Encoding">>) ->    content_encoding;             
+convert_header(<<"Content-Disposition">>) -> content_disposition;          
+convert_header(<<"Content-Language">>) ->    content_language;             
+convert_header(<<"Content-Length">>) ->      content_length;               
+convert_header(<<"Content-Location">>) ->    content_location;             
+convert_header(<<"Content-MD5">>) ->         content_md5;                  
+convert_header(<<"Content-Range">>) ->       content_range;                
+convert_header(<<"Content-Type">>) ->        content_type;                 
+convert_header(<<"Date">>) ->                date;                         
+convert_header(<<"ETag">>) ->                etag;                         
+convert_header(<<"Expect">>) ->              expect;                       
+convert_header(<<"Expires">>) ->             expires;                      
+convert_header(<<"From">>) ->                from;                         
+convert_header(<<"Host">>) ->                host;                         
+convert_header(<<"If-Match">>) ->            if_match;                     
+convert_header(<<"If-Modified-Since">>) ->   if_modified_since;            
+convert_header(<<"If-None-Match">>) ->       if_none_match;                
+convert_header(<<"If-Range">>) ->            if_range;                     
+convert_header(<<"If-Unmodified-Since">>) -> if_unmodified_since;          
+convert_header(<<"Last-Modified">>) ->       last_modified;                
+convert_header(<<"Location">>) ->            location;                     
+convert_header(<<"Max-Forwards">>) ->        max_forwards;                 
+convert_header(<<"Pragma">>) ->              pragma;                       
+convert_header(<<"Proxy-Authenticate">>) ->  proxy_authenticate;           
+convert_header(<<"Proxy-Authorization">>) -> proxy_authorization;          
+convert_header(<<"Range">>) ->               range;                        
+convert_header(<<"Referer">>) ->             referer;                      
+convert_header(<<"Retry-After">>) ->         retry_after;                  
+convert_header(<<"Server">>) ->              server;                       
+convert_header(<<"TE">>) ->                  te;                           
+convert_header(<<"Trailer">>) ->             trailer;                      
+convert_header(<<"Transfer-Encoding">>) ->   transfer_encoding;            
+convert_header(<<"Upgrade">>) ->             upgrade;                      
+convert_header(<<"User-Agent">>) ->          user_agent;                   
+convert_header(<<"Vary">>) ->                vary;                         
+convert_header(<<"Via">>) ->                 via;                          
+convert_header(<<"Warning">>) ->             warning;                      
+convert_header(<<"WWW-Authenticate">>) ->    www_authenticate;             
+%% Extensions to HTTP/1.1      
+convert_header(<<"Cookie">>) ->              cookie;              
+convert_header(<<"Set-Cookie">>) ->          set_cookie;          
+convert_header(<<"Origin">>) ->              origin;              
+%% WebSockets Extension                
+convert_header(WebSocket = <<"WebSocket-", _/binary>>) -> WebSocket;
+%%
+convert_header(Soap = <<"SOAP", _/binary>>) -> Soap;
+%% 'X' convert_headers  
+convert_header(X = <<"X-", _R/binary>>) -> X.     
+%% Don't return undefined if not found... ewok_request gets unhappy.

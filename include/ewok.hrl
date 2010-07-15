@@ -35,8 +35,26 @@
 %% "API record" used in deployment srv
 -record(route, {path, handler, realm, roles = []}).
 
+%% http request record
+-record(http_request, {
+	ip,
+	method, 
+	version, 
+	path, 
+	headers, 
+	cookies,
+	realm, 
+	params, 
+	content
+}).
+%%
+-record(http_response, {status, headers=[], content=[], close=false}).
+
 %% Ewok Session Management
--record(session, {key, ip, user, data = [], started, expires, ttl, notify}).
+-record(http_session, {key, ip, user, data = [], started, expires, ttl, notify}).
+
+%%
+-record(wsdl, {id, path, ops=any}).
 
 %%
 -record(task, {function, start=now, repeat=once, terminate=infinity}).
@@ -46,14 +64,4 @@
 %% engineering principles and standards. You can safely ignore this record for now.
 -record(text, {bin, charset = utf8, lang = 'us-en'}).
 
-%% http request record
--record(request, {
-	method, 
-	version, 
-	path, 
-	headers, 
-	realm, 
-	params, 
-	content
-}).
 %% end %%

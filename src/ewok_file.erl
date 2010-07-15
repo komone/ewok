@@ -22,66 +22,66 @@
 -export([path/1, parent/1, name/1, appname/1, extension/1]).
 -export([load/1, save/2, eval/1, resource/2]).
 -export([list/1, code_path/1]). 
--export([is_directory/1, is_file/1, is_regular/1, is_link/1, modified/1]).
+-export([type/1, modified/1]).
+-export([is_directory/1, is_file/1, is_regular/1, is_link/1]).
 -export([file_info/1, find/2, find/3]).
 
 -define(PATH_SEPARATOR, <<"[\\\\/]">>).
 -define(BIN_DIR, <<"ebin">>).
 
-%% TODO: Refactoring target
-%% BUG: <<"../..">> -> <<"..">>.
+-compile(export_all).
+test() ->
+	path(".").
+	
+
+%% NOTE: /.. -> /
 path(Bin) when is_binary(Bin) ->
 	path([Bin]);
-path(List = [H|_]) when is_integer(H) -> % "strings"
+path(List) when ?is_string(List) -> % "strings"
 	path([list_to_binary(List)]);
-path(List) ->
-	{ok, CD} = file:get_cwd(),
-	Filtered = filter_paths(List, [list_to_binary(CD)]),
+path(List) ->	
+	Filtered = filter_paths(List, [cwd()]),
 	Parts = [ewok_text:split(X, ?PATH_SEPARATOR) || X <- Filtered],
-%	?TTY("~p~n", [lists:append(Parts)]),
-	make_path(lists:append(Parts), <<>>).
+%	?TTY({parts, lists:append(Parts)}),
+	make_path(lists:append(Parts), []).
 
 %% @private
-%% convert "string" elements and drop elements that precede an absolute path
-filter_paths([String = [H|_]|T], Acc) when is_integer(H) ->
-	filter_paths([list_to_binary(String)|T], Acc);
+%% convert "string" elements 
+filter_paths([H|T], Acc) when ?is_string(H) ->
+	filter_paths([list_to_binary(H)|T], Acc);
+%% drop elements that precede an absolute path
 filter_paths([H = <<$/, _/binary>>|T], _Acc) ->
 	filter_paths(T, [H]);
 filter_paths([Windoze = <<_, $:, _/binary>>|T], _Acc) ->
 	filter_paths(T, [Windoze]);
+%% add others
 filter_paths([H|T], Acc) ->
 	filter_paths(T, [H|Acc]);
 filter_paths([], Acc) ->
 	lists:reverse(Acc).
 
 %% @private
-make_path([<<$.>>|T], <<>>) -> 
-	{ok, CD} = file:get_cwd(),
-	make_path(T, list_to_binary(CD));
-% parent of cwd
-make_path([<<"..">>|T], <<>>) -> %%
-	{ok, Dir} = file:get_cwd(),
-	CurrentDir = ewok_text:split(Dir, ?PATH_SEPARATOR),
-	[_|Rest] = lists:reverse(CurrentDir),
-	Base = make_path(lists:reverse(Rest), <<>>),
-	make_path(T, Base);
-% deal with windows drive labels
-make_path([Volume = <<_, $:>>|T], <<>>) ->
-	Acc = ewok_text:to_upper(Volume),
-	make_path(T, Acc);
 % current
-make_path([<<$.>>, H|T], Acc) ->
-	make_path(T, <<Acc/binary, $/, H/binary>>);
-% parent
-make_path([_H, <<"..">>|T], Acc) ->
+make_path([<<$.>>|T], Acc) ->
 	make_path(T, Acc);
+% parent
+make_path([<<"..">>|T], [_, <<$/>> | T0]) ->
+	make_path(T, T0);
+% windoze
+make_path([H = <<_, $:>>|T], []) ->
+	make_path(T, [ewok_text:to_upper(H)]);
 %
 make_path([H|T], Acc) when is_binary(H) ->
-	make_path(T, <<Acc/binary, $/, H/binary>>);
+	make_path(T, [H, <<$/>> | Acc]);
 %
 make_path([], Acc) ->
-	Acc.
+	list_to_binary(lists:reverse(Acc)).
 	
+%%
+cwd() ->
+	{ok, CD} = file:get_cwd(),
+	list_to_binary(CD).
+
 %% TODO: test
 code_path(Path) ->
 	case is_regular(Path) of
@@ -243,6 +243,14 @@ is_type(File, Type) ->
 		false
 	end.
 	
+type(File) ->
+	case file_info(File) of
+	#file_info{type = Type} ->
+		Type;
+	_ ->
+		undefined
+	end.
+
 %% Temp...?
 modified(File) ->
 	Info = file_info(File),

@@ -39,12 +39,13 @@ start(_CertOpts) ->
 
 
 %% Client connect
-init_connect({LPort, CertOpts}) ->
+init_connect({LPort, _CertOpts}) ->
     {ok, Host} = inet:gethostname(), 
     {ok, CSock} = ssl:connect(Host, LPort, mk_opts(connect)),
     io:fwrite("Connect: connected.~n"),
-    {ok, Cert} = ssl:peercert(CSock, CertOpts),
-    io:fwrite("Connect: peer cert:~n~p~n", [Cert]),
+    {ok, Cert} = ssl:peercert(CSock),
+	{ok, DCert} = public_key:pkix_decode_cert(Cert, plain),
+    io:fwrite("Connect: peer cert:~n~p~n", [DCert]),
     {ok, Data} = ssl:recv(CSock, 0),
     io:fwrite("Connect: got data: ~p~n", [Data]),
     io:fwrite("Connect: closing and terminating.~n"),

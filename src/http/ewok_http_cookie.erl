@@ -13,8 +13,9 @@
 % limitations under the License.
 
 -module(ewok_http_cookie).
--include("ewok_system.hrl").
+-include("ewok.hrl").
 
+-export([parse_cookies/1]).
 -export([start/0, gen_auth/1, gen_build/2, gen_check/2, read/1, check/4, test/0]).
 -export([make/1, message/1]).
 
@@ -22,6 +23,14 @@
 -define(SERVER_KEY, <<"secret">>).
 -define(IVEC, <<213,53,164,93,158,212,70,56,134,80,224,220,249,214,82,76>>).
 
+%% Used by ewok_http_inet
+parse_cookies(#http_request{headers = Headers}) ->
+	Cookie = proplists:get_value(cookie, Headers, []),
+	Values = [X || X <- ewok_text:split(Cookie, <<";">>)],
+	Pairs = [list_to_tuple(ewok_text:split(X, <<"=">>, 2)) || X <- Values],
+	[{ewok_text:trim(K), ewok_text:trim(V)} || {K, V} <- Pairs].
+
+%% The below functions are for future functionality, defining an algorithm for "secure cookies" - requires SSL
 % http://www.cse.msu.edu/~alexliu/publications/Cookie/cookie.ppt
 % @def http://www.cse.msu.edu/~alexliu/publications/Cookie/cookie.pdf
 % username | expiration time | (data)k | HMAC(username | expiration time | data | ssl session key, k)
@@ -40,7 +49,7 @@ start() ->
 	application:start(crypto). 
 
 
-make(#ewok_session{key = _Key, user = _User, expires = _Expires, data = _Data}) ->
+make(#http_session{key = _Key, user = _User, expires = _Expires, data = _Data}) ->
 	ok.
 
 gen_build(ServerKey, IVec) ->

@@ -16,7 +16,7 @@
 -include("ewok.hrl").
 
 -export([encode/1, trim/1, split/2, split/3, replace/3, strip/2, remove/2, unquote/1, 
-	is_upper/1, is_lower/1, to_upper/1, to_lower/1, eval/1, match/2]).
+	is_upper/1, is_lower/1, to_upper/1, to_lower/1, eval/1, match/2, interleave/2]).
 
 %%
 encode(X) when is_binary(X)  -> 
@@ -70,6 +70,14 @@ remove(Bin, Regex) ->
 %%
 unquote(Bin) ->
 	replace(Bin, <<"^\"|\"$">>, <<"">>).
+%%
+interleave([H|T], Separator) ->
+	interleave(T, Separator, [H]).
+interleave([H|T], Separator, Acc) ->
+	interleave(T, Separator, [H, Separator | Acc]);
+interleave([], _, Acc) ->
+	list_to_binary(lists:reverse(Acc)).
+
 
 %% hmmm
 trim(S) when ?is_string(S) ->

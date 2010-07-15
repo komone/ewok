@@ -23,8 +23,12 @@ sendmail(From, To, Message) ->
 
 
 print(Socket) ->
-	{ok, Packet} = gen_tcp:recv(Socket, 0),
-	io:format(Packet).
+	case gen_tcp:recv(Socket, 0, 10000) of
+	{ok, Packet} -> 
+		io:format(Packet);
+	Error ->
+		io:format("ERROR: ~p~n", [Error])
+	end.
 
 connect() ->
 	ewok_smtp_srv:start_link([]).

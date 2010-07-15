@@ -7,8 +7,11 @@
 -define(CRLF, <<$\r,$\n>>).
 -define(SP, <<$ >>).
 
+-record(imap_request, {id, command, args = []}).
+-record(imap_response, {id, command, status, data = [], message}).
+
 -record(mailbox, {user_id, messages=[]}).
--record(message, {id, timestamp, flags, body}).
+-record(message, {id, ip, timestamp, from, to, headers, body}).
 
 %% erlmail versions - PENDING DELETION
 -record(store, {name = [], options = []}).

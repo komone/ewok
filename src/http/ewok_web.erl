@@ -51,11 +51,11 @@ render(_Request, Session, Status, Spec) ->
 		end,
 	Head = [
 		#link{rel="icon", href="/favicon.png", type="image/png"},
-		#css{src="/css/ui-smoothness-1.7.2.css"},
+		#css{src="/css/jquery-ui-1.8.1.custom.css"},
 		#css{src="/esp.css"},
 		#css{src="/default.css"},
-		#script{src="/js/jquery-1.3.2.min.js"},
-		#script{src="/js/jquery-ui-1.7.2.min.js"},
+		#script{src="/js/jquery-1.4.2.min.js"},
+		#script{src="/js/jquery-ui-1.8.1.custom.min.js"},
 		#script{src="/esp-1.0.0.js"},
 		proplists:get_value(head, Spec, [])
 	],
@@ -79,14 +79,14 @@ render(_Request, Session, Status, Spec) ->
 	esp:render(Status, #page{title=Title, head=Head, body=Body}).
 
 %%
-dock(Session) ->
+dock(#http_session{user = User}) ->
 	Username = 
-		case Session:user() of
+		case User of
 		undefined -> 
 			#a{href="/login", body=[<<"Log In">>]};
-		U = #ewok_user{} -> 
-			{_, Name} = U#ewok_user.name,
-			Name
+		#ewok_user{name = Name} -> 
+			{_, Uname} = Name,
+			Uname
 		end,
 	[#span{class="dock", body=[
 		Username, 

@@ -42,12 +42,12 @@
 
 %% Used to initialize internet services
 -record(ewok_inet, {
-	name, 
+	id,
 	ip = {0, 0, 0, 0}, 
 	port = 0, 
 	timeout = infinity, 
 	max_connections = infinity, 
-	transport = gen_tcp, 
+	transport = tcp, 
 	protocol, 
 	handler, 
 	codec,
@@ -97,8 +97,6 @@
 %% To offer public access to the resource, 'roles' should be set to 'any'.
 -record(ewok_route, {path, handler, realm, roles=[]}).
 %%
--record(ewok_session, {key, ip, user, data=[], started, expires, ttl, notify}).
-%%
 -record(ewok_user, {id, name, roles=[]}). %% 
 %%
 -record(ewok_role, {id, info=[]}). %% 
@@ -106,7 +104,5 @@
 -record(ewok_profile, {id, attributes=[]}). %% KV store for profile attributes
 %% 
 -record(ewok_mimetype, {ext=[], media=[]}).
-%%
--record(response, {status, headers=[], content=[], close=false}).
 %%
 -record(ewok_file, {route, file, mimetype, modified, size=0, bin= <<>>}).

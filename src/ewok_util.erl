@@ -17,10 +17,10 @@
 -include("ewok.hrl").
 
 -export([appdir/0, appdir/1, get_env/1, get_env/2, ensure_started/1]).
--export([mergeopts/2, check_dependencies/1, tcp_ports/0]).
+-export([check_dependencies/1, check_behaviour/2, tcp_ports/0]).
 -export([timestamp/0, timestamp/1, unow/0, utime/0, unix_time/0]).
--export([build_number/0, build_time/0]).
--export([ftime/1, ftime/2]).
+-export([build_number/0, build_time/0, decode_version/1, encode_version/1]).
+-export([ftime/1, ftime/2, key/2, key/3, value/2, value/3]).
 
 -define(UNIX_TIME_ZERO, 62167219200).
 
@@ -53,11 +53,6 @@ get_env(App, Key, Default) when is_atom(Key) ->
 		Default
 	end.
 
-%% @credit Will Glozer
-mergeopts(Options, Defaults) ->
-    Options2 = lists:ukeysort(1, proplists:unfold(Options)),
-    proplists:normalize(lists:ukeymerge(1, Options2, Defaults), []).
-
 %%
 ensure_started(Apps) when is_list(Apps) ->
 	lists:foldl(fun(X, Acc) -> [ensure_started(X)|Acc] end, [], Apps);
@@ -71,6 +66,16 @@ ensure_started(App) when is_atom(App) ->
 		Other
 	end.
 	
+decode_version(Bin) when is_binary(Bin) ->
+	List0 = ewok_text:split(Bin, <<"\\.">>),
+	List1 = [ewok_text:eval(X) || X <- List0],
+	list_to_tuple(List1).
+	
+encode_version(Term) when is_tuple(Term) ->
+	List0 = tuple_to_list(Term),
+	List1 = [ewok_text:encode(X) || X <- List0, is_integer(X)],
+	ewok_text:interleave(List1, <<$.>>).
+	
 %%
 check_dependencies(Depends) ->
 	case [X || X <- Depends, is_pid(whereis(X)) =/= true] of
@@ -78,6 +83,39 @@ check_dependencies(Depends) ->
 		ok;
 	NotRunning -> 
 		throw({depends, NotRunning})
+	end.
+%%
+check_behaviour(Module, Behaviour) ->
+	Info = Module:module_info(attributes),
+	List  = [Y || {X, Y} <- Info, X =:= 'behaviour' orelse X =:= 'behavior'],
+	case [X || X <- lists:flatten(List), X =:= Behaviour] of
+	[Behaviour] -> 
+		ok;
+	[] ->
+		{error, not_found}
+	end.
+%%
+key(V, Properties) ->
+	key(V, Properties, undefined).
+%%
+key(V, Properties, Default) ->
+	case lists:keyfind(V, 2, Properties) of
+	{K, V} ->
+		K;
+	false -> 
+		Default
+	end.
+	
+%%
+value(K, Properties) ->
+	value(K, Properties, undefined).
+%%
+value(K, Properties, Default) ->
+	case lists:keyfind(K, 1, Properties) of
+	{K, V} ->
+		V;
+	false ->
+		Default
 	end.
 
 %% 

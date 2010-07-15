@@ -58,19 +58,9 @@ childspec(Module) when is_atom(Module) ->
 	{Module, {Module, start_link, [[]]}, 
 		permanent, 5000, worker, [Module]};
 %%
-childspec({supervisor, Module}) when is_atom(Module) ->
-	{Module, {Module, start_link, [[]]}, 
-		permanent, infinity, supervisor, [Module]};%% double check this!
-%%
-childspec({Module, Port}) ->
-	ServerId = server_name(Module, Port),
-	{ServerId, {Module, start_link, [ServerId, Port]}, 
-		permanent, 5000, worker, [Module]}.
-
-%%
-server_name(Type, Port) when is_atom(Type), is_integer(Port) ->
-	ServerName = lists:append([atom_to_list(Type), "_", integer_to_list(Port)]),
-	list_to_atom(ServerName).
+childspec({Module, Args}) when is_atom(Module), is_list(Args) ->
+	{Module, {Module, start_link, [Args]}, 
+		permanent, infinity, supervisor, [Module]}. %% double check this!
 	
 %% TODO: what to do here? appup?
 upgrade() -> 

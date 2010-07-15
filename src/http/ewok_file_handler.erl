@@ -38,8 +38,8 @@ resource_info() -> [
 ].
 	
 %% This filter includes delegation to the ESP file interceptor
-filter(Request) ->
-	case ewok_file:extension(Request:path()) of
+filter(#http_request{path = Path}) ->
+	case ewok_file:extension(Path) of
 	?ESP_FILE_EXT -> 
 		{delegate, esp_page_handler, []};
 	_ -> 
@@ -47,21 +47,23 @@ filter(Request) ->
 	end.
 
 %%
-'GET'(Request, Session) ->
+'GET'(Request = #http_request{headers = Headers}, Session) ->
 	case get_file(Request) of
-	File = #ewok_file{} -> 
-		LastModified = File#ewok_file.modified,
-		Headers = [
+	File = #ewok_file{modified = LastModified} -> 
+		NewHeaders = [
 			{content_type, File#ewok_file.mimetype},
 			{content_length, File#ewok_file.size},
 			{last_modified, LastModified}
 		],
-		case Request:header(if_modified_since) of
-		LastModified ->
-			{not_modified, Headers, []};
+		% NOTE: cache hack follows - revisit this
+		CacheControl = proplists:get_value(cache_control, Headers),
+		IfModifiedSince = proplists:get_value(if_modified_since, Headers),
+		case {CacheControl, IfModifiedSince} of
+		{undefined, LastModified} ->
+			{not_modified, NewHeaders, []};
 		_ ->
 			Content = read_file(File),
-			{ok, Headers, Content}
+			{ok, NewHeaders, Content}
 		end;
 	undefined -> 
 		ewok_web:errorpage(Request, Session, not_found);
@@ -70,9 +72,7 @@ filter(Request) ->
 	end.
 	
 %% -> #ewok_file | undefined
-get_file(Request) ->
-	Realm = Request:realm(),
-	Path = Request:path(),
+get_file(#http_request{realm = Realm, path = Path}) ->
 	case ewok_config:get_value({ewok, runmode}) of
 	development ->
 		get_file(Realm, Path);
@@ -88,20 +88,31 @@ get_file(Request) ->
 %%
 get_file(Realm, Path) ->
 	AppDir = ewok_util:appdir(Realm),
-	AppPath = ewok_config:get_value({Realm, http, doc_root}, ?WWW_ROOT),
+	AppPath = ewok_file:path([ewok_config:get_value({Realm, http, doc_root}, ?WWW_ROOT)]),
 	FilePath = ewok_file:path([AppDir, AppPath, <<$., Path/binary>>]),
-	File = 
-		case ewok_file:is_directory(FilePath) of
-		true ->
-			IndexFile = ewok_config:get_value({Realm, http, index_file}, ?WWW_INDEX_FILE),
-			ewok_file:path([FilePath, IndexFile]);
-		false -> 
-			FilePath
-		end,
-	case ewok_file:is_regular(File) of
-	true ->
-		ewok_file:resource(File, Path);
-	false ->
+	Size = size(AppPath),
+	case FilePath of
+	<<AppPath:Size/binary, _/binary>> ->	
+		% ?TTY({found, FilePath, ewok_file:type(FilePath)}),	
+		case ewok_file:type(FilePath) of
+		directory ->
+			get_index_file(Realm, Path, FilePath);
+		regular -> 
+			ewok_file:resource(FilePath, Path);
+		_ -> 
+			undefined
+		end;
+	_ ->
+		undefined
+	end.
+	
+get_index_file(Realm, Path, FilePath) ->
+	IndexFileName = ewok_config:get_value({Realm, http, index_file}, ?WWW_INDEX_FILE),
+	IndexPath = ewok:path([FilePath, IndexFileName]),
+	case ewok_file:type(IndexPath) of
+	regular ->
+		ewok_file:resource(IndexPath, Path);
+	_ ->
 		undefined
 	end.
 	

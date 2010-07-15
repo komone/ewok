@@ -15,7 +15,7 @@
 -module(ewok_ldap_ds).
 %-module(ewok_directory).?
 
--behaviour(ewok_datasource).
+%-behaviour(ewok_datasource).
 -export([init/1, info/0, info/1, create/1, drop/1, find/2, save/3, run/1]).
 -export([datasource_info/0, start_link/1, stop/0]).
 

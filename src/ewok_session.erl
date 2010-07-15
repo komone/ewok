@@ -20,8 +20,8 @@
 -include("ewok_system.hrl").
 
 %% API
--export([get_session/2]).
--export([update/1, close/1]).
+-export([get_session/2, make_cookie/1]).
+-export([update/1, update/2, close/1]).
 -export([list/0]).
 
 -define(SERVER, ewok_session_srv).
@@ -31,39 +31,24 @@
 
 %%
 get_session(Cookies, RemoteIp) ->
-	Record = 
-		case proplists:get_value(?EWOK_SESSION_KEY, Cookies) of
-		undefined -> 
+	case proplists:get_value(?EWOK_SESSION_KEY, Cookies) of
+	undefined -> 
+		new_session(RemoteIp);
+	SessionKey ->
+		case ets:lookup(?ETS, SessionKey) of
+		[] -> 
 			new_session(RemoteIp);
-		SessionKey ->
-			case ets:lookup(?ETS, SessionKey) of
-			[] -> 
-				new_session(RemoteIp);
-			[#ewok_session{} = Value] ->  
-				%% NOTE: check that the IP is valid, if it isn't then return a new session
-				case Value#ewok_session.ip of
-				RemoteIp -> Value;
-				_ -> new_session(RemoteIp)
-				end
+		[#http_session{} = Value] ->  
+			%% NOTE: check that the IP is valid, if it isn't then return a new session
+			case Value#http_session.ip of
+			RemoteIp -> Value;
+			_ -> new_session(RemoteIp)
 			end
-		end,
-	%% IMPORTANT! This instantiation MUST be done in the calling process, not in the remote gen_server process
-	Key = Record#ewok_session.key,		
-	Session = ewok_session_obj:new(
-		Key,
-		Record#ewok_session.ip,
-		Record#ewok_session.started,
-		Record#ewok_session.expires,
-		Record#ewok_session.ttl,
-		Record#ewok_session.notify,
-		make_cookie(Key)
-	),
-	Session:init(Record#ewok_session.user, Record#ewok_session.data),
-	Session.
+		end
+	end.
 %%
 new_session(RemoteIp) ->
 	gen_server:call(?SERVER, {create_session, RemoteIp, default_ttl, self()}, infinity).
-	
 
 %% This only needs done once...
 make_cookie(Key) ->
@@ -81,15 +66,31 @@ make_cookie(Key) ->
 	list_to_binary(Cookie).
 	
 %% IMPL: This call MUST be kept in sync with any changes to the session record.
-% -record(session, {key, ip, user, data=[], started, expires, ttl, notify}).
 %% update_element takes the table lock so this should be safe to do from the client process?
-update(Session) ->
-	{ewok_session, Key, _, User, Data, _, _Expires, TTL, _} = Session:value(),
-	ets:update_element(?ETS, Key, [{4, User}, {5, Data}, {7, ewok_util:unow() + TTL}]).
+% -record(http_session, {key, ip, user, data=[], started, expires, ttl, notify}).
+update({http_session, Key, _, User, Data, _, _Expires, TTL, _}) ->
+	case ets:update_element(?ETS, Key, [{4, User}, {5, Data}, {7, ewok_util:unow() + TTL}]) of
+	true -> 
+		ok;
+	false ->
+		{error, update_failed}
+	end.
+update({http_session, Key, _, User, Data, _, _Expires, TTL, _}, Cookies) ->
+	case ets:update_element(?ETS, Key, [{4, User}, {5, Data}, {7, ewok_util:unow() + TTL}]) of
+	true ->
+		case proplists:get_value(?EWOK_SESSION_KEY, Cookies) of
+		Key -> 
+			ok;
+		_ ->
+			{ok, make_cookie(Key)}
+		end;
+	false ->
+		{error, update_failed}
+	end.
 
 %%
 close(Session) -> 
-	gen_server:call(?SERVER, {delete_session, Session:value()}, infinity).
+	gen_server:call(?SERVER, {delete_session, Session}, infinity).
 
 %
 list() ->

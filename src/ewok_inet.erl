@@ -1,96 +1,124 @@
-%%
+%% Copyright 2009-2010 Steve Davis <steve@simulacity.com>
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+% http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+
 -module(ewok_inet).
 -include("ewok.hrl").
 -include("ewok_system.hrl").
 
--export([start_link/1, stop/1, service/4, behaviour_info/1]).
+%-behaviour(ewok_service).
+-export([start_link/1, stop/1]).
+-export([behaviour_info/1]).
+-export([make_name/1]).
 
--behaviour(gen_server).
+-behaviour(gen_server2).
 -export([init/1, handle_call/3, handle_cast/2, 
 	handle_info/2, code_change/3, terminate/2]).
 
--define(SERVER, ?MODULE).
+-export([connections/1]).
 
--record(state, {mod, callback, data}).
+-record(state, {inet, socket, pid, connections = 0}).
 
+%%
 behaviour_info(callbacks) -> 
-	[{init, 1}, {terminate, 3}];
+	[{start, 1}, {init, 2}, {terminate, 3}];
 behaviour_info(_) -> 
 	undefined.
 
 %%
-start_link(Service = #ewok_inet{timeout=Timeout, handler=Handler, codec=Codec}) ->
-	SocketHandler = fun(Socket) -> service(Socket, Handler, Codec, Timeout) end,
-	%% messy
-	Opts = [
-		{name, Service#ewok_inet.name},
-		{protocol, Service#ewok_inet.protocol},
-		{port, Service#ewok_inet.port},
-		{transport, Service#ewok_inet.transport},
-		{socket_opts, Service#ewok_inet.socket_opts},
-		{max_connections, Service#ewok_inet.max_connections},
-		{handler, SocketHandler}
-	],
-	ewok_socket_srv:start_link(?MODULE, Opts).
-%%
-stop(Pid) ->
-	gen_server:cast(Pid, stop),
-	ewok_socket_srv:stop(Pid).
+start_link(Inet = #ewok_inet{id = Name}) ->
+	gen_server2:start_link({local, Name}, ?MODULE, Inet, []).
 
 %%
-service(Socket, Handler, _Codec, Timeout) ->
-    {ok, Session} = gen_server:start_link(?MODULE, Handler, []),
-	?TTY({Handler, session, Session}),
-	ewok_log:message({Handler, {pid, Session}, {peer, ewok_socket:peername(Socket)}}),
-	loop(Socket, Session, [], Timeout).
-	
-loop(Socket, Session, Request, Timeout) ->
-	case gen_server:call(Session, Request) of
-	{noreply, SocketOpts} ->
-		Length = proplists:get_value(length, SocketOpts, 0),
-		{ok, NewData} = ewok_socket:recv(Socket, Length, Timeout),
-		loop(Socket, Session, NewData, Timeout);	
-	{reply, Response, SocketOpts} ->	
-		ewok_socket:send(Socket, Response),
-		Length = proplists:get_value(length, SocketOpts, 0),
-		{ok, NewData} = ewok_socket:recv(Socket, Length, Timeout),
-		loop(Socket, Session, NewData, Timeout);
-	close ->
-		gen_server:cast(Session, stop),
-		ewok_socket:close(Socket),
-		exit(normal)
+stop(Port) when is_integer(Port) ->
+	stop(make_name(Port));
+stop(Name) when is_atom(Name) ->
+	gen_server2:cast(Name, stop).
+
+
+%% TODO: move to ewok_inet_sup?
+make_name(Port) ->
+	String = lists:flatten([atom_to_list(?MODULE), $_, integer_to_list(Port)]),
+	list_to_atom(String).
+%%
+connections(Port) ->
+	gen_server2:call(make_name(Port), connections).
+
+%% callbacks: gen_server
+init(Inet = #ewok_inet{transport = Transport, port = Port}) ->
+	case catch ewok_socket:listen(Transport, Port) of
+	{ok, ServerSocket} ->
+		?TTY({Inet#ewok_inet.protocol, Transport, Port}),
+		{ok, Pid} = accept(Transport, ServerSocket, Inet),
+		State = #state{pid = Pid, inet = Inet, socket = ServerSocket},
+		{ok, State};
+	Error ->
+		?TTY(Error),
+		Error
 	end.
-	
-%% callbacks: gen_server - connection
-init(Handler) ->
-	process_flag(trap_exit, true), %% should we trap exits?
-	case Handler:init([]) of
-	{ok, Callback, Data} ->
-		{ok, {Handler, Callback, Data}};
-	Value ->
-		Value
-	end.
-%
-handle_call(Message, _From, {Handler, Callback, Data}) ->
-	case Handler:Callback(Message, Data) of
-	{noreply, Callback2, Data2} ->
-		{reply, {noreply, []}, {Handler, Callback2, Data2}};
-	{reply, Reply, Callback2, Data2} ->
-		{reply, {reply, Reply, []}, {Handler, Callback2, Data2}};
-	{disconnect, Callback2, Data2} ->
-		{reply, close, {Handler, Callback2, Data2}}
-	end.
+
+accept(udp, _ServerSocket, _Inet) ->
+	{ok, self()};
+accept(tcp, ServerSocket, Inet) ->
+	ewok_connection:start_link(ServerSocket, Inet);
+accept(ssl, ServerSocket, Inet) ->
+	ewok_connection:start_link(ServerSocket, Inet).
+%% sctp...?
+
+%%
+handle_call(connections, _From, State = #state{connections = Connections}) ->
+	{reply, {ok, Connections}, State};
+handle_call(Message, _From, State) ->
+	?TTY({call, Message}),
+	{reply, ok, State}.
+%%
+handle_cast({connected, Pid}, State = #state{pid = Pid}) ->
+	#state{inet = Inet, socket = ServerSocket, connections = Connections} = State,
+	{ok, NextPid} = ewok_connection:start_link(ServerSocket, Inet),
+	{noreply, State#state{pid = NextPid, connections = Connections + 1}};
 %
 handle_cast(stop, State) ->
-    {stop, normal, State}.
-%
-handle_info(Info, State) ->
-    ewok_log:info([{info, Info}, {state, State}]),
-    {noreply, State}.
+	?TTY({cast, stop}),   
+	{stop, normal, State};
 %	
+handle_cast(Message, State) ->
+	?TTY({cast, Message}),
+	{noreply, State}.
+
+%%	
+handle_info(Message = {udp, _, _, _, _}, State = #state{inet = Inet}) ->
+	ok = handle_message(Message, Inet),
+    {noreply, State};
+handle_info(Message, State) ->
+	?TTY({info, Message}),
+    {noreply, State}.
+
+%%
 code_change(_OldVsn, State, _Extra) ->
     State.
-%
-terminate(Reason, {Handler, Callback, Data}) ->
-	Handler:terminate(Reason, Callback, Data).
-
+%%
+terminate(_Reason, _State) ->
+	ok.
+	
+handle_message({udp, Socket, Address, Port, Packet}, #ewok_inet{handler = Handler, codec = Codec}) ->
+	{ok, Message} = Codec:decode(Packet),
+	try Handler:init(Message, {Address, Port}) of
+	{reply, Reply, _, _} ->
+		{ok, Data} = Codec:encode(Reply),
+%		?TTY({send, Socket, Address, Port, Data}),
+		ok = ewok_socket:send({gen_udp, Socket}, Address, Port, Data);
+	{noreply, _, _} ->
+		ok
+	catch E:R ->
+		{handler_error, {E, R}}
+	end.

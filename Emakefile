@@ -6,6 +6,8 @@
 
 %% Compile behaviour definitions first
 {"src/ewok_service.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/ewok_inet.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/ewok_codec.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 {"src/db/ewok_datasource.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 {"src/http/ewok_http_resource.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 %{"src/http/ewok_web_application.erl", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
@@ -14,6 +16,7 @@
 %% Then everything else 
 {"src/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 {"src/*/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
+{"src/*/*/*", [{i, "include"}, {outdir, "ebin"}, debug_info, strict_record_tests]}.
 
 %% Then built-in applications
 %{"priv/apps/*/src/*", [{i, "include"}, {i, "priv/apps/*/include"}, {outdir, "priv/apps/*/ebin"}, debug_info, strict_record_tests]}.

@@ -22,7 +22,7 @@
 
 %% API
 -export([start/0, start/1, start/2, stop/0]).
--export([ident/0, password/1, keystore/0, keystore/2, info/0, info/1, api/1]).
+-export([ident/0, password/1, keystore/0, keystore/2, info/0, info/1, api/1, status/1]).
 -export([config/0, config/1, config/2]).
 -export([deploy/1, undeploy/1]).
 
@@ -113,7 +113,9 @@ api(Module) ->
 	_ -> undefined
 	end.
 	
-
+status(Module) when is_atom(Module) ->
+	io:format("~p~n", [sys:get_status(Module)]).
+	
 %% reminder
 info() ->
 	[version, running, ports, config, routes, webapps, 

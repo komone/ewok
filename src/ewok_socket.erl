@@ -15,48 +15,18 @@
 -module(ewok_socket).
 -include("ewok.hrl").
 
--export([configure/2, connect/4, setopts/2, controlling_process/2, sockname/2,
-	peername/1, listen/3, accept/1, send/2, recv/3, close/1]).
+-export([connect/4, getopts/1, setopts/2, controlling_process/2, sockname/1,
+	peername/1, listen/2, accept/1, upgrade/1, send/2, send/4, recv/3, close/1]).
+
+% internalize
+-export([transport_impl/1]).
 
 -define(READ_SIZE, 8192).
 
-%% IMPL: note that 'Transport' is the actual **module name**
-configure(gen_tcp, Prefix) -> [ 
-	param(Prefix, {tcp, socket, mode}, binary),
-	{ ip, param({ewok, ip}, {0, 0, 0, 0})}, 
-	{ packet, param(Prefix, {tcp, socket, packet}, 0)},
-	{ backlog, param(Prefix, {tcp, socket, backlog}, 0)},
-	{ active, param(Prefix, {tcp, socket, active}, false)},
-	{ nodelay, param(Prefix, {tcp, socket, nodelay}, true)},
-	{ reuseaddr, param(Prefix, {tcp, socket, reuseaddr}, true) },
-	{ recbuf, param(Prefix, {tcp, socket, recbuf}, 8192) }
-];
-
-configure(ssl, Prefix) ->
-	case ewok_config:get_value(Prefix ++ ".ssl.enabled", false) of
-	true -> ssl:start(); %% TODO: not the right place for this
-	false -> ok
-	end,
-	[ ewok_config:get_value(Prefix ++ ".tcp.socket.mode", binary),
-	{ ip, ewok_config:get_value({ewok, ip}, {0, 0, 0, 0}) }, 
-	{ packet, ewok_config:get_value(Prefix ++ ".tcp.socket.packet", 0) },
-	{ backlog, ewok_config:get_value(Prefix ++ ".tcp.socket.backlog", 0) },
-	{ active, ewok_config:get_value(Prefix ++ ".tcp.socket.active", false) },
-	{ nodelay, ewok_config:get_value(Prefix ++ ".tcp.socket.nodelay", true) },
-	{ reuseaddr, ewok_config:get_value(Prefix ++ ".tcp.socket.reuseaddr", true) },
-	{ ssl_impl, new }, %% NOTE: ONLY SUPPORT NEW_SSL 
-	{ verify, ewok_config:get_value(Prefix ++ ".ssl.verify", 0) },
-	{ depth, ewok_config:get_value(Prefix ++ ".ssl.depth", 1) },
-	%{ password, ewok_config:get_value("ewok.http.ssl.password", undefined) }, %% TODO: ONLY SET if keyfile is protected
-	{ keyfile, ewok_config:get_value(Prefix ++ ".ssl.keyfile", "./priv/ssl/yaws-key.pem") },
-	%{ cacertfile, ewok_config:get_value("ewok.http.ssl.cacertfile", "./priv/ssl/cacerts.pem") },
-	{ certfile, ewok_config:get_value(Prefix ++ ".ssl.certfile", "./priv/ssl/yaws-cert.pem") }].
-
-% @private
-param(Key, Default) ->
-	ewok_config:get_value(Key, Default).
-param(Prefix, Key, Default) ->
-	param(list_to_tuple(lists:append(tuple_to_list(Prefix), tuple_to_list(Key))), Default).
+%
+transport_impl(udp) -> gen_udp;
+transport_impl(tcp) -> gen_tcp;
+transport_impl(ssl) -> ssl.
 
 %%
 connect(Transport, Host, Port, Options) when is_binary(Host) ->
@@ -64,10 +34,30 @@ connect(Transport, Host, Port, Options) when is_binary(Host) ->
 connect(Transport, Host, Port, Options) when is_binary(Port) ->
 	Number = list_to_integer(binary_to_list(Port)),
 	connect(Transport, Host, Number, Options);
+connect(gen_udp, _Host, Port, Options) ->
+	gen_udp:open(Port, Options);
+connect(ssl, Host, Port, _Options) ->
+    ssl:connect(Host, Port, [binary, {active, false}, {ssl_imp, old}]); %Options).
 connect(Transport, Host, Port, Options) ->
     Transport:connect(Host, Port, Options).
 
+
+getopts(udp) -> 
+	[binary, {ip, {0, 0, 0, 0}}, {active, true}];
+getopts(tcp) -> 
+	[binary, {ip, {0, 0, 0, 0}}, {active, true}, {packet, 0}, 
+	{nodelay, true}, {reuseaddr, true}, {recbuf, 8192}, {backlog, 5}];
+getopts(ssl) ->
+	[binary, {ip, {0, 0, 0, 0}}, {active, true}, {packet, 0}, 
+	{ssl_imp, old}, {verify, 0}, {depth, 1}, 
+	{keyfile, "./priv/data/auth/yaws-key.pem"},
+	{certfile, "./priv/data/auth/yaws-cert.pem"}].
+%	{cacertfile, "./priv/data/auth/cacert.pem"}].
+%	{password, undefined}
+
 %%
+setopts({gen_udp, Socket}, Opts) ->
+	inet:setopts(Socket, Opts);	
 setopts({gen_tcp, Socket}, Opts) ->
 	inet:setopts(Socket, Opts);
 setopts({ssl, Socket}, Opts) ->
@@ -75,47 +65,76 @@ setopts({ssl, Socket}, Opts) ->
 %%
 controlling_process({Transport, Socket}, Pid) when is_pid(Pid) ->
 	Transport:controlling_process(Socket, Pid).
+
 %%
-sockname(gen_tcp, Socket) ->
+sockname({gen_udp, Socket}) ->
 	inet:sockname(Socket);
-sockname(ssl, Socket) ->
+sockname({gen_tcp, Socket}) ->
+	inet:sockname(Socket);
+sockname({ssl, Socket}) ->
 	ssl:sockname(Socket).
 	
 %%
+peername({gen_udp, _Socket}) ->
+	undefined;
 peername({gen_tcp, Socket}) ->
 	inet:peername(Socket);
 peername({ssl, Socket}) ->
 	ssl:peername(Socket).
 	
 %%
+listen(Transport, Port) ->
+	listen(Transport, Port, getopts(Transport)).
+%
+listen(udp, Port, Opts) ->
+	{ok, ServerSocket} = gen_udp:open(Port, Opts),
+	{ok, {gen_udp, ServerSocket}};
+listen(tcp, Port, Opts) ->
+	{ok, ServerSocket} = gen_tcp:listen(Port, Opts),
+	{ok, {gen_tcp, ServerSocket}};
 listen(ssl, Port, Opts) ->
+	ssl:start(),
 	%% IMPL: 'old ssl' impl should be seeded -- this can probably be removed...
 	ssl:seed(ewok_identity:key()),
-	ssl:listen(Port, Opts);
-listen(gen_tcp, Port, Opts) ->
-	gen_tcp:listen(Port, Opts).
+	{ok, Socket} = ssl:listen(Port, Opts),
+	{ok, {ssl, Socket}}.
 
-%%
-accept({gen_tcp, Socket}) ->
-	{ok, _ClientSocket} = gen_tcp:accept(Socket);
-accept({ssl, Socket}) ->
-	%?TTY("Calling transport_accept~n", []),
-	{ok, ClientSocket} = ssl:transport_accept(Socket),
-	%?TTY("Calling ssl_accept~n", []),
-	ok = ssl:ssl_accept(ClientSocket),
-	{ok, ClientSocket}.
+%%	
+accept({gen_tcp, ServerSocket}) ->
+	case gen_tcp:accept(ServerSocket, infinity) of
+	{ok, Socket} ->
+		{ok, {gen_tcp, Socket}};
+	Error ->
+		Error
+	end;
+accept({ssl, ServerSocket}) ->
+	?TTY(<<"Calling transport_accept">>),
+	case ssl:transport_accept(ServerSocket, infinity) of
+	{ok, Socket} ->
+		?TTY(<<"Calling ssl_accept">>),
+		ok = ssl:ssl_accept(Socket),
+		{ok, {ssl, Socket}};
+	Error ->
+		Error
+	end.
+
+upgrade({gen_tcp, Socket}) ->
+	ssl:start(),
+	ok = inet:setopts(Socket, [{active, false}]),
+	{ok, NewSocket} = ssl:ssl_accept(Socket, getopts(ssl)),
+	ok = ssl:setopts(NewSocket, [{active, true}]),
+	{ok, {ssl, NewSocket}}.
 
 %%
 recv({Transport, Socket}, Bytes, Timeout) ->
 	Transport:recv(Socket, Bytes, Timeout).
 	
+send({Transport, Socket}, Address, Port, Data) ->
+	Transport:send(Socket, Address, Port, Data).
+	
 %%
-send(_, chunked) -> %% placeholder: http only
-	ok;
-send(Socket, Bin) when is_binary(Bin) ->
-	ok = send_data(Socket, Bin);
-send(Socket, L) when is_list(L) ->
-	ok = send_data(Socket, L);
+send(Socket, Data) when is_binary(Data); is_list(Data) ->
+	ok = send_data(Socket, Data);
 send(Socket, {file, F}) ->
 	{ok, Fd} = file:open(F, [raw, binary]),
 	ok = send_file(Socket, Fd).
@@ -140,3 +159,4 @@ send_data({Transport, Socket}, Data) ->
 %%
 close({Transport, Socket}) ->
 	Transport:close(Socket).
+

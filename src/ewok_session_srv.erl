@@ -64,7 +64,7 @@ handle_call({create_session, IP, TTL, Pid}, _From, State) ->
 		X when is_integer(X) -> TTL
 		end,
     Key = ewok_identity:key(),
-	Session = #ewok_session {
+	Session = #http_session {
 		key = Key,
 		ip = IP,
 		user = undefined,
@@ -75,7 +75,7 @@ handle_call({create_session, IP, TTL, Pid}, _From, State) ->
     ets:insert_new(?ETS, Session),
     {reply, Session, State, State#state.flush_interval};
 %
-handle_call({delete_session, S = #ewok_session{key=Key}}, _From, State) ->
+handle_call({delete_session, S = #http_session{key=Key}}, _From, State) ->
 	ets:delete(?ETS, Key),
 	notify(S, normal),
 	{reply, ok, State, State#state.flush_interval}.
@@ -120,7 +120,7 @@ cleanup(_, '$end_of_table') ->
 cleanup(Now, Key) ->
     case ets:lookup(?ETS, Key) of
 	[Session] ->
-		case Session#ewok_session.expires > Now of 
+		case Session#http_session.expires > Now of 
 		true -> 
 			cleanup(Now, ets:next(?ETS, Key));
 		false -> 
@@ -134,7 +134,7 @@ cleanup(Now, Key) ->
     end.
 
 %%
-notify(#ewok_session{notify = Pid, key = SessionKey}, Type) ->
+notify(#http_session{notify = Pid, key = SessionKey}, Type) ->
     try 
 		Pid ! {session_end, Type, SessionKey}
 	catch
